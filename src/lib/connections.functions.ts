@@ -201,10 +201,20 @@ function asJsonArr(v: string | undefined): string[] {
   return s.split(/[|,;]/).map((x) => x.trim()).filter(Boolean);
 }
 
+function normKey(h: string): string {
+  return String(h ?? "").trim().toLowerCase().replace(/[\s\-]+/g, "_");
+}
+
 function mapRow(headers: string[], values: string[]): CallRow {
   const idx: Record<string, number> = {};
-  headers.forEach((h, i) => (idx[h] = i));
-  const get = (k: string) => (idx[k] !== undefined ? values[idx[k]] : undefined);
+  headers.forEach((h, i) => {
+    const k = normKey(h);
+    if (!(k in idx)) idx[k] = i;
+  });
+  const get = (k: string) => {
+    const i = idx[normKey(k)];
+    return i !== undefined ? values[i] : undefined;
+  };
   return {
     campaign_day: get("campaign_day") ?? "",
     campaign_date: get("campaign_date") ?? "",
@@ -233,7 +243,7 @@ function mapRow(headers: string[], values: string[]): CallRow {
     jobs_recommended: asJsonArr(get("jobs_recommended")),
     jobs_applied: asJsonArr(get("jobs_applied")),
     jobs_failed_to_apply: asJsonArr(get("jobs_failed_to_apply")),
-    "Intent Score": asNum(get("Intent Score")),
+    "Intent Score": asNum(get("intent_score")),
     "Intent Score Reasoning": "",
     counselled: asYesNoBool(get("counselled")),
     interview_scheduled: asYesNoBool(get("interview_scheduled")),
@@ -243,6 +253,31 @@ function mapRow(headers: string[], values: string[]): CallRow {
     candidate_name: get("candidate_name") ?? undefined,
   };
 }
+
+export const getCallDetailFn = createServerFn({ method: "POST" })
+  .inputValidator((d: { program: ProgramId; call_id: string }) => d)
+  .handler(async ({ data }) => {
+    const sb = getServerSupabase();
+    const { data: conns } = await sb
+      .from("sheet_connections")
+      .select("*")
+      .eq("program", data.program)
+      .eq("enabled", true);
+    const list = (conns ?? []) as SheetConnection[];
+    if (!process.env.GOOGLE_SERVICE_ACCOUNT_JSON || list.length === 0) {
+      return { ok: false as const, error: "No connection" };
+    }
+    const { getCallDetail } = await import("./sheets.server");
+    for (const c of list) {
+      try {
+        const d = await getCallDetail(c.sheet_id, c.tab_name ?? undefined, data.call_id);
+        if (d) return { ok: true as const, detail: d };
+      } catch {
+        /* try next */
+      }
+    }
+    return { ok: false as const, error: "Not found" };
+  });
 
 export const fetchProgramRows = createServerFn({ method: "GET" })
   .inputValidator((d: { program: ProgramId }) => d)

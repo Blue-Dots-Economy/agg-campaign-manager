@@ -83,13 +83,15 @@ function quoteTab(tab: string): string {
   return `'${tab.replace(/'/g, "''")}'!`;
 }
 
-// Columns we never need on the client — they balloon Worker memory on 20k+ row sheets.
-const HEAVY_HEADERS = new Set([
+// Columns excluded from the bulk read — they balloon Worker memory on 20k+ row sheets.
+// Fetched on demand via getCallDetail when a user opens a specific call.
+function normalizeHeader(h: string): string {
+  return String(h ?? "").trim().toLowerCase().replace(/[\s\-]+/g, "_");
+}
+const HEAVY_HEADERS_NORM = new Set([
   "call_transcript",
   "final_summary",
   "call_recording_url",
-  "Intent Score Reasoning",
-  "primary_topic",
 ]);
 
 /** Fetch the spreadsheet's tab titles in order. */
@@ -127,7 +129,7 @@ async function readSheetForTab(
 
   const keep: number[] = [];
   allHeaders.forEach((h, i) => {
-    if (!HEAVY_HEADERS.has(h)) keep.push(i);
+    if (!HEAVY_HEADERS_NORM.has(normalizeHeader(h))) keep.push(i);
   });
   const groups: Array<[number, number]> = [];
   for (const i of keep) {
@@ -193,4 +195,84 @@ export async function readSheet(sheetId: string, tabName?: string): Promise<Shee
   const tabs = await listSheetTabs(sheetId);
   if (tabs.length === 0) throw new Error("Spreadsheet has no tabs");
   return await readSheetForTab(sheetId, token, tabs[0]);
+}
+
+export interface CallDetail {
+  call_transcript: string;
+  final_summary: string;
+  call_recording_url: string;
+  effectiveTab: string;
+}
+
+/** Fetch heavy on-demand columns for a single call row by call_id. */
+export async function getCallDetail(
+  sheetId: string,
+  tabName: string | undefined,
+  callId: string,
+): Promise<CallDetail | null> {
+  const token = await getAccessToken();
+  let tab = (tabName ?? "").trim();
+  if (!tab) {
+    const tabs = await listSheetTabs(sheetId);
+    if (tabs.length === 0) throw new Error("Spreadsheet has no tabs");
+    tab = tabs[0];
+  }
+  const tabPrefix = quoteTab(tab);
+
+  const headerUrl = `https://sheets.googleapis.com/v4/spreadsheets/${sheetId}/values/${tabPrefix}A1:ZZ1`;
+  let headerRes = await fetch(headerUrl, { headers: { authorization: `Bearer ${token}` } });
+  if (!headerRes.ok) {
+    const text = await headerRes.text();
+    if (tabName && isRangeParseError(text)) {
+      const tabs = await listSheetTabs(sheetId);
+      if (tabs.length === 0) throw new Error("Spreadsheet has no tabs");
+      tab = tabs[0];
+      headerRes = await fetch(
+        `https://sheets.googleapis.com/v4/spreadsheets/${sheetId}/values/${quoteTab(tab)}A1:ZZ1`,
+        { headers: { authorization: `Bearer ${token}` } },
+      );
+      if (!headerRes.ok) throw new Error(`Sheets read failed (${headerRes.status})`);
+    } else {
+      throw new Error(`Sheets read failed (${headerRes.status}): ${text.slice(0, 300)}`);
+    }
+  }
+  const headerJson = (await headerRes.json()) as { values?: string[][] };
+  const headers = (headerJson.values?.[0] ?? []).map((h) => String(h ?? "").trim());
+  const norm = headers.map(normalizeHeader);
+  const callIdCol = norm.indexOf("call_id");
+  if (callIdCol < 0) return null;
+
+  const prefix2 = quoteTab(tab);
+  const idColLetter = colLetter(callIdCol);
+  const colUrl = `https://sheets.googleapis.com/v4/spreadsheets/${sheetId}/values/${prefix2}${idColLetter}2:${idColLetter}200000?valueRenderOption=UNFORMATTED_VALUE`;
+  const colRes = await fetch(colUrl, { headers: { authorization: `Bearer ${token}` } });
+  if (!colRes.ok) throw new Error(`Sheets read failed (${colRes.status})`);
+  const colJson = (await colRes.json()) as { values?: unknown[][] };
+  const colValues = colJson.values ?? [];
+  let rowIdx = -1;
+  for (let i = 0; i < colValues.length; i++) {
+    if (String((colValues[i] ?? [])[0] ?? "") === String(callId)) {
+      rowIdx = i;
+      break;
+    }
+  }
+  if (rowIdx < 0) return null;
+  const sheetRow = rowIdx + 2;
+
+  const fullUrl = `https://sheets.googleapis.com/v4/spreadsheets/${sheetId}/values/${prefix2}A${sheetRow}:ZZ${sheetRow}?valueRenderOption=UNFORMATTED_VALUE`;
+  const fullRes = await fetch(fullUrl, { headers: { authorization: `Bearer ${token}` } });
+  if (!fullRes.ok) throw new Error(`Sheets read failed (${fullRes.status})`);
+  const fullJson = (await fullRes.json()) as { values?: unknown[][] };
+  const values = (fullJson.values?.[0] ?? []) as unknown[];
+  const byKey: Record<string, string> = {};
+  norm.forEach((k, i) => {
+    const v = values[i];
+    byKey[k] = v == null ? "" : String(v);
+  });
+  return {
+    call_transcript: byKey["call_transcript"] ?? "",
+    final_summary: byKey["final_summary"] ?? "",
+    call_recording_url: byKey["call_recording_url"] ?? "",
+    effectiveTab: tab,
+  };
 }

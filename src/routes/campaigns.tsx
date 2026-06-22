@@ -1,10 +1,13 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
+import { useQuery } from "@tanstack/react-query";
+import { useServerFn } from "@tanstack/react-start";
 import { useProgram } from "@/programs/context";
 import { type CallRow } from "@/programs/data";
 import { useCampaignData } from "@/programs/useCampaignData";
 import { byCampaignDay } from "@/programs/metrics";
 import { Panel } from "@/components/Panel";
+import { getCallDetailFn } from "@/lib/connections.functions";
 import {
   Table,
   TableBody,
@@ -28,10 +31,11 @@ export const Route = createFileRoute("/campaigns")({
 
 function Campaigns() {
   const { config } = useProgram();
-  const { rows } = useCampaignData(config);
+  const { rows, source } = useCampaignData(config);
   const campaigns = useMemo(() => byCampaignDay(config, rows), [config, rows]);
   const [openDay, setOpenDay] = useState<string | null>(null);
   const [filter, setFilter] = useState("");
+  const [openCall, setOpenCall] = useState<CallRow | null>(null);
 
   const detailRows: CallRow[] = useMemo(() => {
     if (!openDay) return [];
@@ -120,7 +124,11 @@ function Campaigns() {
               </TableHeader>
               <TableBody>
                 {detailRows.map((r) => (
-                  <TableRow key={r.call_id}>
+                  <TableRow
+                    key={r.call_id}
+                    className="cursor-pointer"
+                    onClick={() => setOpenCall(r)}
+                  >
                     <TableCell className="font-mono text-xs">{r.phone}</TableCell>
                     <TableCell>{r.seeker_name}</TableCell>
                     <TableCell>{r.call_outcome}</TableCell>
@@ -139,6 +147,95 @@ function Campaigns() {
           </div>
         </DialogContent>
       </Dialog>
+
+      <CallDetailDialog
+        call={openCall}
+        onClose={() => setOpenCall(null)}
+        program={config.id}
+        live={source === "sheets"}
+      />
     </div>
+  );
+}
+
+function CallDetailDialog({
+  call,
+  onClose,
+  program,
+  live,
+}: {
+  call: CallRow | null;
+  onClose: () => void;
+  program: "kkb" | "dkb";
+  live: boolean;
+}) {
+  const fn = useServerFn(getCallDetailFn);
+  const query = useQuery({
+    enabled: !!call && live,
+    queryKey: ["call-detail", program, call?.call_id],
+    queryFn: () => fn({ data: { program, call_id: call!.call_id } }),
+    staleTime: 5 * 60_000,
+  });
+  const detail = query.data?.ok ? query.data.detail : null;
+  return (
+    <Dialog open={!!call} onOpenChange={(o) => !o && onClose()}>
+      <DialogContent className="max-w-3xl">
+        <DialogHeader>
+          <DialogTitle>
+            {call?.seeker_name || "Call"}{" "}
+            <span className="ml-2 font-mono text-xs text-muted-foreground">{call?.call_id}</span>
+          </DialogTitle>
+        </DialogHeader>
+        {call && (
+          <div className="space-y-4 text-sm">
+            <div className="grid grid-cols-2 gap-3 text-muted-foreground">
+              <div><span className="text-foreground">Phone:</span> {call.phone}</div>
+              <div><span className="text-foreground">Outcome:</span> {call.call_outcome}</div>
+              <div><span className="text-foreground">Duration:</span> {call.call_duration_seconds}s</div>
+              <div><span className="text-foreground">Intent:</span> {call["Intent Score"]}</div>
+            </div>
+            {!live ? (
+              <p className="text-muted-foreground">Connect a live sheet to load transcript, summary, and recording.</p>
+            ) : query.isLoading ? (
+              <p className="text-muted-foreground">Loading transcript & recording…</p>
+            ) : query.error ? (
+              <p className="text-destructive">Failed to load call detail.</p>
+            ) : !detail ? (
+              <p className="text-muted-foreground">No detail found for this call.</p>
+            ) : (
+              <>
+                <section>
+                  <h4 className="mb-1 font-medium">Recording</h4>
+                  {detail.call_recording_url ? (
+                    <a
+                      href={detail.call_recording_url}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="text-brand underline"
+                    >
+                      Open recording
+                    </a>
+                  ) : (
+                    <p className="text-muted-foreground">—</p>
+                  )}
+                </section>
+                <section>
+                  <h4 className="mb-1 font-medium">Final summary</h4>
+                  <p className="whitespace-pre-wrap text-muted-foreground">
+                    {detail.final_summary || "—"}
+                  </p>
+                </section>
+                <section>
+                  <h4 className="mb-1 font-medium">Transcript</h4>
+                  <div className="max-h-[40vh] overflow-auto whitespace-pre-wrap rounded-md border bg-muted/30 p-3 text-xs text-muted-foreground">
+                    {detail.call_transcript || "—"}
+                  </div>
+                </section>
+              </>
+            )}
+          </div>
+        )}
+      </DialogContent>
+    </Dialog>
   );
 }
