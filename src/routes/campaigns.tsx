@@ -1,14 +1,14 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, keepPreviousData } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { useProgram } from "@/programs/context";
 import { type CallRow } from "@/programs/data";
-import { useCampaignData } from "@/programs/useCampaignData";
-import { byCampaignDay } from "@/programs/metrics";
+import { useProgramAggregates } from "@/programs/useProgramAggregates";
 import { Panel } from "@/components/Panel";
 import { NoDataState, LoadingState } from "@/components/EmptyState";
 import { getCallDetailFn } from "@/lib/connections.functions";
+import { fetchCampaignDayRowsFn } from "@/lib/snapshot.functions";
 import {
   Table,
   TableBody,
@@ -32,20 +32,29 @@ export const Route = createFileRoute("/campaigns")({
 
 function Campaigns() {
   const { config } = useProgram();
-  const { rows, source, isLoading } = useCampaignData(config);
-  const campaigns = useMemo(() => byCampaignDay(config, rows), [config, rows]);
+  const query = useProgramAggregates(config);
+  const data = query.data;
   const [openDay, setOpenDay] = useState<string | null>(null);
   const [filter, setFilter] = useState("");
   const [openCall, setOpenCall] = useState<CallRow | null>(null);
 
   const isDkb = config.id === "dkb";
 
+  const dayRowsFn = useServerFn(fetchCampaignDayRowsFn);
+  const dayQuery = useQuery({
+    enabled: !!openDay,
+    queryKey: ["campaign-day-rows", config.id, openDay],
+    queryFn: () => dayRowsFn({ data: { program: config.id, day: openDay! } }),
+    staleTime: 5 * 60_000,
+    placeholderData: keepPreviousData,
+  });
+  const dayRows = dayQuery.data?.rows ?? [];
+
   const detailRows: CallRow[] = useMemo(() => {
     if (!openDay) return [];
-    const day = rows.filter((r) => r.campaign_day === openDay);
-    if (!filter) return day;
+    if (!filter) return dayRows;
     const q = filter.toLowerCase();
-    return day.filter((r) => {
+    return dayRows.filter((r) => {
       if (isDkb) {
         const raw = r.raw ?? {};
         return (
@@ -63,7 +72,7 @@ function Campaigns() {
         (r.drop_reason ?? "").toLowerCase().includes(q)
       );
     });
-  }, [rows, openDay, filter, isDkb]);
+  }, [dayRows, openDay, filter, isDkb]);
 
   const successLabel = isDkb
     ? "New jobs"
@@ -71,12 +80,14 @@ function Campaigns() {
       ? "Applied"
       : "Interviews";
 
-  if (isLoading) return <LoadingState />;
-  if (source === "empty" || rows.length === 0) return <NoDataState />;
+  if (query.isLoading && !data) return <LoadingState />;
+  if (!data || data.source === "empty" || data.totalRows === 0) return <NoDataState />;
+
+  const campaigns = data.campaigns;
 
   return (
     <div className="space-y-6">
-      <Panel title="Campaigns" description={`${campaigns.length} campaign days · grouped from ${rows.length} calls`}>
+      <Panel title="Campaigns" description={`${campaigns.length} campaign days · ${data.totalRows} calls in snapshot`}>
         <div className="overflow-x-auto">
           <Table>
             <TableHeader>
@@ -132,7 +143,9 @@ function Campaigns() {
             className="mb-3"
           />
           <div className="max-h-[60vh] overflow-auto rounded-md border">
-            {isDkb ? (
+            {dayQuery.isLoading && dayRows.length === 0 ? (
+              <div className="p-6 text-sm text-muted-foreground">Loading rows…</div>
+            ) : isDkb ? (
               <Table>
                 <TableHeader>
                   <TableRow>
@@ -148,11 +161,11 @@ function Campaigns() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {detailRows.map((r) => {
+                  {detailRows.map((r, i) => {
                     const raw = r.raw ?? {};
                     return (
                       <TableRow
-                        key={r.call_id || `${raw.contact_phone}-${raw.job_id}`}
+                        key={r.call_id || `${raw.contact_phone}-${raw.job_id}-${i}`}
                         className="cursor-pointer"
                         onClick={() => setOpenCall(r)}
                       >
@@ -184,9 +197,9 @@ function Campaigns() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {detailRows.map((r) => (
+                  {detailRows.map((r, i) => (
                     <TableRow
-                      key={r.call_id}
+                      key={r.call_id || `${r.phone}-${i}`}
                       className="cursor-pointer"
                       onClick={() => setOpenCall(r)}
                     >
@@ -215,7 +228,6 @@ function Campaigns() {
         call={openCall}
         onClose={() => setOpenCall(null)}
         program={config.id}
-        live={source === "sheets"}
       />
     </div>
   );
@@ -225,16 +237,14 @@ function CallDetailDialog({
   call,
   onClose,
   program,
-  live,
 }: {
   call: CallRow | null;
   onClose: () => void;
   program: "kkb" | "dkb";
-  live: boolean;
 }) {
   const fn = useServerFn(getCallDetailFn);
   const query = useQuery({
-    enabled: !!call && live,
+    enabled: !!call,
     queryKey: ["call-detail", program, call?.call_id],
     queryFn: () => fn({ data: { program, call_id: call!.call_id } }),
     staleTime: 5 * 60_000,
@@ -257,9 +267,7 @@ function CallDetailDialog({
               <div><span className="text-foreground">Duration:</span> {call.call_duration_seconds}s</div>
               <div><span className="text-foreground">Intent:</span> {call["Intent Score"]}</div>
             </div>
-            {!live ? (
-              <p className="text-muted-foreground">Connect a live sheet to load transcript, summary, and recording.</p>
-            ) : query.isLoading ? (
+            {query.isLoading ? (
               <p className="text-muted-foreground">Loading transcript & recording…</p>
             ) : query.error ? (
               <p className="text-destructive">Failed to load call detail.</p>
