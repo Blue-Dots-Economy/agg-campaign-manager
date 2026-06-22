@@ -2,7 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
-import { Plug, Trash2, RefreshCw, Copy, CheckCircle2, AlertCircle, Loader2 } from "lucide-react";
+import { Plug, Trash2, RefreshCw, Copy, CheckCircle2, AlertCircle, Loader2, Pencil } from "lucide-react";
 import { Panel } from "@/components/Panel";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -19,6 +19,13 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
   Tooltip,
   TooltipContent,
   TooltipProvider,
@@ -32,6 +39,7 @@ import {
   deleteConnection,
   testConnection,
   revalidateConnections,
+  listSheetTabsFn,
   type SheetConnection,
 } from "@/lib/connections.functions";
 const DEFAULT_SA_EMAIL = "blue-dots-admin@blue-dots-project.iam.gserviceaccount.com";
@@ -201,6 +209,7 @@ function ProgramConnections({ program }: { program: ProgramId }) {
                   <RefreshCw className="h-4 w-4" />
                 )}
               </Button>
+              <EditConnectionDialog connection={c} onSaved={invalidate} />
               <Button
                 variant="ghost"
                 size="sm"
@@ -258,6 +267,97 @@ function StatusBadge({
     );
   }
   return <Badge variant="outline">checking</Badge>;
+}
+
+function TabPicker({
+  sheetId,
+  value,
+  onChange,
+  disabled,
+}: {
+  sheetId: string;
+  value: string;
+  onChange: (v: string) => void;
+  disabled?: boolean;
+}) {
+  const listTabsFn = useServerFn(listSheetTabsFn);
+  const [tabs, setTabs] = useState<string[] | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [err, setErr] = useState<string | null>(null);
+  const [manual, setManual] = useState(false);
+
+  useEffect(() => {
+    if (!sheetId) {
+      setTabs(null);
+      setErr(null);
+      return;
+    }
+    let cancelled = false;
+    setLoading(true);
+    setErr(null);
+    listTabsFn({ data: { sheet_id: sheetId } })
+      .then((res) => {
+        if (cancelled) return;
+        if (res.ok) {
+          setTabs(res.tabs);
+          if (!value && res.tabs.length > 0) onChange(res.tabs[0]);
+        } else {
+          setTabs([]);
+          setErr(res.error);
+        }
+      })
+      .catch((e) => {
+        if (!cancelled) setErr(e instanceof Error ? e.message : String(e));
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [sheetId]);
+
+  if (!sheetId) {
+    return <Input value={value} onChange={(e) => onChange(e.target.value)} placeholder="Paste sheet URL first" disabled />;
+  }
+  if (loading) {
+    return (
+      <div className="flex items-center gap-2 text-sm text-muted-foreground">
+        <Loader2 className="h-3 w-3 animate-spin" /> Loading tabs…
+      </div>
+    );
+  }
+  if (manual || err || !tabs || tabs.length === 0) {
+    return (
+      <div className="space-y-1">
+        <Input value={value} onChange={(e) => onChange(e.target.value)} placeholder="Sheet1" disabled={disabled} />
+        {err && <div className="text-xs text-red-600 break-all">{err}</div>}
+        {tabs && tabs.length > 0 && (
+          <button type="button" className="text-xs text-brand underline" onClick={() => setManual(false)}>
+            Pick from list
+          </button>
+        )}
+      </div>
+    );
+  }
+  return (
+    <div className="space-y-1">
+      <Select value={value} onValueChange={onChange} disabled={disabled}>
+        <SelectTrigger>
+          <SelectValue placeholder="Pick a tab" />
+        </SelectTrigger>
+        <SelectContent>
+          {tabs.map((t) => (
+            <SelectItem key={t} value={t}>{t}</SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
+      <button type="button" className="text-xs text-muted-foreground underline" onClick={() => setManual(true)}>
+        Type manually
+      </button>
+    </div>
+  );
 }
 
 function ConnectDialog({ program, onCreated }: { program: ProgramId; onCreated: () => void }) {
@@ -324,8 +424,8 @@ function ConnectDialog({ program, onCreated }: { program: ProgramId; onCreated: 
             )}
           </div>
           <div>
-            <Label>Tab name (optional)</Label>
-            <Input value={tab} onChange={(e) => setTab(e.target.value)} placeholder="Sheet1" />
+            <Label>Tab</Label>
+            <TabPicker sheetId={sheetId} value={tab} onChange={setTab} />
           </div>
           {testResult && (
             <div
@@ -344,6 +444,82 @@ function ConnectDialog({ program, onCreated }: { program: ProgramId; onCreated: 
           </Button>
           <Button onClick={onSave} className="bg-brand hover:bg-brand/90">
             Add connection
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+function EditConnectionDialog({
+  connection,
+  onSaved,
+}: {
+  connection: SheetConnection;
+  onSaved: () => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const [name, setName] = useState(connection.name);
+  const [tab, setTab] = useState(connection.tab_name ?? "");
+  const [saving, setSaving] = useState(false);
+
+  const updateFn = useServerFn(updateConnection);
+  const testFn = useServerFn(testConnection);
+
+  useEffect(() => {
+    if (open) {
+      setName(connection.name);
+      setTab(connection.tab_name ?? "");
+    }
+  }, [open, connection]);
+
+  const onSave = async () => {
+    setSaving(true);
+    try {
+      await updateFn({ data: { id: connection.id, name, tab_name: tab || null } });
+      const res = await testFn({
+        data: { id: connection.id, sheet_id: connection.sheet_id, tab_name: tab || undefined },
+      });
+      if (res.ok) toast.success(`Connected · ${res.rowCount} rows`);
+      else toast.error(res.error);
+      setOpen(false);
+      onSaved();
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Failed");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={setOpen}>
+      <DialogTrigger asChild>
+        <Button variant="ghost" size="sm">
+          <Pencil className="h-4 w-4" />
+        </Button>
+      </DialogTrigger>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Edit connection</DialogTitle>
+        </DialogHeader>
+        <div className="space-y-3 pt-2">
+          <div>
+            <Label>Friendly name</Label>
+            <Input value={name} onChange={(e) => setName(e.target.value)} />
+          </div>
+          <div className="text-xs text-muted-foreground font-mono">
+            id: {maskId(connection.sheet_id)}
+          </div>
+          <div>
+            <Label>Tab</Label>
+            <TabPicker sheetId={connection.sheet_id} value={tab} onChange={setTab} />
+          </div>
+        </div>
+        <DialogFooter>
+          <Button variant="outline" onClick={() => setOpen(false)}>Cancel</Button>
+          <Button onClick={onSave} disabled={saving} className="bg-brand hover:bg-brand/90">
+            {saving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+            Save & test
           </Button>
         </DialogFooter>
       </DialogContent>
