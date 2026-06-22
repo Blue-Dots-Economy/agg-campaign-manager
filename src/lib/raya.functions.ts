@@ -107,6 +107,8 @@ export const rayaStartBatch = createServerFn({ method: "POST" })
       batchId: string;
       schedule?: RayaSchedule;
       maxRetries?: number;
+      retryAfterHrs?: number;
+      concurrency?: number;
       selectedStatuses?: string[];
     }) => {
       if (!data.batchId) throw new Error("Missing batch id.");
@@ -124,6 +126,8 @@ export const rayaStartBatch = createServerFn({ method: "POST" })
     const body: Record<string, any> = {};
     if (data.schedule) body.schedule = data.schedule;
     if (typeof data.maxRetries === "number") body.max_retries = data.maxRetries;
+    if (typeof data.retryAfterHrs === "number") body.retry_after_hrs = data.retryAfterHrs;
+    if (typeof data.concurrency === "number") body.concurrency = data.concurrency;
     if (data.selectedStatuses && data.selectedStatuses.length)
       body.selected_statuses = data.selectedStatuses;
     return (await rayaFetch(`/batch/${encodeURIComponent(data.batchId)}/start`, {
@@ -131,6 +135,99 @@ export const rayaStartBatch = createServerFn({ method: "POST" })
       json: body,
     })) as Record<string, any>;
   });
+
+// ---------- listAgents ----------
+export const rayaListAgents = createServerFn({ method: "GET" })
+  .inputValidator((data: { page?: number; pageSize?: number }) => data)
+  .handler(async ({ data }) => {
+    const qs = new URLSearchParams();
+    if (data.page) qs.set("page", String(data.page));
+    if (data.pageSize) qs.set("page_size", String(data.pageSize));
+    const q = qs.toString();
+    const res = await rayaFetch(`/agents${q ? `?${q}` : ""}`, { method: "GET" });
+    // Normalize → array of { id, name }
+    const raw = res as any;
+    const list: any[] = Array.isArray(raw)
+      ? raw
+      : raw?.agents ?? raw?.data ?? raw?.items ?? raw?.results ?? [];
+    return list.map((a) => ({
+      id: String(a.id ?? a.agent_id ?? a._id ?? ""),
+      name: String(a.name ?? a.agent_name ?? a.title ?? a.id ?? "Unnamed agent"),
+    })).filter((a) => a.id);
+  });
+
+// ---------- validateContacts (no Raya call — pure validation) ----------
+export const validateContacts = createServerFn({ method: "POST" })
+  .inputValidator(
+    (data: { headers: string[]; rows: string[][] }) => {
+      if (!Array.isArray(data.headers)) throw new Error("headers required");
+      if (!Array.isArray(data.rows)) throw new Error("rows required");
+      return data;
+    },
+  )
+  .handler(async ({ data }) => {
+    const lc = data.headers.map((h) => h.trim().toLowerCase());
+    const find = (cands: string[]) => {
+      for (const c of cands) {
+        const i = lc.indexOf(c.toLowerCase());
+        if (i >= 0) return i;
+      }
+      return -1;
+    };
+    const nameIdx = find(["contact_name", "name", "seeker_name", "candidate_name"]);
+    const phoneIdx = find(["contact_phone", "phone", "mobile", "phone_number"]);
+    const ccIdx = find(["country_code", "cc"]);
+
+    const missingCols: string[] = [];
+    if (nameIdx < 0) missingCols.push("contact_name");
+    if (phoneIdx < 0) missingCols.push("contact_phone");
+
+    interface Problem { row: number; reason: string; phone?: string; name?: string }
+    const problems: Problem[] = [];
+    const validRows: { name: string; phone: string; cc: string; extras: Record<string, string>; rowIndex: number }[] = [];
+    const seen = new Map<string, number>();
+
+    if (missingCols.length === 0) {
+      data.rows.forEach((r, i) => {
+        const rowNum = i + 2; // header is row 1
+        const name = (r[nameIdx] ?? "").trim();
+        const rawPhone = (r[phoneIdx] ?? "").trim();
+        const cc = ccIdx >= 0 ? (r[ccIdx] ?? "").replace(/[^\d]/g, "") || "91" : "91";
+        if (!name) { problems.push({ row: rowNum, reason: "missing contact_name" }); return; }
+        if (!rawPhone) { problems.push({ row: rowNum, reason: "missing contact_phone", name }); return; }
+        let digits = rawPhone.replace(/[^\d]/g, "");
+        // strip country code if present at start
+        if (digits.startsWith(cc) && digits.length > 10) digits = digits.slice(cc.length);
+        if (digits.length !== 10 || !/^[6-9]\d{9}$/.test(digits)) {
+          problems.push({ row: rowNum, reason: `invalid phone: ${rawPhone}`, name });
+          return;
+        }
+        const dupRow = seen.get(digits);
+        if (dupRow !== undefined) {
+          problems.push({ row: rowNum, reason: `duplicate of row ${dupRow}`, phone: digits, name });
+          return;
+        }
+        seen.set(digits, rowNum);
+        const extras: Record<string, string> = {};
+        data.headers.forEach((h, j) => {
+          if (j === nameIdx || j === phoneIdx || j === ccIdx) return;
+          if (!h) return;
+          extras[h] = r[j] ?? "";
+        });
+        validRows.push({ name, phone: digits, cc, extras, rowIndex: rowNum });
+      });
+    }
+
+    return {
+      total: data.rows.length,
+      valid: validRows.length,
+      invalid: problems.length,
+      missingCols,
+      problems: problems.slice(0, 500),
+      validRows,
+    };
+  });
+
 
 // ---------- updateBatch ----------
 export const rayaUpdateBatch = createServerFn({ method: "POST" })
