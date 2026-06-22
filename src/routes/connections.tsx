@@ -2,7 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
-import { Plug, Trash2, RefreshCw, Copy, CheckCircle2, AlertCircle, Loader2 } from "lucide-react";
+import { Plug, Trash2, RefreshCw, Copy, CheckCircle2, AlertCircle, Loader2, Pencil } from "lucide-react";
 import { Panel } from "@/components/Panel";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -19,6 +19,13 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
   Tooltip,
   TooltipContent,
   TooltipProvider,
@@ -32,6 +39,7 @@ import {
   deleteConnection,
   testConnection,
   revalidateConnections,
+  listSheetTabsFn,
   type SheetConnection,
 } from "@/lib/connections.functions";
 const DEFAULT_SA_EMAIL = "blue-dots-admin@blue-dots-project.iam.gserviceaccount.com";
