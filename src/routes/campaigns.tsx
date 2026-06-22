@@ -31,10 +31,11 @@ export const Route = createFileRoute("/campaigns")({
 
 function Campaigns() {
   const { config } = useProgram();
-  const { rows } = useCampaignData(config);
+  const { rows, source } = useCampaignData(config);
   const campaigns = useMemo(() => byCampaignDay(config, rows), [config, rows]);
   const [openDay, setOpenDay] = useState<string | null>(null);
   const [filter, setFilter] = useState("");
+  const [openCall, setOpenCall] = useState<CallRow | null>(null);
 
   const detailRows: CallRow[] = useMemo(() => {
     if (!openDay) return [];
