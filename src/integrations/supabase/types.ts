@@ -14,7 +14,45 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      sheet_connections: {
+        Row: {
+          created_at: string
+          enabled: boolean
+          id: string
+          last_synced_at: string | null
+          name: string
+          program: string
+          row_count: number | null
+          sheet_id: string
+          status: string
+          tab_name: string | null
+        }
+        Insert: {
+          created_at?: string
+          enabled?: boolean
+          id?: string
+          last_synced_at?: string | null
+          name: string
+          program: string
+          row_count?: number | null
+          sheet_id: string
+          status?: string
+          tab_name?: string | null
+        }
+        Update: {
+          created_at?: string
+          enabled?: boolean
+          id?: string
+          last_synced_at?: string | null
+          name?: string
+          program?: string
+          row_count?: number | null
+          sheet_id?: string
+          status?: string
+          tab_name?: string | null
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
