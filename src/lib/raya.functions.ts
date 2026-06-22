@@ -66,7 +66,7 @@ async function rayaFetch(
     else if (res.status === 429)
       msg = "Raya rate limit hit (429). Default is 1 call per 20s — slow down and retry.";
     else if (parsed && typeof parsed === "object") {
-      const p = parsed as Record<string, unknown>;
+      const p = parsed as Record<string, any>;
       const m =
         (typeof p.message === "string" && p.message) ||
         (typeof p.error === "string" && p.error) ||
@@ -97,7 +97,7 @@ export const rayaCreateBatch = createServerFn({ method: "POST" })
       contacts: data.contacts,
     };
     const res = await rayaFetch("/batch", { method: "POST", json: body });
-    return res as { id?: string; batch_id?: string; [k: string]: unknown };
+    return res as Record<string, any>;
   });
 
 // ---------- startBatch ----------
@@ -121,7 +121,7 @@ export const rayaStartBatch = createServerFn({ method: "POST" })
     },
   )
   .handler(async ({ data }) => {
-    const body: Record<string, unknown> = {};
+    const body: Record<string, any> = {};
     if (data.schedule) body.schedule = data.schedule;
     if (typeof data.maxRetries === "number") body.max_retries = data.maxRetries;
     if (data.selectedStatuses && data.selectedStatuses.length)
@@ -129,7 +129,7 @@ export const rayaStartBatch = createServerFn({ method: "POST" })
     return (await rayaFetch(`/batch/${encodeURIComponent(data.batchId)}/start`, {
       method: "POST",
       json: body,
-    })) as Record<string, unknown>;
+    })) as Record<string, any>;
   });
 
 // ---------- updateBatch ----------
@@ -148,7 +148,7 @@ export const rayaUpdateBatch = createServerFn({ method: "POST" })
     },
   )
   .handler(async ({ data }) => {
-    const body: Record<string, unknown> = {};
+    const body: Record<string, any> = {};
     if (data.name) body.name = data.name;
     if (data.schedule) body.schedule = data.schedule;
     if (typeof data.maxRetries === "number") body.max_retries = data.maxRetries;
@@ -157,7 +157,7 @@ export const rayaUpdateBatch = createServerFn({ method: "POST" })
     return (await rayaFetch(`/batch/${encodeURIComponent(data.batchId)}`, {
       method: "PATCH",
       json: body,
-    })) as Record<string, unknown>;
+    })) as Record<string, any>;
   });
 
 // ---------- stopBatch ----------
@@ -170,7 +170,7 @@ export const rayaStopBatch = createServerFn({ method: "POST" })
     return (await rayaFetch(`/batch/${encodeURIComponent(data.batchId)}/stop`, {
       method: "POST",
       json: {},
-    })) as Record<string, unknown>;
+    })) as Record<string, any>;
   });
 
 // ---------- listBatches ----------
@@ -183,7 +183,7 @@ export const rayaListBatches = createServerFn({ method: "GET" })
     if (data.pageSize) qs.set("page_size", String(data.pageSize));
     const q = qs.toString();
     const res = await rayaFetch(`/batch${q ? `?${q}` : ""}`, { method: "GET" });
-    return res as { items?: unknown[]; data?: unknown[]; [k: string]: unknown };
+    return res as Record<string, any>;
   });
 
 // ---------- getBatchContacts ----------
@@ -200,7 +200,7 @@ export const rayaGetBatchContacts = createServerFn({ method: "GET" })
     return (await rayaFetch(
       `/batch/${encodeURIComponent(data.batchId)}/contacts${q ? `?${q}` : ""}`,
       { method: "GET" },
-    )) as Record<string, unknown>;
+    )) as Record<string, any>;
   });
 
 // ---------- initiateCall ----------
@@ -210,7 +210,7 @@ export const rayaInitiateCall = createServerFn({ method: "POST" })
       agentId: string;
       toNumber: string;
       countryCode?: string;
-      agentArgs?: Record<string, unknown>;
+      agentArgs?: Record<string, any>;
     }) => {
       if (!data.agentId) throw new Error("Missing agent id.");
       if (!data.toNumber) throw new Error("Missing phone number.");
@@ -224,7 +224,7 @@ export const rayaInitiateCall = createServerFn({ method: "POST" })
       country_code: data.countryCode ?? "91",
       agent_args: data.agentArgs ?? {},
     };
-    return (await rayaFetch("/call", { method: "POST", json: body })) as Record<string, unknown>;
+    return (await rayaFetch("/call", { method: "POST", json: body })) as Record<string, any>;
   });
 
 // ---------- key status (does not expose the key) ----------
