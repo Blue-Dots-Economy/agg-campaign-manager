@@ -289,6 +289,4 @@ function AddAgentDialog({
 
 // Re-export for typing clarity if needed elsewhere
 export type { ProgramAgent };
-// Suppress unused-link warning by referencing Link in JSX where appropriate.
-// (Link isn't currently used in this file but is kept for future deep-links.)
-void Link;
+
