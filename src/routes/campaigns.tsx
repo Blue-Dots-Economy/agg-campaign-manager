@@ -37,21 +37,38 @@ function Campaigns() {
   const [filter, setFilter] = useState("");
   const [openCall, setOpenCall] = useState<CallRow | null>(null);
 
+  const isDkb = config.id === "dkb";
+
   const detailRows: CallRow[] = useMemo(() => {
     if (!openDay) return [];
     const day = rows.filter((r) => r.campaign_day === openDay);
     if (!filter) return day;
     const q = filter.toLowerCase();
-    return day.filter(
-      (r) =>
+    return day.filter((r) => {
+      if (isDkb) {
+        const raw = r.raw ?? {};
+        return (
+          (raw.contact_phone ?? "").toLowerCase().includes(q) ||
+          (raw.company_name ?? "").toLowerCase().includes(q) ||
+          (raw.job_role_input ?? "").toLowerCase().includes(q) ||
+          (raw.call_status ?? "").toLowerCase().includes(q) ||
+          (raw.job_status ?? "").toLowerCase().includes(q)
+        );
+      }
+      return (
         r.seeker_name.toLowerCase().includes(q) ||
         r.phone.includes(q) ||
         r.call_outcome.toLowerCase().includes(q) ||
-        (r.drop_reason ?? "").toLowerCase().includes(q),
-    );
-  }, [rows, openDay, filter]);
+        (r.drop_reason ?? "").toLowerCase().includes(q)
+      );
+    });
+  }, [rows, openDay, filter, isDkb]);
 
-  const successLabel = config.successMetric === "applications" ? "Applied" : "Interviews";
+  const successLabel = isDkb
+    ? "New jobs"
+    : config.successMetric === "applications"
+      ? "Applied"
+      : "Interviews";
 
   return (
     <div className="space-y-6">
@@ -84,7 +101,7 @@ function Campaigns() {
                   <TableCell>{c.language}</TableCell>
                   <TableCell className="text-right tabular-nums">{c.rows}</TableCell>
                   <TableCell className="text-right tabular-nums">{c.answered_pct}%</TableCell>
-                  <TableCell className="text-right tabular-nums">{c.converted}</TableCell>
+                  <TableCell className="text-right tabular-nums">{isDkb ? c.new_jobs : c.converted}</TableCell>
                   <TableCell className="text-right tabular-nums">{c.high_intent}</TableCell>
                   <TableCell>
                     <Badge variant="secondary" className="bg-brand-soft text-brand">
@@ -97,6 +114,7 @@ function Campaigns() {
           </Table>
         </div>
       </Panel>
+
 
       <Dialog open={!!openDay} onOpenChange={(o) => !o && setOpenDay(null)}>
         <DialogContent className="max-w-4xl">
