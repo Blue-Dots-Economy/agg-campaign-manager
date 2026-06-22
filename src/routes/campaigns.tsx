@@ -71,6 +71,9 @@ function Campaigns() {
       ? "Applied"
       : "Interviews";
 
+  if (isLoading) return <LoadingState />;
+  if (source === "empty" || rows.length === 0) return <NoDataState />;
+
   return (
     <div className="space-y-6">
       <Panel title="Campaigns" description={`${campaigns.length} campaign days · grouped from ${rows.length} calls`}>
