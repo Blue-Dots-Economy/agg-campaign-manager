@@ -1,16 +1,28 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useState, useCallback, useRef } from "react";
+import { useState, useCallback, useRef, useMemo, useEffect } from "react";
 import { useServerFn } from "@tanstack/react-start";
+import { useQuery } from "@tanstack/react-query";
 import { useProgram } from "@/programs/context";
 import { useProgramOverrides } from "@/lib/program-overrides";
-import { rayaCreateBatch, rayaStartBatch } from "@/lib/raya.functions";
+import {
+  rayaCreateBatch,
+  rayaStartBatch,
+  rayaListAgents,
+  validateContacts,
+} from "@/lib/raya.functions";
+import { registry, type ProgramId } from "@/programs/registry";
 import { Panel } from "@/components/Panel";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
-import { Upload, FileText, Rocket, Check } from "lucide-react";
-import { toast } from "sonner";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import {
   Table,
   TableBody,
@@ -19,11 +31,53 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import {
+  Upload,
+  FileText,
+  Rocket,
+  Check,
+  ChevronLeft,
+  ChevronRight,
+  AlertTriangle,
+  Loader2,
+} from "lucide-react";
+import { toast } from "sonner";
 import { ScheduleEditor, type ScheduleState, defaultSchedule } from "@/components/ScheduleEditor";
+import { appendLaunchLog } from "@/lib/launch-log";
+import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/launch")({
-  component: Launch,
+  component: LaunchWizard,
 });
+
+const STEPS = [
+  "Program",
+  "Agent",
+  "Upload & validate",
+  "Schedule",
+  "Concurrency",
+  "Review",
+  "Launch",
+] as const;
+
+interface ValidationReport {
+  total: number;
+  valid: number;
+  invalid: number;
+  missingCols: string[];
+  problems: { row: number; reason: string; phone?: string; name?: string }[];
+  validRows: { name: string; phone: string; cc: string; extras: Record<string, string>; rowIndex: number }[];
+}
+
+interface ParsedCsv { headers: string[]; rows: string[][] }
+
+function parseCsv(text: string): ParsedCsv {
+  const lines = text.trim().split(/\r?\n/);
+  if (!lines.length) return { headers: [], rows: [] };
+  const headers = lines[0].split(",").map((h) => h.trim());
+  const rows = lines.slice(1).map((l) => l.split(",").map((c) => c.trim()));
+  return { headers, rows };
+}
 
 function detectRegion(filename: string): { region: string; language: string; city: string } {
   const f = filename.toLowerCase();
@@ -33,119 +87,112 @@ function detectRegion(filename: string): { region: string; language: string; cit
   return { region: "GZB", language: "Hindi", city: "Ghaziabad" };
 }
 
-interface ParsedCsv {
-  headers: string[];
-  rows: string[][];
-  total: number;
-  all: string[][];
-}
+function LaunchWizard() {
+  const { programId: ctxProgram, config: ctxConfig, setProgramId } = useProgram();
+  const [step, setStep] = useState(0);
+  const [program, setProgram] = useState<ProgramId>(ctxProgram);
+  const config = registry[program];
+  const overrides = useProgramOverrides(program);
+  const defaultAgentId = overrides.rayaAgentId || config.rayaAgentId || "";
 
-function parseCsv(text: string): ParsedCsv {
-  const lines = text.trim().split(/\r?\n/);
-  if (!lines.length) return { headers: [], rows: [], total: 0, all: [] };
-  const headers = lines[0].split(",").map((h) => h.trim());
-  const all = lines.slice(1).map((l) => l.split(",").map((c) => c.trim()));
-  return { headers, rows: all.slice(0, 20), total: all.length, all };
-}
+  const [agentId, setAgentId] = useState<string>(defaultAgentId);
+  const [agentName, setAgentName] = useState<string>("");
 
-function pickColumn(headers: string[], candidates: string[]): number {
-  const lc = headers.map((h) => h.toLowerCase());
-  for (const c of candidates) {
-    const i = lc.indexOf(c.toLowerCase());
-    if (i >= 0) return i;
-  }
-  return -1;
-}
-
-function buildContacts(parsed: ParsedCsv) {
-  const nameIdx = pickColumn(parsed.headers, ["contact_name", "name", "seeker_name", "candidate_name"]);
-  const phoneIdx = pickColumn(parsed.headers, ["contact_phone", "phone", "mobile", "phone_number"]);
-  const ccIdx = pickColumn(parsed.headers, ["country_code", "cc"]);
-  if (phoneIdx < 0) throw new Error("CSV must include a phone column (phone / contact_phone / mobile).");
-
-  return parsed.all.map((row, i) => {
-    const contact: Record<string, any> = {
-      contact_name: nameIdx >= 0 ? row[nameIdx] || `Contact ${i + 1}` : `Contact ${i + 1}`,
-      contact_phone: (row[phoneIdx] ?? "").replace(/[^\d]/g, ""),
-      country_code: ccIdx >= 0 && row[ccIdx] ? row[ccIdx].replace(/[^\d]/g, "") || "91" : "91",
-    };
-    parsed.headers.forEach((h, j) => {
-      if (j === nameIdx || j === phoneIdx || j === ccIdx) return;
-      if (!h) return;
-      contact[h] = row[j] ?? "";
-    });
-    return contact;
-  });
-}
-
-function Launch() {
-  const { config, programId } = useProgram();
-  const overrides = useProgramOverrides(programId);
-  const agentId = overrides.rayaAgentId || config.rayaAgentId;
-
-  const [drag, setDrag] = useState(false);
   const [file, setFile] = useState<File | null>(null);
   const [parsed, setParsed] = useState<ParsedCsv | null>(null);
-  const [detected, setDetected] = useState<{ region: string; language: string; city: string } | null>(null);
-  const [batchName, setBatchName] = useState("");
-  const [schedule, setSchedule] = useState<ScheduleState>(defaultSchedule);
-  const [maxRetries, setMaxRetries] = useState(2);
-  const [createdBatchId, setCreatedBatchId] = useState<string | null>(null);
-  const [creating, setCreating] = useState(false);
-  const [starting, setStarting] = useState(false);
-  const [startStatus, setStartStatus] = useState<string | null>(null);
-  const inputRef = useRef<HTMLInputElement>(null);
+  const [region, setRegion] = useState<string>("");
+  const [report, setReport] = useState<ValidationReport | null>(null);
+  const [validating, setValidating] = useState(false);
+  const [proceedInvalid, setProceedInvalid] = useState(false);
 
+  const [schedule, setSchedule] = useState<ScheduleState>(defaultSchedule);
+  const [concurrency, setConcurrency] = useState(5);
+  const [maxRetries, setMaxRetries] = useState(2);
+  const [retryAfterHrs, setRetryAfterHrs] = useState(24);
+
+  const [batchName, setBatchName] = useState("");
+  const [launching, setLaunching] = useState(false);
+  const [batchId, setBatchId] = useState<string | null>(null);
+  const [startStatus, setStartStatus] = useState<string | null>(null);
+  const [launchError, setLaunchError] = useState<string | null>(null);
+
+  const listAgentsFn = useServerFn(rayaListAgents);
+  const validateFn = useServerFn(validateContacts);
   const createBatchFn = useServerFn(rayaCreateBatch);
   const startBatchFn = useServerFn(rayaStartBatch);
 
-  const handleFile = useCallback((f: File) => {
+  // Sync chosen program back to global context so the rest of the dashboard follows.
+  useEffect(() => { if (program !== ctxProgram) setProgramId(program); }, [program, ctxProgram, setProgramId]);
+
+  const agentsQuery = useQuery({
+    queryKey: ["raya-agents"],
+    queryFn: () => listAgentsFn({ data: {} }),
+    enabled: step >= 1,
+    retry: false,
+  });
+
+  useEffect(() => {
+    if (!agentName && agentsQuery.data && agentId) {
+      const found = agentsQuery.data.find((a) => a.id === agentId);
+      if (found) setAgentName(found.name);
+    }
+  }, [agentsQuery.data, agentId, agentName]);
+
+  const next = () => setStep((s) => Math.min(STEPS.length - 1, s + 1));
+  const back = () => setStep((s) => Math.max(0, s - 1));
+
+  const canNext = useMemo(() => {
+    if (step === 0) return !!program;
+    if (step === 1) return !!agentId;
+    if (step === 2) {
+      if (!report) return false;
+      if (report.missingCols.length > 0) return false;
+      if (report.invalid === 0) return true;
+      return proceedInvalid;
+    }
+    if (step === 3) return schedule.startTime < schedule.endTime && schedule.days.length > 0;
+    if (step === 4) return concurrency > 0 && maxRetries >= 0 && retryAfterHrs > 0;
+    return true;
+  }, [step, program, agentId, report, proceedInvalid, schedule, concurrency, maxRetries, retryAfterHrs]);
+
+  const onFile = useCallback(async (f: File) => {
     setFile(f);
-    setCreatedBatchId(null);
-    setStartStatus(null);
-    const region = detectRegion(f.name);
-    setDetected(region);
+    setReport(null);
+    setProceedInvalid(false);
+    setRegion(detectRegion(f.name).region);
     setBatchName(`${f.name.replace(/\.csv$/i, "")} · ${new Date().toISOString().slice(0, 10)}`);
-    f.text().then((t) => setParsed(parseCsv(t)));
-  }, []);
-
-  const onDrop = (e: React.DragEvent) => {
-    e.preventDefault();
-    setDrag(false);
-    const f = e.dataTransfer.files?.[0];
-    if (f) handleFile(f);
-  };
-
-  const create = async () => {
-    if (!parsed) return;
-    if (!agentId) {
-      toast.error("Set the Raya agent id for this program in Settings first.");
-      return;
-    }
-    setCreating(true);
+    const text = await f.text();
+    const p = parseCsv(text);
+    setParsed(p);
+    setValidating(true);
     try {
-      const contacts = buildContacts(parsed) as any;
-      const res: any = await createBatchFn({
-        data: { agentId, batchName, contacts },
-      });
-      const id = res?.id ?? res?.batch_id ?? res?.batch?.id ?? res?.data?.id;
-      if (!id) throw new Error("Batch created but no id returned.");
-      setCreatedBatchId(String(id));
-      toast.success(`Batch created · ${id}`);
-    } catch (e: any) {
-      toast.error(e?.message ?? "Failed to create batch");
+      const res = await validateFn({ data: { headers: p.headers, rows: p.rows } });
+      setReport(res as ValidationReport);
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Validation failed");
     } finally {
-      setCreating(false);
+      setValidating(false);
     }
-  };
+  }, [validateFn]);
 
-  const start = async () => {
-    if (!createdBatchId) return;
-    setStarting(true);
+  const launch = async () => {
+    if (!report) return;
+    setLaunching(true); setLaunchError(null);
     try {
-      const res: any = await startBatchFn({
+      const contacts = report.validRows.map((r) => ({
+        contact_name: r.name,
+        contact_phone: r.phone,
+        country_code: r.cc,
+        ...r.extras,
+        _region: region,
+      }));
+      const created: any = await createBatchFn({ data: { agentId, batchName, contacts } });
+      const id = created?.id ?? created?.batch_id ?? created?.batch?.id ?? created?.data?.id;
+      if (!id) throw new Error("Batch created but no id returned.");
+      setBatchId(String(id));
+      const started: any = await startBatchFn({
         data: {
-          batchId: createdBatchId,
+          batchId: String(id),
           schedule: {
             timezone: schedule.timezone,
             start_time: schedule.startTime,
@@ -153,201 +200,387 @@ function Launch() {
             days: schedule.days,
           },
           maxRetries,
+          retryAfterHrs,
+          concurrency,
         },
       });
-      const status = res?.status ?? res?.batch?.status ?? "started";
+      const status = started?.status ?? started?.batch?.status ?? "started";
       setStartStatus(String(status));
-      toast.success(`Batch started · ${status}`);
-    } catch (e: any) {
-      toast.error(e?.message ?? "Failed to start batch");
+      appendLaunchLog({
+        date: new Date().toISOString(),
+        program,
+        file: file?.name ?? batchName,
+        rows: contacts.length,
+        status: "appended",
+        batchId: String(id),
+      });
+      toast.success(`Batch launched · ${id}`);
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : "Launch failed";
+      setLaunchError(msg);
+      toast.error(msg);
+      if (file) {
+        appendLaunchLog({
+          date: new Date().toISOString(),
+          program,
+          file: file.name,
+          rows: report.valid,
+          status: "failed",
+        });
+      }
     } finally {
-      setStarting(false);
+      setLaunching(false);
     }
   };
 
   return (
     <div className="space-y-6">
-      <div className="grid gap-4 lg:grid-cols-3">
-        <Panel className="lg:col-span-2" title="Upload CSV" description="Drop a seeker list to begin">
-          <div
-            onDragOver={(e) => {
-              e.preventDefault();
-              setDrag(true);
-            }}
-            onDragLeave={() => setDrag(false)}
-            onDrop={onDrop}
-            onClick={() => inputRef.current?.click()}
-            className={`flex flex-col items-center justify-center gap-3 rounded-lg border-2 border-dashed py-12 cursor-pointer transition-colors ${
-              drag ? "border-brand bg-brand-soft" : "border-border bg-muted/40"
-            }`}
-          >
-            <div className="h-10 w-10 rounded-full bg-brand-soft flex items-center justify-center text-brand">
-              <Upload className="h-5 w-5" />
-            </div>
-            <p className="text-sm font-medium">Drop CSV here, or click to browse</p>
-            <p className="text-xs text-muted-foreground">
-              Required columns: phone (or contact_phone). Optional: contact_name, country_code, and any extras passed as agent_args.
-            </p>
-            <input
-              ref={inputRef}
-              type="file"
-              accept=".csv"
-              hidden
-              onChange={(e) => e.target.files?.[0] && handleFile(e.target.files[0])}
-            />
-          </div>
+      <Stepper step={step} />
 
-          {file && (
-            <div className="mt-4 grid gap-3 sm:grid-cols-3">
-              <InfoTile icon={<FileText className="h-4 w-4" />} label="File" value={file.name} />
-              <InfoTile label="Rows" value={parsed?.total?.toLocaleString() ?? "—"} />
-              <InfoTile
-                label="Detected region"
-                value={detected ? `${detected.region} · ${detected.language}` : "—"}
-                hint={detected?.city}
-              />
-            </div>
-          )}
-
-          {parsed && parsed.headers.length > 0 && (
-            <div className="mt-5">
-              <p className="text-xs text-muted-foreground mb-2">Preview · first 20 rows</p>
-              <div className="max-h-72 overflow-auto rounded-md border">
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      {parsed.headers.map((h) => (
-                        <TableHead key={h} className="whitespace-nowrap text-xs">
-                          {h}
-                        </TableHead>
-                      ))}
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {parsed.rows.map((r, i) => (
-                      <TableRow key={i}>
-                        {r.map((c, j) => (
-                          <TableCell key={j} className="text-xs whitespace-nowrap">
-                            {c}
-                          </TableCell>
-                        ))}
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </div>
-            </div>
-          )}
-        </Panel>
-
-        <Panel title="Launch flow" description={`Steps for ${config.label}`}>
-          <ol className="space-y-3">
-            {config.launchSteps.map((step, i) => (
-              <li key={step.title} className="flex gap-3">
-                <div className="h-6 w-6 shrink-0 rounded-full bg-brand-soft text-brand text-xs font-semibold flex items-center justify-center">
-                  {i + 1}
-                </div>
-                <div>
-                  <p className="text-sm font-medium">{step.title}</p>
-                  <p className="text-xs text-muted-foreground">{step.description}</p>
-                </div>
-              </li>
+      {step === 0 && (
+        <Panel title="Step 1 · Program" description="Pick which program this batch belongs to">
+          <div className="grid gap-3 sm:grid-cols-2 max-w-xl">
+            {(["kkb", "dkb"] as ProgramId[]).map((p) => (
+              <button
+                key={p}
+                onClick={() => setProgram(p)}
+                className={cn(
+                  "rounded-xl border-2 p-5 text-left transition-colors",
+                  program === p ? "border-brand bg-brand-soft" : "border-border bg-card hover:bg-muted/40",
+                )}
+              >
+                <div className="text-lg font-semibold">{registry[p].label}</div>
+                <div className="text-xs text-muted-foreground mt-1">{registry[p].subtitle}</div>
+              </button>
             ))}
-          </ol>
-          <div className="mt-4 border-t pt-3 text-xs">
-            <div className="flex items-center justify-between">
-              <span className="text-muted-foreground">Agent</span>
-              <span className="font-mono">{agentId || <em className="text-destructive not-italic">not set</em>}</span>
-            </div>
           </div>
         </Panel>
-      </div>
+      )}
 
-      <div className="grid gap-4 lg:grid-cols-2">
-        <Panel title="1 · Create batch" description="Posts contacts to Raya">
-          <div className="space-y-3">
-            <div>
-              <Label htmlFor="batchName" className="text-xs">Batch name</Label>
-              <Input id="batchName" value={batchName} onChange={(e) => setBatchName(e.target.value)} className="mt-1" />
+      {step === 1 && (
+        <Panel title="Step 2 · Agent" description="Choose which Raya agent will place the calls">
+          {agentsQuery.isLoading && (
+            <div className="flex items-center gap-2 text-sm text-muted-foreground"><Loader2 className="h-4 w-4 animate-spin" /> Loading agents…</div>
+          )}
+          {agentsQuery.error && (
+            <div className="rounded-md bg-red-50 px-3 py-2 text-sm text-red-700">
+              {(agentsQuery.error as Error).message}
             </div>
-            <div className="flex items-center gap-2 text-xs text-muted-foreground">
-              <span>Contacts will be built from:</span>
-              <Badge variant="secondary" className="bg-muted">name</Badge>
-              <Badge variant="secondary" className="bg-muted">phone</Badge>
-              <Badge variant="secondary" className="bg-muted">country_code</Badge>
-              <span>+ extras → agent_args</span>
+          )}
+          {agentsQuery.data && (
+            <div className="space-y-2 max-w-xl">
+              <Label>Raya agent</Label>
+              <Select
+                value={agentId}
+                onValueChange={(v) => {
+                  setAgentId(v);
+                  setAgentName(agentsQuery.data.find((a) => a.id === v)?.name ?? "");
+                }}
+              >
+                <SelectTrigger><SelectValue placeholder="Select an agent" /></SelectTrigger>
+                <SelectContent>
+                  {agentsQuery.data.length === 0 && <div className="p-2 text-xs text-muted-foreground">No agents returned</div>}
+                  {agentsQuery.data.map((a) => (
+                    <SelectItem key={a.id} value={a.id}>
+                      <div className="flex flex-col">
+                        <span>{a.name}</span>
+                        <span className="text-[10px] font-mono opacity-60">{a.id}</span>
+                      </div>
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              {defaultAgentId && (
+                <p className="text-xs text-muted-foreground">Default for {config.label}: <span className="font-mono">{defaultAgentId}</span></p>
+              )}
             </div>
-            <Button
-              onClick={create}
-              disabled={!parsed || creating}
-              className="w-full bg-brand text-brand-foreground hover:bg-brand/90 gap-1.5"
-            >
-              {creating ? "Creating…" : <><Rocket className="h-4 w-4" /> Create batch</>}
-            </Button>
-            {createdBatchId && (
-              <div className="rounded-md bg-brand-soft text-brand px-3 py-2 text-xs flex items-center gap-2">
-                <Check className="h-3.5 w-3.5" /> Batch id: <span className="font-mono">{createdBatchId}</span>
+          )}
+        </Panel>
+      )}
+
+      {step === 2 && (
+        <UploadStep
+          file={file}
+          parsed={parsed}
+          report={report}
+          validating={validating}
+          region={region}
+          setRegion={setRegion}
+          proceedInvalid={proceedInvalid}
+          setProceedInvalid={setProceedInvalid}
+          onFile={onFile}
+        />
+      )}
+
+      {step === 3 && (
+        <Panel title="Step 4 · Schedule" description="Days, time window, and timezone for the call window">
+          <div className="max-w-xl"><ScheduleEditor value={schedule} onChange={setSchedule} /></div>
+        </Panel>
+      )}
+
+      {step === 4 && (
+        <Panel title="Step 5 · Concurrency & retries" description="How aggressively Raya should dial">
+          <div className="grid gap-4 sm:grid-cols-3 max-w-2xl">
+            <NumberField label="Concurrency" value={concurrency} onChange={setConcurrency} min={1} max={100} />
+            <NumberField label="Max retries" value={maxRetries} onChange={setMaxRetries} min={0} max={10} />
+            <NumberField label="Retry after (hrs)" value={retryAfterHrs} onChange={setRetryAfterHrs} min={1} max={168} />
+          </div>
+        </Panel>
+      )}
+
+      {step === 5 && (
+        <Panel title="Step 6 · Review" description="Confirm everything before sending to Raya">
+          <div className="grid gap-3 sm:grid-cols-2 text-sm max-w-3xl">
+            <Field label="Program" value={config.label} />
+            <Field label="Agent" value={agentName || agentId} mono />
+            <Field label="Agent id" value={agentId} mono />
+            <Field label="Batch name" value={batchName} />
+            <Field label="File" value={file?.name ?? "—"} />
+            <Field label="Region" value={region} />
+            <Field label="Valid contacts" value={`${report?.valid ?? 0} of ${report?.total ?? 0}`} />
+            <Field label="Will skip" value={String(report?.invalid ?? 0)} />
+            <Field label="Days" value={dayLabels(schedule.days)} />
+            <Field label="Time window" value={`${schedule.startTime}–${schedule.endTime}`} />
+            <Field label="Timezone" value={schedule.timezone} />
+            <Field label="Concurrency" value={String(concurrency)} />
+            <Field label="Max retries" value={String(maxRetries)} />
+            <Field label="Retry after" value={`${retryAfterHrs} hrs`} />
+          </div>
+          <div className="mt-6">
+            <Label htmlFor="bn" className="text-xs">Edit batch name</Label>
+            <Input id="bn" value={batchName} onChange={(e) => setBatchName(e.target.value)} className="mt-1 max-w-md" />
+          </div>
+        </Panel>
+      )}
+
+      {step === 6 && (
+        <Panel title="Step 7 · Launch" description="Create the batch in Raya and start the schedule">
+          <div className="space-y-4 max-w-xl">
+            {!batchId && !launching && (
+              <Button
+                onClick={launch}
+                className="bg-brand text-brand-foreground hover:bg-brand/90 gap-1.5"
+                size="lg"
+              >
+                <Rocket className="h-4 w-4" /> Launch campaign
+              </Button>
+            )}
+            {launching && (
+              <div className="flex items-center gap-2 text-sm"><Loader2 className="h-4 w-4 animate-spin" /> Creating batch and starting schedule…</div>
+            )}
+            {batchId && (
+              <div className="rounded-md bg-brand-soft text-brand px-3 py-2 text-sm flex items-center gap-2">
+                <Check className="h-4 w-4" /> Batch created · <span className="font-mono">{batchId}</span>
+              </div>
+            )}
+            {startStatus && (
+              <div className="rounded-md bg-brand-soft text-brand px-3 py-2 text-sm flex items-center gap-2">
+                <Check className="h-4 w-4" /> Status: {startStatus}
+              </div>
+            )}
+            {launchError && (
+              <div className="rounded-md bg-red-50 text-red-700 px-3 py-2 text-sm flex items-start gap-2">
+                <AlertTriangle className="h-4 w-4 mt-0.5" />
+                <div>{launchError}</div>
               </div>
             )}
           </div>
         </Panel>
+      )}
 
-        <Panel title="2 · Schedule & start" description="Recurring call window">
-          <ScheduleEditor value={schedule} onChange={setSchedule} />
-          <div className="mt-3 grid grid-cols-2 gap-3">
-            <div>
-              <Label htmlFor="retries" className="text-xs">Max retries</Label>
-              <Input
-                id="retries"
-                type="number"
-                min={0}
-                max={10}
-                value={maxRetries}
-                onChange={(e) => setMaxRetries(Number(e.target.value) || 0)}
-                className="mt-1"
-              />
-            </div>
-          </div>
-          <Button
-            onClick={start}
-            disabled={!createdBatchId || starting}
-            className="mt-4 w-full bg-brand text-brand-foreground hover:bg-brand/90 gap-1.5"
-          >
-            {starting ? "Starting…" : "Start batch"}
+      <div className="flex items-center justify-between">
+        <Button variant="outline" onClick={back} disabled={step === 0 || launching}>
+          <ChevronLeft className="mr-1 h-4 w-4" /> Back
+        </Button>
+        {step < STEPS.length - 1 ? (
+          <Button onClick={next} disabled={!canNext} className="bg-brand text-brand-foreground hover:bg-brand/90">
+            Next <ChevronRight className="ml-1 h-4 w-4" />
           </Button>
-          {startStatus && (
-            <div className="mt-2 rounded-md bg-brand-soft text-brand px-3 py-2 text-xs flex items-center gap-2">
-              <Check className="h-3.5 w-3.5" /> Status: {startStatus}
-            </div>
-          )}
-          <p className="mt-2 text-[11px] text-muted-foreground">
-            Note: Raya rate-limits single calls to 1 per 20s by default.
-          </p>
-        </Panel>
+        ) : (
+          <Button variant="outline" onClick={() => { setStep(0); setBatchId(null); setStartStatus(null); setFile(null); setParsed(null); setReport(null); }}>
+            Start over
+          </Button>
+        )}
       </div>
     </div>
   );
 }
 
-function InfoTile({
-  label,
-  value,
-  hint,
-  icon,
-}: {
-  label: string;
-  value: string;
-  hint?: string;
-  icon?: React.ReactNode;
-}) {
+function Stepper({ step }: { step: number }) {
   return (
-    <div className="rounded-lg border bg-muted/30 px-3 py-2">
-      <div className="flex items-center gap-1.5 text-[11px] text-muted-foreground">
-        {icon}
-        {label}
-      </div>
-      <div className="text-sm font-medium truncate mt-0.5">{value}</div>
-      {hint && <div className="text-[11px] text-muted-foreground">{hint}</div>}
+    <div className="flex items-center gap-2 overflow-x-auto">
+      {STEPS.map((label, i) => {
+        const done = i < step;
+        const active = i === step;
+        return (
+          <div key={label} className="flex items-center gap-2 shrink-0">
+            <div className={cn(
+              "h-7 w-7 rounded-full text-xs font-semibold flex items-center justify-center border-2",
+              done ? "bg-brand border-brand text-brand-foreground" :
+              active ? "border-brand text-brand" : "border-border text-muted-foreground",
+            )}>
+              {done ? <Check className="h-3.5 w-3.5" /> : i + 1}
+            </div>
+            <span className={cn("text-xs whitespace-nowrap", active ? "font-medium text-foreground" : "text-muted-foreground")}>
+              {label}
+            </span>
+            {i < STEPS.length - 1 && <div className="w-6 h-px bg-border" />}
+          </div>
+        );
+      })}
     </div>
   );
+}
+
+function UploadStep({
+  file, parsed, report, validating, region, setRegion, proceedInvalid, setProceedInvalid, onFile,
+}: {
+  file: File | null;
+  parsed: ParsedCsv | null;
+  report: ValidationReport | null;
+  validating: boolean;
+  region: string;
+  setRegion: (r: string) => void;
+  proceedInvalid: boolean;
+  setProceedInvalid: (v: boolean) => void;
+  onFile: (f: File) => void;
+}) {
+  const [drag, setDrag] = useState(false);
+  const inputRef = useRef<HTMLInputElement>(null);
+  return (
+    <Panel title="Step 3 · Upload & validate" description="Drop a CSV — we validate before any Raya call is made">
+      <div
+        onDragOver={(e) => { e.preventDefault(); setDrag(true); }}
+        onDragLeave={() => setDrag(false)}
+        onDrop={(e) => { e.preventDefault(); setDrag(false); const f = e.dataTransfer.files?.[0]; if (f) onFile(f); }}
+        onClick={() => inputRef.current?.click()}
+        className={cn(
+          "flex flex-col items-center justify-center gap-3 rounded-lg border-2 border-dashed py-10 cursor-pointer transition-colors",
+          drag ? "border-brand bg-brand-soft" : "border-border bg-muted/40",
+        )}
+      >
+        <div className="h-10 w-10 rounded-full bg-brand-soft flex items-center justify-center text-brand">
+          <Upload className="h-5 w-5" />
+        </div>
+        <p className="text-sm font-medium">Drop CSV here, or click to browse</p>
+        <p className="text-xs text-muted-foreground">Required: contact_name, contact_phone. Optional: country_code (default 91).</p>
+        <input ref={inputRef} type="file" accept=".csv" hidden onChange={(e) => e.target.files?.[0] && onFile(e.target.files[0])} />
+      </div>
+
+      {file && (
+        <div className="mt-4 grid gap-3 sm:grid-cols-3">
+          <InfoTile icon={<FileText className="h-4 w-4" />} label="File" value={file.name} />
+          <InfoTile label="Rows" value={parsed?.rows.length.toLocaleString() ?? "—"} />
+          <div className="rounded-lg border bg-card p-3">
+            <div className="text-[11px] uppercase tracking-wide text-muted-foreground mb-1">Detected region</div>
+            <Select value={region} onValueChange={setRegion}>
+              <SelectTrigger className="h-8"><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="KA">KA · Kannada · Hubli</SelectItem>
+                <SelectItem value="GZB">GZB · Hindi · Ghaziabad</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+        </div>
+      )}
+
+      {validating && (
+        <div className="mt-4 flex items-center gap-2 text-sm"><Loader2 className="h-4 w-4 animate-spin" /> Validating…</div>
+      )}
+
+      {report && (
+        <div className="mt-4 space-y-3">
+          <div className="flex flex-wrap items-center gap-2">
+            <Badge className="bg-brand-soft text-brand hover:bg-brand-soft">{report.valid} valid</Badge>
+            <Badge variant="secondary">{report.total} total</Badge>
+            {report.invalid > 0 && <Badge className="bg-red-100 text-red-700 hover:bg-red-100">{report.invalid} problems</Badge>}
+          </div>
+          {report.missingCols.length > 0 && (
+            <div className="rounded-md bg-red-50 text-red-700 px-3 py-2 text-sm">
+              Missing required column{report.missingCols.length === 1 ? "" : "s"}: <span className="font-mono">{report.missingCols.join(", ")}</span>
+            </div>
+          )}
+          {report.problems.length > 0 && (
+            <div className="rounded-md border max-h-56 overflow-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead className="w-16">Row</TableHead>
+                    <TableHead>Reason</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {report.problems.map((p, i) => (
+                    <TableRow key={i}>
+                      <TableCell className="text-xs">{p.row}</TableCell>
+                      <TableCell className="text-xs">{p.reason}</TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+          )}
+          {report.invalid > 0 && report.missingCols.length === 0 && (
+            <label className="flex items-center gap-2 text-sm">
+              <input type="checkbox" checked={proceedInvalid} onChange={(e) => setProceedInvalid(e.target.checked)} />
+              Proceed with {report.valid} valid rows only (skip {report.invalid} problem rows)
+            </label>
+          )}
+        </div>
+      )}
+
+      {parsed && parsed.headers.length > 0 && (
+        <div className="mt-5">
+          <p className="text-xs text-muted-foreground mb-2">Preview · first 20 rows</p>
+          <div className="max-h-72 overflow-auto rounded-md border">
+            <Table>
+              <TableHeader>
+                <TableRow>{parsed.headers.map((h) => <TableHead key={h} className="whitespace-nowrap text-xs">{h}</TableHead>)}</TableRow>
+              </TableHeader>
+              <TableBody>
+                {parsed.rows.slice(0, 20).map((r, i) => (
+                  <TableRow key={i}>{r.map((c, j) => <TableCell key={j} className="text-xs whitespace-nowrap">{c}</TableCell>)}</TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </div>
+        </div>
+      )}
+    </Panel>
+  );
+}
+
+function NumberField({ label, value, onChange, min, max }: { label: string; value: number; onChange: (n: number) => void; min: number; max: number }) {
+  return (
+    <div>
+      <Label className="text-xs">{label}</Label>
+      <Input type="number" min={min} max={max} value={value} onChange={(e) => onChange(Number(e.target.value) || 0)} className="mt-1" />
+    </div>
+  );
+}
+
+function Field({ label, value, mono }: { label: string; value: string; mono?: boolean }) {
+  return (
+    <div className="rounded-md border bg-card px-3 py-2">
+      <div className="text-[11px] uppercase tracking-wide text-muted-foreground">{label}</div>
+      <div className={cn("text-sm mt-0.5 break-all", mono && "font-mono")}>{value || "—"}</div>
+    </div>
+  );
+}
+
+function InfoTile({ icon, label, value, hint }: { icon?: React.ReactNode; label: string; value: string; hint?: string }) {
+  return (
+    <div className="rounded-lg border bg-card p-3">
+      <div className="flex items-center gap-1.5 text-[11px] uppercase tracking-wide text-muted-foreground mb-1">
+        {icon}{label}
+      </div>
+      <div className="text-sm font-medium truncate">{value}</div>
+      {hint && <div className="text-xs text-muted-foreground">{hint}</div>}
+    </div>
+  );
+}
+
+const DAY_NAMES = ["", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
+function dayLabels(days: number[]) {
+  return days.slice().sort().map((d) => DAY_NAMES[d]).join(", ") || "—";
 }
