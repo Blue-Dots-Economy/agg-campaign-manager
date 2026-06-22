@@ -14,6 +14,36 @@ export type Database = {
   }
   public: {
     Tables: {
+      program_agents: {
+        Row: {
+          agent_id: string
+          created_at: string
+          id: string
+          last_error: string | null
+          name: string
+          program: string
+          status: string
+        }
+        Insert: {
+          agent_id: string
+          created_at?: string
+          id?: string
+          last_error?: string | null
+          name?: string
+          program: string
+          status?: string
+        }
+        Update: {
+          agent_id?: string
+          created_at?: string
+          id?: string
+          last_error?: string | null
+          name?: string
+          program?: string
+          status?: string
+        }
+        Relationships: []
+      }
       sheet_connections: {
         Row: {
           created_at: string
