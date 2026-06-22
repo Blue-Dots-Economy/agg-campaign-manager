@@ -289,6 +289,7 @@ export type ProgramAggregates = ReturnType<typeof buildAggregates>;
 
 export interface AggregatePayload {
   source: "snapshot" | "empty";
+  hasSnapshot: boolean;
   totalRows: number;
   connectionCount: number;
   lastSyncedAt: string | null;
@@ -296,6 +297,26 @@ export interface AggregatePayload {
   aggregates: ProgramAggregates;
   /** Lightweight per-day index for the Campaigns table (no row payload). */
   campaigns: ProgramAggregates["perDay"];
+  error?: string;
+}
+
+function emptyPayload(
+  config: ProgramConfig,
+  connectionCount: number,
+  state: { last_synced_at: string | null; status: string } | null,
+  error?: string,
+): AggregatePayload {
+  return {
+    source: "empty",
+    hasSnapshot: false,
+    totalRows: 0,
+    connectionCount,
+    lastSyncedAt: state?.last_synced_at ?? null,
+    syncStatus: state?.status ?? "idle",
+    aggregates: buildAggregates(config, []),
+    campaigns: [],
+    error,
+  };
 }
 
 export const fetchProgramAggregates = createServerFn({ method: "GET" })
@@ -303,42 +324,43 @@ export const fetchProgramAggregates = createServerFn({ method: "GET" })
   .handler(async ({ data }): Promise<AggregatePayload> => {
     const program = data.program;
     const config = PROGRAMS[program];
-    let state = await getSyncState(program);
-    const connectionCount = await countConnections(program);
-
-    // Auto-sync once if we have connections but no snapshot yet.
-    if (!state || (state.row_count === 0 && connectionCount > 0 && state.status !== "syncing")) {
+    try {
+      let state: Awaited<ReturnType<typeof getSyncState>> = null;
+      let connectionCount = 0;
       try {
-        await performSync(program);
-        state = await getSyncState(program);
-      } catch {
-        /* fall through; show empty */
+        [state, connectionCount] = await Promise.all([
+          getSyncState(program),
+          countConnections(program),
+        ]);
+      } catch (e) {
+        return emptyPayload(config, 0, null, e instanceof Error ? e.message : String(e));
       }
-    }
 
-    if (!state || state.row_count === 0) {
+      if (!state || state.row_count === 0) {
+        // Never sync inline — Refresh button triggers syncProgramSnapshot explicitly.
+        return emptyPayload(config, connectionCount, state);
+      }
+
+      let rows: CallRow[] = [];
+      try {
+        rows = await loadRows(program);
+      } catch (e) {
+        return emptyPayload(config, connectionCount, state, e instanceof Error ? e.message : String(e));
+      }
+      const aggregates = buildAggregates(config, rows);
       return {
-        source: "empty",
-        totalRows: 0,
+        source: "snapshot",
+        hasSnapshot: true,
+        totalRows: rows.length,
         connectionCount,
-        lastSyncedAt: state?.last_synced_at ?? null,
-        syncStatus: state?.status ?? "idle",
-        aggregates: buildAggregates(config, []),
-        campaigns: [],
+        lastSyncedAt: state.last_synced_at,
+        syncStatus: state.status,
+        aggregates,
+        campaigns: aggregates.perDay,
       };
+    } catch (e) {
+      return emptyPayload(config, 0, null, e instanceof Error ? e.message : String(e));
     }
-
-    const rows = await loadRows(program);
-    const aggregates = buildAggregates(config, rows);
-    return {
-      source: "snapshot",
-      totalRows: rows.length,
-      connectionCount,
-      lastSyncedAt: state.last_synced_at,
-      syncStatus: state.status,
-      aggregates,
-      campaigns: aggregates.perDay,
-    };
   });
 
 export const fetchCampaignDayRowsFn = createServerFn({ method: "GET" })
