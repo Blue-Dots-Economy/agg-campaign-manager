@@ -108,9 +108,3 @@ export function Sidebar() {
     </aside>
   );
 }
-          connected
-        </span>
-      </div>
-    </aside>
-  );
-}
