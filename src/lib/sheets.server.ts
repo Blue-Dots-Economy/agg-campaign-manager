@@ -1,5 +1,4 @@
 // Server-only helper: read a Google Sheet via service-account JWT.
-// Imported only by *.functions.ts handlers (loaded inside the handler body).
 import { SignJWT, importPKCS8 } from "jose";
 
 export interface ServiceAccountJson {
@@ -54,7 +53,7 @@ async function getAccessToken(): Promise<string> {
   });
   if (!res.ok) {
     const text = await res.text();
-    throw new Error(`Google token exchange failed (${res.status}): ${text}`);
+    throw new Error(`Google token exchange failed (${res.status}): ${text.slice(0, 300)}`);
   }
   const data = (await res.json()) as { access_token: string; expires_in: number };
   cached = { token: data.access_token, expiresAt: now + data.expires_in };
@@ -67,18 +66,99 @@ export interface SheetReadResult {
   rowCount: number;
 }
 
+function colLetter(i: number): string {
+  let s = "";
+  let n = i + 1;
+  while (n > 0) {
+    const r = (n - 1) % 26;
+    s = String.fromCharCode(65 + r) + s;
+    n = Math.floor((n - 1) / 26);
+  }
+  return s;
+}
+
+function quoteTab(tab?: string): string {
+  if (!tab) return "";
+  // wrap in single quotes if it contains spaces or special chars
+  if (/^[A-Za-z0-9_]+$/.test(tab)) return `${tab}!`;
+  return `'${tab.replace(/'/g, "''")}'!`;
+}
+
+// Columns we never need on the client — they balloon Worker memory on 20k+ row sheets.
+const HEAVY_HEADERS = new Set([
+  "call_transcript",
+  "final_summary",
+  "call_recording_url",
+  "Intent Score Reasoning",
+  "primary_topic",
+]);
+
+/**
+ * Reads a sheet, automatically skipping heavy text columns (transcripts, summaries, recording URLs)
+ * to stay under the Worker memory limit on large sheets.
+ */
 export async function readSheet(sheetId: string, tabName?: string): Promise<SheetReadResult> {
   const token = await getAccessToken();
-  const range = tabName ? `${encodeURIComponent(tabName)}!A1:ZZ100000` : "A1:ZZ100000";
-  const url = `https://sheets.googleapis.com/v4/spreadsheets/${sheetId}/values/${range}`;
+  const tabPrefix = quoteTab(tabName);
+
+  // 1) Fetch header row only to discover columns.
+  const headerUrl =
+    `https://sheets.googleapis.com/v4/spreadsheets/${sheetId}/values/${tabPrefix}A1:ZZ1`;
+  const headerRes = await fetch(headerUrl, { headers: { authorization: `Bearer ${token}` } });
+  if (!headerRes.ok) {
+    const text = await headerRes.text();
+    throw new Error(`Sheets read failed (${headerRes.status}): ${text.slice(0, 300)}`);
+  }
+  const headerJson = (await headerRes.json()) as { values?: string[][] };
+  const allHeaders = (headerJson.values?.[0] ?? []).map((h) => String(h ?? "").trim());
+  if (allHeaders.length === 0) return { headers: [], rows: [], rowCount: 0 };
+
+  // 2) Build contiguous column-ranges for non-heavy columns.
+  const keep: number[] = [];
+  allHeaders.forEach((h, i) => {
+    if (!HEAVY_HEADERS.has(h)) keep.push(i);
+  });
+  const groups: Array<[number, number]> = [];
+  for (const i of keep) {
+    const last = groups[groups.length - 1];
+    if (last && last[1] === i - 1) last[1] = i;
+    else groups.push([i, i]);
+  }
+  const ranges = groups.map(([s, e]) => `${tabPrefix}${colLetter(s)}2:${colLetter(e)}200000`);
+
+  // 3) batchGet only the columns we need.
+  const url =
+    `https://sheets.googleapis.com/v4/spreadsheets/${sheetId}/values:batchGet?` +
+    ranges.map((r) => `ranges=${encodeURIComponent(r)}`).join("&") +
+    `&majorDimension=ROWS&valueRenderOption=UNFORMATTED_VALUE`;
   const res = await fetch(url, { headers: { authorization: `Bearer ${token}` } });
   if (!res.ok) {
     const text = await res.text();
     throw new Error(`Sheets read failed (${res.status}): ${text.slice(0, 300)}`);
   }
-  const data = (await res.json()) as { values?: string[][] };
-  const values = data.values ?? [];
-  if (values.length === 0) return { headers: [], rows: [], rowCount: 0 };
-  const [headers, ...rows] = values;
-  return { headers: headers.map((h) => String(h ?? "").trim()), rows, rowCount: rows.length };
+  const data = (await res.json()) as {
+    valueRanges?: Array<{ values?: unknown[][] }>;
+  };
+  const segments = (data.valueRanges ?? []).map((vr) => vr.values ?? []);
+  const rowCount = segments.reduce((m, s) => Math.max(m, s.length), 0);
+
+  const keptHeaders: string[] = [];
+  for (const [s, e] of groups) for (let i = s; i <= e; i++) keptHeaders.push(allHeaders[i]);
+
+  const rows: string[][] = new Array(rowCount);
+  for (let r = 0; r < rowCount; r++) {
+    const out: string[] = [];
+    for (let g = 0; g < segments.length; g++) {
+      const [s, e] = groups[g];
+      const width = e - s + 1;
+      const segRow = (segments[g][r] ?? []) as unknown[];
+      for (let i = 0; i < width; i++) {
+        const v = segRow[i];
+        out.push(v == null ? "" : String(v));
+      }
+    }
+    rows[r] = out;
+  }
+
+  return { headers: keptHeaders, rows, rowCount };
 }

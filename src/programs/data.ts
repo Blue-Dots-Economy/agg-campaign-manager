@@ -16,7 +16,7 @@ export interface CallRow {
   call_engaged: boolean;
   applied_to_job: boolean;
   applications_count: number;
-  jobs_shown: number;
+  jobs_shown: boolean;
   primary_topic: string;
   call_language: string;
   call_recording_url: string;
@@ -121,7 +121,7 @@ export function getCampaignData(config: ProgramConfig): CallRow[] {
         call_engaged: engaged,
         applied_to_job: applied,
         applications_count: appliedJobs.length,
-        jobs_shown: recCount,
+        jobs_shown: recCount > 0,
         primary_topic: engaged ? (rand() < 0.5 ? "job_search" : "salary_query") : "n/a",
         call_language: language,
         call_recording_url: `https://recordings.example.com/${config.id}/${d}-${i}.mp3`,
