@@ -39,6 +39,8 @@ export interface CallRow {
   trade?: string;
   counsellor_id?: string;
   candidate_name?: string;
+  /** Raw header→value map from the source sheet. Use for program-specific columns. */
+  raw?: Record<string, string>;
 }
 
 // Deterministic PRNG so the dashboard is stable across reloads.
