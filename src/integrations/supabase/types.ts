@@ -14,6 +14,39 @@ export type Database = {
   }
   public: {
     Tables: {
+      call_rows: {
+        Row: {
+          call_id: string
+          campaign_day: string
+          connection_id: string | null
+          data: Json
+          id: string
+          intent_score: number | null
+          program: string
+          synced_at: string
+        }
+        Insert: {
+          call_id?: string
+          campaign_day?: string
+          connection_id?: string | null
+          data: Json
+          id?: string
+          intent_score?: number | null
+          program: string
+          synced_at?: string
+        }
+        Update: {
+          call_id?: string
+          campaign_day?: string
+          connection_id?: string | null
+          data?: Json
+          id?: string
+          intent_score?: number | null
+          program?: string
+          synced_at?: string
+        }
+        Relationships: []
+      }
       program_agents: {
         Row: {
           agent_id: string
@@ -41,6 +74,33 @@ export type Database = {
           name?: string
           program?: string
           status?: string
+        }
+        Relationships: []
+      }
+      program_sync_state: {
+        Row: {
+          last_error: string | null
+          last_synced_at: string | null
+          program: string
+          row_count: number
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          last_error?: string | null
+          last_synced_at?: string | null
+          program: string
+          row_count?: number
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          last_error?: string | null
+          last_synced_at?: string | null
+          program?: string
+          row_count?: number
+          status?: string
+          updated_at?: string
         }
         Relationships: []
       }
