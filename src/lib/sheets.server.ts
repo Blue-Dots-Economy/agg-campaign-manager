@@ -129,7 +129,7 @@ async function readSheetForTab(
 
   const keep: number[] = [];
   allHeaders.forEach((h, i) => {
-    if (!HEAVY_HEADERS.has(h)) keep.push(i);
+    if (!HEAVY_HEADERS_NORM.has(normalizeHeader(h))) keep.push(i);
   });
   const groups: Array<[number, number]> = [];
   for (const i of keep) {
