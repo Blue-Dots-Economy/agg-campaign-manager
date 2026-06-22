@@ -37,21 +37,38 @@ function Campaigns() {
   const [filter, setFilter] = useState("");
   const [openCall, setOpenCall] = useState<CallRow | null>(null);
 
+  const isDkb = config.id === "dkb";
+
   const detailRows: CallRow[] = useMemo(() => {
     if (!openDay) return [];
     const day = rows.filter((r) => r.campaign_day === openDay);
     if (!filter) return day;
     const q = filter.toLowerCase();
-    return day.filter(
-      (r) =>
+    return day.filter((r) => {
+      if (isDkb) {
+        const raw = r.raw ?? {};
+        return (
+          (raw.contact_phone ?? "").toLowerCase().includes(q) ||
+          (raw.company_name ?? "").toLowerCase().includes(q) ||
+          (raw.job_role_input ?? "").toLowerCase().includes(q) ||
+          (raw.call_status ?? "").toLowerCase().includes(q) ||
+          (raw.job_status ?? "").toLowerCase().includes(q)
+        );
+      }
+      return (
         r.seeker_name.toLowerCase().includes(q) ||
         r.phone.includes(q) ||
         r.call_outcome.toLowerCase().includes(q) ||
-        (r.drop_reason ?? "").toLowerCase().includes(q),
-    );
-  }, [rows, openDay, filter]);
+        (r.drop_reason ?? "").toLowerCase().includes(q)
+      );
+    });
+  }, [rows, openDay, filter, isDkb]);
 
-  const successLabel = config.successMetric === "applications" ? "Applied" : "Interviews";
+  const successLabel = isDkb
+    ? "New jobs"
+    : config.successMetric === "applications"
+      ? "Applied"
+      : "Interviews";
 
   return (
     <div className="space-y-6">
@@ -84,7 +101,7 @@ function Campaigns() {
                   <TableCell>{c.language}</TableCell>
                   <TableCell className="text-right tabular-nums">{c.rows}</TableCell>
                   <TableCell className="text-right tabular-nums">{c.answered_pct}%</TableCell>
-                  <TableCell className="text-right tabular-nums">{c.converted}</TableCell>
+                  <TableCell className="text-right tabular-nums">{isDkb ? c.new_jobs : c.converted}</TableCell>
                   <TableCell className="text-right tabular-nums">{c.high_intent}</TableCell>
                   <TableCell>
                     <Badge variant="secondary" className="bg-brand-soft text-brand">
@@ -98,55 +115,97 @@ function Campaigns() {
         </div>
       </Panel>
 
+
       <Dialog open={!!openDay} onOpenChange={(o) => !o && setOpenDay(null)}>
-        <DialogContent className="max-w-4xl">
+        <DialogContent className="max-w-5xl">
           <DialogHeader>
-            <DialogTitle>{openDay} — seeker rows</DialogTitle>
+            <DialogTitle>{openDay} — {isDkb ? "employer call rows" : "seeker rows"}</DialogTitle>
           </DialogHeader>
           <Input
-            placeholder="Filter by name, phone, outcome, drop reason…"
+            placeholder={isDkb ? "Filter by phone, company, role, status…" : "Filter by name, phone, outcome, drop reason…"}
             value={filter}
             onChange={(e) => setFilter(e.target.value)}
             className="mb-3"
           />
           <div className="max-h-[60vh] overflow-auto rounded-md border">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Phone</TableHead>
-                  <TableHead>Seeker</TableHead>
-                  <TableHead>Outcome</TableHead>
-                  <TableHead>Engaged</TableHead>
-                  <TableHead>{config.successMetric === "applications" ? "Applied" : "Interview"}</TableHead>
-                  <TableHead>Drop reason</TableHead>
-                  <TableHead className="text-right">Intent</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {detailRows.map((r) => (
-                  <TableRow
-                    key={r.call_id}
-                    className="cursor-pointer"
-                    onClick={() => setOpenCall(r)}
-                  >
-                    <TableCell className="font-mono text-xs">{r.phone}</TableCell>
-                    <TableCell>{r.seeker_name}</TableCell>
-                    <TableCell>{r.call_outcome}</TableCell>
-                    <TableCell>{r.call_engaged ? "yes" : "no"}</TableCell>
-                    <TableCell>
-                      {(config.successMetric === "applications" ? r.applied_to_job : r.interview_scheduled)
-                        ? "yes"
-                        : "no"}
-                    </TableCell>
-                    <TableCell className="text-muted-foreground">{r.drop_reason || "—"}</TableCell>
-                    <TableCell className="text-right tabular-nums">{r["Intent Score"]}</TableCell>
+            {isDkb ? (
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Phone</TableHead>
+                    <TableHead>Company</TableHead>
+                    <TableHead>Role</TableHead>
+                    <TableHead>City</TableHead>
+                    <TableHead>Call status</TableHead>
+                    <TableHead>Job status</TableHead>
+                    <TableHead>Phase</TableHead>
+                    <TableHead>New job</TableHead>
+                    <TableHead className="text-right">Intent</TableHead>
                   </TableRow>
-                ))}
-              </TableBody>
-            </Table>
+                </TableHeader>
+                <TableBody>
+                  {detailRows.map((r) => {
+                    const raw = r.raw ?? {};
+                    return (
+                      <TableRow
+                        key={r.call_id || `${raw.contact_phone}-${raw.job_id}`}
+                        className="cursor-pointer"
+                        onClick={() => setOpenCall(r)}
+                      >
+                        <TableCell className="font-mono text-xs">{raw.contact_phone || r.phone}</TableCell>
+                        <TableCell>{raw.company_name || "—"}</TableCell>
+                        <TableCell>{raw.job_role_input || "—"}</TableCell>
+                        <TableCell>{raw.city_campaign || r.city_campaign || "—"}</TableCell>
+                        <TableCell>{raw.call_status || "—"}</TableCell>
+                        <TableCell>{raw.job_status || "—"}</TableCell>
+                        <TableCell>{raw.phases_reached || "—"}</TableCell>
+                        <TableCell>{raw.new_job_posted || "—"}</TableCell>
+                        <TableCell className="text-right tabular-nums">{raw.intent_score || 0}</TableCell>
+                      </TableRow>
+                    );
+                  })}
+                </TableBody>
+              </Table>
+            ) : (
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Phone</TableHead>
+                    <TableHead>Seeker</TableHead>
+                    <TableHead>Outcome</TableHead>
+                    <TableHead>Engaged</TableHead>
+                    <TableHead>{config.successMetric === "applications" ? "Applied" : "Interview"}</TableHead>
+                    <TableHead>Drop reason</TableHead>
+                    <TableHead className="text-right">Intent</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {detailRows.map((r) => (
+                    <TableRow
+                      key={r.call_id}
+                      className="cursor-pointer"
+                      onClick={() => setOpenCall(r)}
+                    >
+                      <TableCell className="font-mono text-xs">{r.phone}</TableCell>
+                      <TableCell>{r.seeker_name}</TableCell>
+                      <TableCell>{r.call_outcome}</TableCell>
+                      <TableCell>{r.call_engaged ? "yes" : "no"}</TableCell>
+                      <TableCell>
+                        {(config.successMetric === "applications" ? r.applied_to_job : r.interview_scheduled)
+                          ? "yes"
+                          : "no"}
+                      </TableCell>
+                      <TableCell className="text-muted-foreground">{r.drop_reason || "—"}</TableCell>
+                      <TableCell className="text-right tabular-nums">{r["Intent Score"]}</TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            )}
           </div>
         </DialogContent>
       </Dialog>
+
 
       <CallDetailDialog
         call={openCall}

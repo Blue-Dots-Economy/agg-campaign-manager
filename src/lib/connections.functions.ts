@@ -207,25 +207,34 @@ function normKey(h: string): string {
 
 function mapRow(headers: string[], values: string[]): CallRow {
   const idx: Record<string, number> = {};
+  const raw: Record<string, string> = {};
   headers.forEach((h, i) => {
     const k = normKey(h);
     if (!(k in idx)) idx[k] = i;
+    raw[k] = values[i] ?? "";
   });
   const get = (k: string) => {
     const i = idx[normKey(k)];
     return i !== undefined ? values[i] : undefined;
   };
+  // DKB sheets express "answered" through call_status, not a boolean column.
+  const callStatusRaw = get("call_status") ?? "";
+  const callStatus = callStatusRaw.trim().toLowerCase();
+  const answeredFromStatus =
+    callStatus.startsWith("answered") || callStatus === "completed";
   return {
     campaign_day: get("campaign_day") ?? "",
     campaign_date: get("campaign_date") ?? "",
     campaign_type: get("campaign_type") ?? "",
     language: get("language") ?? "",
     call_id: get("call_id") ?? "",
-    phone: get("phone") ?? "",
+    phone: get("phone") ?? get("contact_phone") ?? "",
     call_duration_seconds: asNum(get("call_duration_seconds")),
     call_datetime_ist: get("call_datetime_ist") ?? "",
     call_outcome: get("call_outcome") ?? "",
-    call_answered: asYesNoBool(get("call_answered")),
+    call_answered: get("call_answered") !== undefined
+      ? asYesNoBool(get("call_answered"))
+      : answeredFromStatus,
     call_engaged: asYesNoBool(get("call_engaged")),
     applied_to_job: asYesNoBool(get("applied_to_job")),
     applications_count: asNum(get("applications_count")),
@@ -238,7 +247,7 @@ function mapRow(headers: string[], values: string[]): CallRow {
     tried_to_apply: asYesNoBool(get("tried_to_apply")),
     drop_reason: get("drop_reason") ?? "",
     city_campaign: get("city_campaign") ?? "",
-    seeker_name: get("seeker_name") ?? get("candidate_name") ?? "",
+    seeker_name: get("seeker_name") ?? get("candidate_name") ?? get("company_name") ?? "",
     user_intent: get("user_intent") ?? "low",
     jobs_recommended: asJsonArr(get("jobs_recommended")),
     jobs_applied: asJsonArr(get("jobs_applied")),
@@ -251,6 +260,7 @@ function mapRow(headers: string[], values: string[]): CallRow {
     trade: get("trade") ?? undefined,
     counsellor_id: get("counsellor_id") ?? undefined,
     candidate_name: get("candidate_name") ?? undefined,
+    raw,
   };
 }
 
