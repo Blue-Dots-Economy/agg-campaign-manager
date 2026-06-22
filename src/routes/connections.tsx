@@ -27,7 +27,7 @@ import {
   testConnection,
   type SheetConnection,
 } from "@/lib/connections.functions";
-import { DEFAULT_SA_EMAIL } from "@/lib/sheets.server";
+const DEFAULT_SA_EMAIL = "blue-dots-admin@blue-dots-project.iam.gserviceaccount.com";
 import type { ProgramId } from "@/programs/registry";
 
 export const Route = createFileRoute("/connections")({
