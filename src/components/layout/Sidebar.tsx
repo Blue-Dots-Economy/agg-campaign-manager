@@ -8,8 +8,12 @@ import {
   Database,
   Settings,
   Briefcase,
+  Plug,
 } from "lucide-react";
+import { useQuery } from "@tanstack/react-query";
+import { useServerFn } from "@tanstack/react-start";
 import { useProgram } from "@/programs/context";
+import { listConnections } from "@/lib/connections.functions";
 import { cn } from "@/lib/utils";
 
 const NAV = [
@@ -19,6 +23,7 @@ const NAV = [
   { to: "/schedule", label: "Schedule", icon: Calendar },
   { to: "/analytics", label: "Analytics", icon: BarChart3 },
   { to: "/data", label: "Data & uploads", icon: Database },
+  { to: "/connections", label: "Connections", icon: Plug },
   { to: "/settings", label: "Settings", icon: Settings },
 ] as const;
 
