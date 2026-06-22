@@ -86,6 +86,18 @@ export const deleteConnection = createServerFn({ method: "POST" })
     return { ok: true };
   });
 
+export const listSheetTabsFn = createServerFn({ method: "POST" })
+  .inputValidator((d: { sheet_id: string }) => d)
+  .handler(async ({ data }) => {
+    const { listSheetTabs } = await import("./sheets.server");
+    try {
+      const tabs = await listSheetTabs(data.sheet_id);
+      return { ok: true as const, tabs };
+    } catch (err) {
+      return { ok: false as const, error: err instanceof Error ? err.message : String(err) };
+    }
+  });
+
 export const testConnection = createServerFn({ method: "POST" })
   .inputValidator((d: { id?: string; sheet_id: string; tab_name?: string }) => d)
   .handler(async ({ data }) => {
@@ -94,17 +106,23 @@ export const testConnection = createServerFn({ method: "POST" })
       const result = await readSheet(data.sheet_id, data.tab_name);
       if (data.id) {
         const sb = getServerSupabase();
-        await sb
-          .from("sheet_connections")
-          .update({
-            status: "connected",
-            row_count: result.rowCount,
-            last_error: null,
-            last_synced_at: new Date().toISOString(),
-          })
-          .eq("id", data.id);
+        const patch: Record<string, unknown> = {
+          status: "connected",
+          row_count: result.rowCount,
+          last_error: null,
+          last_synced_at: new Date().toISOString(),
+        };
+        if (result.effectiveTab && result.effectiveTab !== (data.tab_name ?? "")) {
+          patch.tab_name = result.effectiveTab;
+        }
+        await sb.from("sheet_connections").update(patch).eq("id", data.id);
       }
-      return { ok: true as const, rowCount: result.rowCount, headers: result.headers };
+      return {
+        ok: true as const,
+        rowCount: result.rowCount,
+        headers: result.headers,
+        effectiveTab: result.effectiveTab,
+      };
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
       if (data.id) {
@@ -136,15 +154,16 @@ export const revalidateConnections = createServerFn({ method: "POST" })
     for (const c of list) {
       try {
         const result = await readSheet(c.sheet_id, c.tab_name ?? undefined);
-        await sb
-          .from("sheet_connections")
-          .update({
-            status: "connected",
-            row_count: result.rowCount,
-            last_error: null,
-            last_synced_at: new Date().toISOString(),
-          })
-          .eq("id", c.id);
+        const patch: Record<string, unknown> = {
+          status: "connected",
+          row_count: result.rowCount,
+          last_error: null,
+          last_synced_at: new Date().toISOString(),
+        };
+        if (result.effectiveTab && result.effectiveTab !== (c.tab_name ?? "")) {
+          patch.tab_name = result.effectiveTab;
+        }
+        await sb.from("sheet_connections").update(patch).eq("id", c.id);
       } catch (err) {
         const msg = err instanceof Error ? err.message : String(err);
         await sb
