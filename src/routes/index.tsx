@@ -30,6 +30,7 @@ import {
 } from "@/programs/metrics";
 import { KpiCard } from "@/components/KpiCard";
 import { Panel } from "@/components/Panel";
+import { NoDataState, LoadingState } from "@/components/EmptyState";
 
 export const Route = createFileRoute("/")({
   component: Overview,
@@ -55,8 +56,11 @@ const tooltipStyle = {
 
 function Overview() {
   const { config } = useProgram();
-  const { rows } = useCampaignData(config);
+  const { rows, isLoading, source } = useCampaignData(config);
   const isDkb = config.id === "dkb";
+
+  if (isLoading) return <LoadingState />;
+  if (source === "empty" || rows.length === 0) return <NoDataState />;
 
   const kpis = useMemo(() => computeKpis(config, rows), [config, rows]);
   const perDay = useMemo(() => byCampaignDay(config, rows), [config, rows]);
