@@ -8,7 +8,7 @@ export function TopBar() {
   return (
     <header className="flex flex-wrap items-center justify-between gap-3 px-6 py-5 border-b bg-background">
       <div>
-        <h1 className="text-xl font-semibold tracking-tight">Hello, Aryan</h1>
+        <h1 className="text-xl font-semibold tracking-tight">Operation Rozgar</h1>
         <p className="text-sm text-muted-foreground mt-0.5">
           Here's how {config.label} is performing
         </p>
