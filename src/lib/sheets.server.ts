@@ -64,6 +64,7 @@ export interface SheetReadResult {
   headers: string[];
   rows: string[][];
   rowCount: number;
+  effectiveTab: string;
 }
 
 function colLetter(i: number): string {
@@ -77,9 +78,7 @@ function colLetter(i: number): string {
   return s;
 }
 
-function quoteTab(tab?: string): string {
-  if (!tab) return "";
-  // wrap in single quotes if it contains spaces or special chars
+function quoteTab(tab: string): string {
   if (/^[A-Za-z0-9_]+$/.test(tab)) return `${tab}!`;
   return `'${tab.replace(/'/g, "''")}'!`;
 }
@@ -93,17 +92,30 @@ const HEAVY_HEADERS = new Set([
   "primary_topic",
 ]);
 
-/**
- * Reads a sheet, automatically skipping heavy text columns (transcripts, summaries, recording URLs)
- * to stay under the Worker memory limit on large sheets.
- */
-export async function readSheet(sheetId: string, tabName?: string): Promise<SheetReadResult> {
+/** Fetch the spreadsheet's tab titles in order. */
+export async function listSheetTabs(sheetId: string): Promise<string[]> {
   const token = await getAccessToken();
-  const tabPrefix = quoteTab(tabName);
+  const url = `https://sheets.googleapis.com/v4/spreadsheets/${sheetId}?fields=sheets.properties.title`;
+  const res = await fetch(url, { headers: { authorization: `Bearer ${token}` } });
+  if (!res.ok) {
+    const text = await res.text();
+    throw new Error(`Sheets metadata failed (${res.status}): ${text.slice(0, 300)}`);
+  }
+  const data = (await res.json()) as { sheets?: Array<{ properties?: { title?: string } }> };
+  return (data.sheets ?? []).map((s) => s.properties?.title ?? "").filter(Boolean);
+}
 
-  // 1) Fetch header row only to discover columns.
-  const headerUrl =
-    `https://sheets.googleapis.com/v4/spreadsheets/${sheetId}/values/${tabPrefix}A1:ZZ1`;
+function isRangeParseError(msg: string): boolean {
+  return /Unable to parse range|INVALID_ARGUMENT/i.test(msg);
+}
+
+async function readSheetForTab(
+  sheetId: string,
+  token: string,
+  tab: string,
+): Promise<SheetReadResult> {
+  const tabPrefix = quoteTab(tab);
+  const headerUrl = `https://sheets.googleapis.com/v4/spreadsheets/${sheetId}/values/${tabPrefix}A1:ZZ1`;
   const headerRes = await fetch(headerUrl, { headers: { authorization: `Bearer ${token}` } });
   if (!headerRes.ok) {
     const text = await headerRes.text();
@@ -111,9 +123,8 @@ export async function readSheet(sheetId: string, tabName?: string): Promise<Shee
   }
   const headerJson = (await headerRes.json()) as { values?: string[][] };
   const allHeaders = (headerJson.values?.[0] ?? []).map((h) => String(h ?? "").trim());
-  if (allHeaders.length === 0) return { headers: [], rows: [], rowCount: 0 };
+  if (allHeaders.length === 0) return { headers: [], rows: [], rowCount: 0, effectiveTab: tab };
 
-  // 2) Build contiguous column-ranges for non-heavy columns.
   const keep: number[] = [];
   allHeaders.forEach((h, i) => {
     if (!HEAVY_HEADERS.has(h)) keep.push(i);
@@ -126,7 +137,6 @@ export async function readSheet(sheetId: string, tabName?: string): Promise<Shee
   }
   const ranges = groups.map(([s, e]) => `${tabPrefix}${colLetter(s)}2:${colLetter(e)}200000`);
 
-  // 3) batchGet only the columns we need.
   const url =
     `https://sheets.googleapis.com/v4/spreadsheets/${sheetId}/values:batchGet?` +
     ranges.map((r) => `ranges=${encodeURIComponent(r)}`).join("&") +
@@ -136,9 +146,7 @@ export async function readSheet(sheetId: string, tabName?: string): Promise<Shee
     const text = await res.text();
     throw new Error(`Sheets read failed (${res.status}): ${text.slice(0, 300)}`);
   }
-  const data = (await res.json()) as {
-    valueRanges?: Array<{ values?: unknown[][] }>;
-  };
+  const data = (await res.json()) as { valueRanges?: Array<{ values?: unknown[][] }> };
   const segments = (data.valueRanges ?? []).map((vr) => vr.values ?? []);
   const rowCount = segments.reduce((m, s) => Math.max(m, s.length), 0);
 
@@ -160,5 +168,29 @@ export async function readSheet(sheetId: string, tabName?: string): Promise<Shee
     rows[r] = out;
   }
 
-  return { headers: keptHeaders, rows, rowCount };
+  return { headers: keptHeaders, rows, rowCount, effectiveTab: tab };
+}
+
+/**
+ * Reads a sheet. If tabName is missing or invalid, falls back to the first
+ * tab in the spreadsheet. The returned `effectiveTab` reflects the tab actually
+ * used so callers can persist any correction.
+ */
+export async function readSheet(sheetId: string, tabName?: string): Promise<SheetReadResult> {
+  const token = await getAccessToken();
+  const trimmed = (tabName ?? "").trim();
+
+  if (trimmed) {
+    try {
+      return await readSheetForTab(sheetId, token, trimmed);
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      if (!isRangeParseError(msg)) throw err;
+      // Fall through to first-tab fallback below.
+    }
+  }
+
+  const tabs = await listSheetTabs(sheetId);
+  if (tabs.length === 0) throw new Error("Spreadsheet has no tabs");
+  return await readSheetForTab(sheetId, token, tabs[0]);
 }
