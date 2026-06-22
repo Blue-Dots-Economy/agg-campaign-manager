@@ -59,9 +59,6 @@ function Overview() {
   const { rows, isLoading, source } = useCampaignData(config);
   const isDkb = config.id === "dkb";
 
-  if (isLoading) return <LoadingState />;
-  if (source === "empty" || rows.length === 0) return <NoDataState />;
-
   const kpis = useMemo(() => computeKpis(config, rows), [config, rows]);
   const perDay = useMemo(() => byCampaignDay(config, rows), [config, rows]);
 
@@ -75,6 +72,9 @@ function Overview() {
   const jobStatus = useMemo(() => (isDkb ? jobStatusBreakdown(rows) : []), [rows, isDkb]);
   const outcomes = useMemo(() => (isDkb ? callOutcomeBreakdown(rows) : []), [rows, isDkb]);
   const dkbIntents = useMemo(() => (isDkb ? intentDistributionDkb(rows) : []), [rows, isDkb]);
+
+  if (isLoading) return <LoadingState />;
+  if (source === "empty" || rows.length === 0) return <NoDataState />;
 
   return (
     <div className="space-y-6">
