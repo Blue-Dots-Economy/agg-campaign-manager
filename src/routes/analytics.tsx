@@ -1,5 +1,4 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useMemo } from "react";
 import {
   AreaChart,
   Area,
@@ -13,16 +12,7 @@ import {
   Legend,
 } from "recharts";
 import { useProgram } from "@/programs/context";
-import { useCampaignData } from "@/programs/useCampaignData";
-import {
-  byCampaignDay,
-  dropReasonBreakdown,
-  intentDistribution,
-  phasesReachedBreakdown,
-  jobStatusBreakdown,
-  callOutcomeBreakdown,
-  intentDistributionDkb,
-} from "@/programs/metrics";
+import { useProgramAggregates } from "@/programs/useProgramAggregates";
 import { Panel } from "@/components/Panel";
 import { NoDataState, LoadingState } from "@/components/EmptyState";
 
@@ -32,9 +22,9 @@ export const Route = createFileRoute("/analytics")({
 
 function Analytics() {
   const { config } = useProgram();
-  const { rows, isLoading, source } = useCampaignData(config);
   const isDkb = config.id === "dkb";
-  const perDay = useMemo(() => byCampaignDay(config, rows), [config, rows]);
+  const query = useProgramAggregates(config);
+  const data = query.data;
 
   const tooltip = {
     contentStyle: {
@@ -45,17 +35,10 @@ function Analytics() {
     },
   };
 
-  // KKB
-  const drops = useMemo(() => (isDkb ? [] : dropReasonBreakdown(config, rows)), [config, rows, isDkb]);
-  const intents = useMemo(() => (isDkb ? [] : intentDistribution(rows)), [rows, isDkb]);
-  // DKB
-  const phases = useMemo(() => (isDkb ? phasesReachedBreakdown(rows) : []), [rows, isDkb]);
-  const jobStatus = useMemo(() => (isDkb ? jobStatusBreakdown(rows) : []), [rows, isDkb]);
-  const outcomes = useMemo(() => (isDkb ? callOutcomeBreakdown(rows) : []), [rows, isDkb]);
-  const dkbIntents = useMemo(() => (isDkb ? intentDistributionDkb(rows) : []), [rows, isDkb]);
+  if (query.isLoading && !data) return <LoadingState />;
+  if (!data || data.source === "empty" || data.totalRows === 0) return <NoDataState />;
 
-  if (isLoading) return <LoadingState />;
-  if (source === "empty" || rows.length === 0) return <NoDataState />;
+  const { perDay, drops, intents, phases, jobStatus, outcomes, dkbIntents } = data.aggregates;
 
   return (
     <div className="space-y-6">
