@@ -17,6 +17,7 @@ import { Route as ConnectionsRouteImport } from './routes/connections'
 import { Route as CampaignsRouteImport } from './routes/campaigns'
 import { Route as AnalyticsRouteImport } from './routes/analytics'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as ApiPublicTestSheetsRouteImport } from './routes/api/public/test-sheets'
 
 const SettingsRoute = SettingsRouteImport.update({
   id: '/settings',
@@ -58,6 +59,11 @@ const IndexRoute = IndexRouteImport.update({
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiPublicTestSheetsRoute = ApiPublicTestSheetsRouteImport.update({
+  id: '/api/public/test-sheets',
+  path: '/api/public/test-sheets',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -68,6 +74,7 @@ export interface FileRoutesByFullPath {
   '/launch': typeof LaunchRoute
   '/schedule': typeof ScheduleRoute
   '/settings': typeof SettingsRoute
+  '/api/public/test-sheets': typeof ApiPublicTestSheetsRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -78,6 +85,7 @@ export interface FileRoutesByTo {
   '/launch': typeof LaunchRoute
   '/schedule': typeof ScheduleRoute
   '/settings': typeof SettingsRoute
+  '/api/public/test-sheets': typeof ApiPublicTestSheetsRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -89,6 +97,7 @@ export interface FileRoutesById {
   '/launch': typeof LaunchRoute
   '/schedule': typeof ScheduleRoute
   '/settings': typeof SettingsRoute
+  '/api/public/test-sheets': typeof ApiPublicTestSheetsRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -101,6 +110,7 @@ export interface FileRouteTypes {
     | '/launch'
     | '/schedule'
     | '/settings'
+    | '/api/public/test-sheets'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -111,6 +121,7 @@ export interface FileRouteTypes {
     | '/launch'
     | '/schedule'
     | '/settings'
+    | '/api/public/test-sheets'
   id:
     | '__root__'
     | '/'
@@ -121,6 +132,7 @@ export interface FileRouteTypes {
     | '/launch'
     | '/schedule'
     | '/settings'
+    | '/api/public/test-sheets'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -132,6 +144,7 @@ export interface RootRouteChildren {
   LaunchRoute: typeof LaunchRoute
   ScheduleRoute: typeof ScheduleRoute
   SettingsRoute: typeof SettingsRoute
+  ApiPublicTestSheetsRoute: typeof ApiPublicTestSheetsRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -192,6 +205,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/test-sheets': {
+      id: '/api/public/test-sheets'
+      path: '/api/public/test-sheets'
+      fullPath: '/api/public/test-sheets'
+      preLoaderRoute: typeof ApiPublicTestSheetsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -204,17 +224,8 @@ const rootRouteChildren: RootRouteChildren = {
   LaunchRoute: LaunchRoute,
   ScheduleRoute: ScheduleRoute,
   SettingsRoute: SettingsRoute,
+  ApiPublicTestSheetsRoute: ApiPublicTestSheetsRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
-
-import type { getRouter } from './router.tsx'
-import type { startInstance } from './start.ts'
-declare module '@tanstack/react-start' {
-  interface Register {
-    ssr: true
-    router: Awaited<ReturnType<typeof getRouter>>
-    config: Awaited<ReturnType<typeof startInstance.getOptions>>
-  }
-}
