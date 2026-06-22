@@ -271,7 +271,7 @@ export const fetchProgramRows = createServerFn({ method: "GET" })
     const errors: { id: string; name: string; message: string }[] = [];
     for (const c of list) {
       try {
-        const { headers, rows } = await readSheet(c.sheet_id, c.tab_name ?? undefined);
+        const { headers, rows, effectiveTab } = await readSheet(c.sheet_id, c.tab_name ?? undefined);
         for (const r of rows) {
           const mapped = mapRow(headers, r);
           const key = mapped.call_id || `${c.id}:${out.length}`;
@@ -279,15 +279,16 @@ export const fetchProgramRows = createServerFn({ method: "GET" })
           seen.add(key);
           out.push(mapped);
         }
-        await sb
-          .from("sheet_connections")
-          .update({
-            status: "connected",
-            row_count: rows.length,
-            last_error: null,
-            last_synced_at: new Date().toISOString(),
-          })
-          .eq("id", c.id);
+        const patch: Record<string, unknown> = {
+          status: "connected",
+          row_count: rows.length,
+          last_error: null,
+          last_synced_at: new Date().toISOString(),
+        };
+        if (effectiveTab && effectiveTab !== (c.tab_name ?? "")) {
+          patch.tab_name = effectiveTab;
+        }
+        await sb.from("sheet_connections").update(patch).eq("id", c.id);
       } catch (err) {
         const msg = err instanceof Error ? err.message : String(err);
         errors.push({ id: c.id, name: c.name, message: msg });
