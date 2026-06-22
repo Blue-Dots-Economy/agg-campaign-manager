@@ -1,30 +1,53 @@
 import type { CallRow } from "./data";
 import type { ProgramConfig } from "./registry";
 
+// ---- DKB helpers (read from the raw header→value map) ----
+function dkbField(r: CallRow, key: string): string {
+  return (r.raw?.[key] ?? "").trim();
+}
+function isAnsweredStatus(s: string): boolean {
+  const x = s.trim().toLowerCase();
+  return x.startsWith("answered") || x === "completed";
+}
+function isPhaseReached(s: string): boolean {
+  return /^phase\s*[1-4]$/i.test(s.trim());
+}
+
 export function computeKpis(config: ProgramConfig, rows: CallRow[]): Record<string, number> {
   const total = rows.length;
+
+  if (config.id === "dkb") {
+    const answered = rows.filter((r) => isAnsweredStatus(dkbField(r, "call_status"))).length;
+    const jobsVerified = rows.filter((r) => {
+      const s = dkbField(r, "job_status").toLowerCase();
+      return s === "active" || s === "closed";
+    }).length;
+    const newJobsPosted = rows.filter((r) => dkbField(r, "new_job_posted").toLowerCase() === "yes").length;
+    const talentInsights = rows.filter((r) => dkbField(r, "talent_insights_shown").toLowerCase() === "yes").length;
+    const highIntent = rows.filter((r) => {
+      const n = Number(dkbField(r, "intent_score"));
+      return Number.isFinite(n) && n >= 5;
+    }).length;
+    return {
+      total_calls: total,
+      answered_pct: total ? Math.round((answered / total) * 100) : 0,
+      jobs_verified: jobsVerified,
+      new_jobs_posted: newJobsPosted,
+      high_intent: highIntent,
+      talent_insights_shown: talentInsights,
+    };
+  }
+
+  // KKB (and default)
   const answered = rows.filter((r) => r.call_answered).length;
   const engaged = rows.filter((r) => r.call_engaged).length;
   const applications = rows.filter((r) => r.applied_to_job).length;
   const highIntent = rows.filter((r) => r["Intent Score"] >= 5).length;
-
-  if (config.id === "kkb") {
-    return {
-      total_calls: total,
-      answered_pct: total ? Math.round((answered / total) * 100) : 0,
-      engaged_pct: total ? Math.round((engaged / total) * 100) : 0,
-      applications,
-      high_intent: highIntent,
-    };
-  }
-  // dkb
-  const counselled = rows.filter((r) => r.counselled).length;
-  const interviews = rows.filter((r) => r.interview_scheduled).length;
   return {
     total_calls: total,
     answered_pct: total ? Math.round((answered / total) * 100) : 0,
-    counselled_pct: total ? Math.round((counselled / total) * 100) : 0,
-    interviews,
+    engaged_pct: total ? Math.round((engaged / total) * 100) : 0,
+    applications,
     high_intent: highIntent,
   };
 }
