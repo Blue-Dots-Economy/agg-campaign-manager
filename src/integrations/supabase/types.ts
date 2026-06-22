@@ -19,6 +19,7 @@ export type Database = {
           created_at: string
           enabled: boolean
           id: string
+          last_error: string | null
           last_synced_at: string | null
           name: string
           program: string
@@ -31,6 +32,7 @@ export type Database = {
           created_at?: string
           enabled?: boolean
           id?: string
+          last_error?: string | null
           last_synced_at?: string | null
           name: string
           program: string
@@ -43,6 +45,7 @@ export type Database = {
           created_at?: string
           enabled?: boolean
           id?: string
+          last_error?: string | null
           last_synced_at?: string | null
           name?: string
           program?: string
