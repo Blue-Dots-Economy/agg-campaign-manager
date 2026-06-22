@@ -1,5 +1,4 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useMemo } from "react";
 import {
   LineChart,
   Line,
@@ -16,18 +15,7 @@ import {
   Legend,
 } from "recharts";
 import { useProgram } from "@/programs/context";
-import { useCampaignData } from "@/programs/useCampaignData";
-import {
-  computeKpis,
-  byCampaignDay,
-  dropReasonBreakdown,
-  intentDistribution,
-  regionSplit,
-  phasesReachedBreakdown,
-  jobStatusBreakdown,
-  callOutcomeBreakdown,
-  intentDistributionDkb,
-} from "@/programs/metrics";
+import { useProgramAggregates } from "@/programs/useProgramAggregates";
 import { KpiCard } from "@/components/KpiCard";
 import { Panel } from "@/components/Panel";
 import { NoDataState, LoadingState } from "@/components/EmptyState";
@@ -56,25 +44,15 @@ const tooltipStyle = {
 
 function Overview() {
   const { config } = useProgram();
-  const { rows, isLoading, source } = useCampaignData(config);
   const isDkb = config.id === "dkb";
+  const query = useProgramAggregates(config);
+  const data = query.data;
 
-  const kpis = useMemo(() => computeKpis(config, rows), [config, rows]);
-  const perDay = useMemo(() => byCampaignDay(config, rows), [config, rows]);
+  if (query.isLoading && !data) return <LoadingState />;
+  if (!data || data.source === "empty" || data.totalRows === 0) return <NoDataState />;
 
-  // KKB-only data
-  const drops = useMemo(() => (isDkb ? [] : dropReasonBreakdown(config, rows)), [config, rows, isDkb]);
-  const intents = useMemo(() => (isDkb ? [] : intentDistribution(rows)), [rows, isDkb]);
-  const regions = useMemo(() => (isDkb ? [] : regionSplit(rows)), [rows, isDkb]);
-
-  // DKB-only data
-  const phases = useMemo(() => (isDkb ? phasesReachedBreakdown(rows) : []), [rows, isDkb]);
-  const jobStatus = useMemo(() => (isDkb ? jobStatusBreakdown(rows) : []), [rows, isDkb]);
-  const outcomes = useMemo(() => (isDkb ? callOutcomeBreakdown(rows) : []), [rows, isDkb]);
-  const dkbIntents = useMemo(() => (isDkb ? intentDistributionDkb(rows) : []), [rows, isDkb]);
-
-  if (isLoading) return <LoadingState />;
-  if (source === "empty" || rows.length === 0) return <NoDataState />;
+  const { kpis, perDay, drops, intents, regions, phases, jobStatus, outcomes, dkbIntents } =
+    data.aggregates;
 
   return (
     <div className="space-y-6">
