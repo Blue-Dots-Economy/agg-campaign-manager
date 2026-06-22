@@ -9,6 +9,7 @@ import {
   Settings,
   Briefcase,
   Plug,
+  Bot,
 } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
@@ -24,6 +25,7 @@ const NAV = [
   { to: "/analytics", label: "Analytics", icon: BarChart3 },
   { to: "/data", label: "Data & uploads", icon: Database },
   { to: "/connections", label: "Connections", icon: Plug },
+  { to: "/agents", label: "Agents", icon: Bot },
   { to: "/settings", label: "Settings", icon: Settings },
 ] as const;
 

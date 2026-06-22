@@ -7,9 +7,10 @@ import { useProgramOverrides } from "@/lib/program-overrides";
 import {
   rayaCreateBatch,
   rayaStartBatch,
-  rayaListAgents,
   validateContacts,
 } from "@/lib/raya.functions";
+import { listProgramAgents } from "@/lib/agents.functions";
+import { Link } from "@tanstack/react-router";
 import { registry, type ProgramId } from "@/programs/registry";
 import { Panel } from "@/components/Panel";
 import { Button } from "@/components/ui/button";
@@ -116,7 +117,7 @@ function LaunchWizard() {
   const [startStatus, setStartStatus] = useState<string | null>(null);
   const [launchError, setLaunchError] = useState<string | null>(null);
 
-  const listAgentsFn = useServerFn(rayaListAgents);
+  const listAgentsFn = useServerFn(listProgramAgents);
   const validateFn = useServerFn(validateContacts);
   const createBatchFn = useServerFn(rayaCreateBatch);
   const startBatchFn = useServerFn(rayaStartBatch);
@@ -125,15 +126,15 @@ function LaunchWizard() {
   useEffect(() => { if (program !== ctxProgram) setProgramId(program); }, [program, ctxProgram, setProgramId]);
 
   const agentsQuery = useQuery({
-    queryKey: ["raya-agents"],
-    queryFn: () => listAgentsFn({ data: {} }),
+    queryKey: ["program-agents", program],
+    queryFn: () => listAgentsFn({ data: { program } }),
     enabled: step >= 1,
     retry: false,
   });
 
   useEffect(() => {
     if (!agentName && agentsQuery.data && agentId) {
-      const found = agentsQuery.data.find((a) => a.id === agentId);
+      const found = agentsQuery.data.find((a) => a.agent_id === agentId);
       if (found) setAgentName(found.name);
     }
   }, [agentsQuery.data, agentId, agentName]);
@@ -258,7 +259,7 @@ function LaunchWizard() {
       )}
 
       {step === 1 && (
-        <Panel title="Step 2 · Agent" description="Choose which Raya agent will place the calls">
+        <Panel title="Step 2 · Agent" description={`Choose which saved ${program.toUpperCase()} agent will place the calls`}>
           {agentsQuery.isLoading && (
             <div className="flex items-center gap-2 text-sm text-muted-foreground"><Loader2 className="h-4 w-4 animate-spin" /> Loading agents…</div>
           )}
@@ -267,32 +268,36 @@ function LaunchWizard() {
               {(agentsQuery.error as Error).message}
             </div>
           )}
-          {agentsQuery.data && (
+          {agentsQuery.data && agentsQuery.data.length === 0 && (
+            <div className="rounded-md border border-dashed px-4 py-6 text-sm text-muted-foreground">
+              No agents saved for {program.toUpperCase()}.{" "}
+              <Link to="/agents" className="text-brand underline">Add one in the Agents section</Link>.
+            </div>
+          )}
+          {agentsQuery.data && agentsQuery.data.length > 0 && (
             <div className="space-y-2 max-w-xl">
               <Label>Raya agent</Label>
               <Select
                 value={agentId}
                 onValueChange={(v) => {
                   setAgentId(v);
-                  setAgentName(agentsQuery.data.find((a) => a.id === v)?.name ?? "");
+                  setAgentName(agentsQuery.data?.find((a) => a.agent_id === v)?.name ?? "");
                 }}
               >
                 <SelectTrigger><SelectValue placeholder="Select an agent" /></SelectTrigger>
                 <SelectContent>
-                  {agentsQuery.data.length === 0 && <div className="p-2 text-xs text-muted-foreground">No agents returned</div>}
                   {agentsQuery.data.map((a) => (
-                    <SelectItem key={a.id} value={a.id}>
+                    <SelectItem key={a.id} value={a.agent_id}>
                       <div className="flex flex-col">
-                        <span>{a.name}</span>
-                        <span className="text-[10px] font-mono opacity-60">{a.id}</span>
+                        <span>{a.name} — <span className="font-mono text-[10px] opacity-60">{a.agent_id}</span></span>
                       </div>
                     </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
-              {defaultAgentId && (
-                <p className="text-xs text-muted-foreground">Default for {config.label}: <span className="font-mono">{defaultAgentId}</span></p>
-              )}
+              <p className="text-xs text-muted-foreground">
+                Manage agents in the <Link to="/agents" className="text-brand underline">Agents</Link> section.
+              </p>
             </div>
           )}
         </Panel>
