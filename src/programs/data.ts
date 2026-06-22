@@ -149,6 +149,47 @@ export function getCampaignData(config: ProgramConfig): CallRow[] {
         row.trade = row.course_interest;
         row.counsellor_id = `C-${100 + Math.floor(rand() * 12)}`;
         row.candidate_name = row.seeker_name;
+        // Synthesized DKB raw columns so charts/KPIs render before a live sheet is connected.
+        const phase = answered ? `Phase ${1 + Math.floor(rand() * 4)}` : "Not Called";
+        const jobStatusPool = ["Unverified", "Active", "Closed", "Not Called", "Wrong Number"];
+        const jobStatus = answered
+          ? jobStatusPool[Math.floor(rand() * jobStatusPool.length)]
+          : "Not Called";
+        const callStatus = answered
+          ? rand() < 0.5
+            ? "Answered"
+            : rand() < 0.5
+              ? "Completed"
+              : "Answered and dropped"
+          : rand() < 0.5
+            ? "Unanswered"
+            : "Pending";
+        const newJobPosted = engaged && rand() < 0.04 ? "Yes" : "No";
+        const talentInsights = engaged && rand() < 0.15 ? "Yes" : "No";
+        const outcome = answered
+          ? rand() < 0.5
+            ? "Completed"
+            : "Callback Requested"
+          : rand() < 0.5
+            ? "No Answer"
+            : "Early Disconnect";
+        row.raw = {
+          campaign_day: row.campaign_day,
+          campaign_date: row.campaign_date,
+          campaign_type: row.campaign_type,
+          contact_phone: row.phone,
+          company_name: `Acme ${Math.floor(rand() * 999)}`,
+          job_role_input: KKB_JOBS[Math.floor(rand() * KKB_JOBS.length)],
+          city_campaign: row.city_campaign,
+          call_id: row.call_id,
+          call_status: callStatus,
+          call_outcome: outcome,
+          job_status: jobStatus,
+          phases_reached: phase,
+          new_job_posted: newJobPosted,
+          talent_insights_shown: talentInsights,
+          intent_score: String(intent),
+        };
       }
 
       rows.push(row);
