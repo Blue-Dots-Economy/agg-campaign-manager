@@ -2,7 +2,7 @@ import { createServerFn } from "@tanstack/react-start";
 import { createClient } from "@supabase/supabase-js";
 import type { CallRow } from "@/programs/data";
 import type { ProgramId, ProgramConfig } from "@/programs/registry";
-import { PROGRAMS } from "@/programs/registry";
+import { registry as PROGRAMS } from "@/programs/registry";
 import {
   computeKpis,
   byCampaignDay,
