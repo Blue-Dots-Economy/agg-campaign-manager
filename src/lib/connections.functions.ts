@@ -14,6 +14,7 @@ export interface SheetConnection {
   status: string;
   row_count: number | null;
   last_synced_at: string | null;
+  last_error: string | null;
   created_at: string;
 }
 
@@ -98,6 +99,7 @@ export const testConnection = createServerFn({ method: "POST" })
           .update({
             status: "connected",
             row_count: result.rowCount,
+            last_error: null,
             last_synced_at: new Date().toISOString(),
           })
           .eq("id", data.id);
@@ -109,28 +111,75 @@ export const testConnection = createServerFn({ method: "POST" })
         const sb = getServerSupabase();
         await sb
           .from("sheet_connections")
-          .update({ status: "error", last_synced_at: new Date().toISOString() })
+          .update({ status: "error", last_error: msg, last_synced_at: new Date().toISOString() })
           .eq("id", data.id);
       }
       return { ok: false as const, error: msg };
     }
   });
 
+/** Re-validate every enabled connection for a program and refresh stored status. */
+export const revalidateConnections = createServerFn({ method: "POST" })
+  .inputValidator((d: { program: ProgramId }) => d)
+  .handler(async ({ data }) => {
+    const sb = getServerSupabase();
+    const { data: rows } = await sb
+      .from("sheet_connections")
+      .select("*")
+      .eq("program", data.program)
+      .eq("enabled", true);
+    const list = (rows ?? []) as SheetConnection[];
+    if (list.length === 0 || !process.env.GOOGLE_SERVICE_ACCOUNT_JSON) {
+      return { checked: 0 };
+    }
+    const { readSheet } = await import("./sheets.server");
+    for (const c of list) {
+      try {
+        const result = await readSheet(c.sheet_id, c.tab_name ?? undefined);
+        await sb
+          .from("sheet_connections")
+          .update({
+            status: "connected",
+            row_count: result.rowCount,
+            last_error: null,
+            last_synced_at: new Date().toISOString(),
+          })
+          .eq("id", c.id);
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : String(err);
+        await sb
+          .from("sheet_connections")
+          .update({ status: "error", last_error: msg, last_synced_at: new Date().toISOString() })
+          .eq("id", c.id);
+      }
+    }
+    return { checked: list.length };
+  });
+
 // ---- Aggregation -----------------------------------------------------------
 
-function asBool(v: string | undefined): boolean {
+function asYesNoBool(v: string | undefined): boolean {
   if (!v) return false;
-  const s = v.trim().toLowerCase();
-  return s === "true" || s === "1" || s === "yes" || s === "y";
+  const s = String(v).trim().toLowerCase();
+  return s === "yes" || s === "y" || s === "true" || s === "1";
 }
 function asNum(v: string | undefined): number {
-  if (!v) return 0;
+  if (v === undefined || v === null || v === "") return 0;
   const n = Number(String(v).replace(/[,%]/g, ""));
   return Number.isFinite(n) ? n : 0;
 }
-function asArr(v: string | undefined): string[] {
+function asJsonArr(v: string | undefined): string[] {
   if (!v) return [];
-  return v.split(/[|,;]/).map((s) => s.trim()).filter(Boolean);
+  const s = String(v).trim();
+  if (s.startsWith("[")) {
+    try {
+      const parsed = JSON.parse(s);
+      if (Array.isArray(parsed)) return parsed.map((x) => String(x));
+    } catch {
+      /* fall through */
+    }
+  }
+  return s.split(/[|,;]/).map((x) => x.trim()).filter(Boolean);
 }
 
 function mapRow(headers: string[], values: string[]): CallRow {
@@ -147,28 +196,28 @@ function mapRow(headers: string[], values: string[]): CallRow {
     call_duration_seconds: asNum(get("call_duration_seconds")),
     call_datetime_ist: get("call_datetime_ist") ?? "",
     call_outcome: get("call_outcome") ?? "",
-    call_answered: asBool(get("call_answered")),
-    call_engaged: asBool(get("call_engaged")),
-    applied_to_job: asBool(get("applied_to_job")),
+    call_answered: asYesNoBool(get("call_answered")),
+    call_engaged: asYesNoBool(get("call_engaged")),
+    applied_to_job: asYesNoBool(get("applied_to_job")),
     applications_count: asNum(get("applications_count")),
-    jobs_shown: asNum(get("jobs_shown")),
+    jobs_shown: asYesNoBool(get("jobs_shown")),
     primary_topic: get("primary_topic") ?? "",
     call_language: get("call_language") ?? get("language") ?? "",
-    call_recording_url: get("call_recording_url") ?? "",
-    final_summary: get("final_summary") ?? "",
-    call_transcript: get("call_transcript") ?? "",
-    tried_to_apply: asBool(get("tried_to_apply")),
+    call_recording_url: "",
+    final_summary: "",
+    call_transcript: "",
+    tried_to_apply: asYesNoBool(get("tried_to_apply")),
     drop_reason: get("drop_reason") ?? "",
     city_campaign: get("city_campaign") ?? "",
     seeker_name: get("seeker_name") ?? get("candidate_name") ?? "",
     user_intent: get("user_intent") ?? "low",
-    jobs_recommended: asArr(get("jobs_recommended")),
-    jobs_applied: asArr(get("jobs_applied")),
-    jobs_failed_to_apply: asArr(get("jobs_failed_to_apply")),
+    jobs_recommended: asJsonArr(get("jobs_recommended")),
+    jobs_applied: asJsonArr(get("jobs_applied")),
+    jobs_failed_to_apply: asJsonArr(get("jobs_failed_to_apply")),
     "Intent Score": asNum(get("Intent Score")),
-    "Intent Score Reasoning": get("Intent Score Reasoning") ?? "",
-    counselled: asBool(get("counselled")),
-    interview_scheduled: asBool(get("interview_scheduled")),
+    "Intent Score Reasoning": "",
+    counselled: asYesNoBool(get("counselled")),
+    interview_scheduled: asYesNoBool(get("interview_scheduled")),
     course_interest: get("course_interest") ?? undefined,
     trade: get("trade") ?? undefined,
     counsellor_id: get("counsellor_id") ?? undefined,
@@ -188,32 +237,35 @@ export const fetchProgramRows = createServerFn({ method: "GET" })
     if (error) throw new Error(error.message);
     const list = (conns ?? []) as SheetConnection[];
 
-    // No service account or no enabled connections → fall back to mock so the
-    // dashboard still has content to render.
     if (!process.env.GOOGLE_SERVICE_ACCOUNT_JSON || list.length === 0) {
       return {
         source: "mock" as const,
         connectionCount: list.length,
         rows: getCampaignData(registry[data.program]),
+        errors: [] as { id: string; name: string; message: string }[],
       };
     }
 
     const { readSheet } = await import("./sheets.server");
-    const merged = new Map<string, CallRow>();
+    const out: CallRow[] = [];
+    const seen = new Set<string>();
     const errors: { id: string; name: string; message: string }[] = [];
     for (const c of list) {
       try {
         const { headers, rows } = await readSheet(c.sheet_id, c.tab_name ?? undefined);
         for (const r of rows) {
           const mapped = mapRow(headers, r);
-          const key = mapped.call_id || `${c.id}:${merged.size}`;
-          if (!merged.has(key)) merged.set(key, mapped);
+          const key = mapped.call_id || `${c.id}:${out.length}`;
+          if (seen.has(key)) continue;
+          seen.add(key);
+          out.push(mapped);
         }
         await sb
           .from("sheet_connections")
           .update({
             status: "connected",
             row_count: rows.length,
+            last_error: null,
             last_synced_at: new Date().toISOString(),
           })
           .eq("id", c.id);
@@ -222,13 +274,12 @@ export const fetchProgramRows = createServerFn({ method: "GET" })
         errors.push({ id: c.id, name: c.name, message: msg });
         await sb
           .from("sheet_connections")
-          .update({ status: "error", last_synced_at: new Date().toISOString() })
+          .update({ status: "error", last_error: msg, last_synced_at: new Date().toISOString() })
           .eq("id", c.id);
       }
     }
 
-    const rows = Array.from(merged.values());
-    if (rows.length === 0) {
+    if (out.length === 0) {
       return {
         source: "mock" as const,
         connectionCount: list.length,
@@ -236,5 +287,5 @@ export const fetchProgramRows = createServerFn({ method: "GET" })
         errors,
       };
     }
-    return { source: "sheets" as const, connectionCount: list.length, rows, errors };
+    return { source: "sheets" as const, connectionCount: list.length, rows: out, errors };
   });
