@@ -117,7 +117,7 @@ function LaunchWizard() {
   const [startStatus, setStartStatus] = useState<string | null>(null);
   const [launchError, setLaunchError] = useState<string | null>(null);
 
-  const listAgentsFn = useServerFn(rayaListAgents);
+  const listAgentsFn = useServerFn(listProgramAgents);
   const validateFn = useServerFn(validateContacts);
   const createBatchFn = useServerFn(rayaCreateBatch);
   const startBatchFn = useServerFn(rayaStartBatch);
@@ -126,15 +126,15 @@ function LaunchWizard() {
   useEffect(() => { if (program !== ctxProgram) setProgramId(program); }, [program, ctxProgram, setProgramId]);
 
   const agentsQuery = useQuery({
-    queryKey: ["raya-agents"],
-    queryFn: () => listAgentsFn({ data: {} }),
+    queryKey: ["program-agents", program],
+    queryFn: () => listAgentsFn({ data: { program } }),
     enabled: step >= 1,
     retry: false,
   });
 
   useEffect(() => {
     if (!agentName && agentsQuery.data && agentId) {
-      const found = agentsQuery.data.find((a) => a.id === agentId);
+      const found = agentsQuery.data.find((a) => a.agent_id === agentId);
       if (found) setAgentName(found.name);
     }
   }, [agentsQuery.data, agentId, agentName]);
