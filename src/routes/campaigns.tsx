@@ -1,10 +1,13 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
+import { useQuery } from "@tanstack/react-query";
+import { useServerFn } from "@tanstack/react-start";
 import { useProgram } from "@/programs/context";
 import { type CallRow } from "@/programs/data";
 import { useCampaignData } from "@/programs/useCampaignData";
 import { byCampaignDay } from "@/programs/metrics";
 import { Panel } from "@/components/Panel";
+import { getCallDetailFn } from "@/lib/connections.functions";
 import {
   Table,
   TableBody,
