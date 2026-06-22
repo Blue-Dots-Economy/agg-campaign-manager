@@ -1,7 +1,8 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
 import { useProgram } from "@/programs/context";
-import { getCampaignData, type CallRow } from "@/programs/data";
+import { type CallRow } from "@/programs/data";
+import { useCampaignData } from "@/programs/useCampaignData";
 import { byCampaignDay } from "@/programs/metrics";
 import { Panel } from "@/components/Panel";
 import {
@@ -27,7 +28,7 @@ export const Route = createFileRoute("/campaigns")({
 
 function Campaigns() {
   const { config } = useProgram();
-  const rows = useMemo(() => getCampaignData(config), [config]);
+  const { rows } = useCampaignData(config);
   const campaigns = useMemo(() => byCampaignDay(config, rows), [config, rows]);
   const [openDay, setOpenDay] = useState<string | null>(null);
   const [filter, setFilter] = useState("");

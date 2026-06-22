@@ -16,7 +16,7 @@ import {
   Legend,
 } from "recharts";
 import { useProgram } from "@/programs/context";
-import { getCampaignData } from "@/programs/data";
+import { useCampaignData } from "@/programs/useCampaignData";
 import {
   computeKpis,
   byCampaignDay,
@@ -43,17 +43,17 @@ const PIE_COLORS = [
 function Overview() {
   const { config } = useProgram();
 
-  const { rows, kpis, perDay, drops, intents, regions } = useMemo(() => {
-    const rows = getCampaignData(config);
-    return {
-      rows,
+  const { rows } = useCampaignData(config);
+  const { kpis, perDay, drops, intents, regions } = useMemo(
+    () => ({
       kpis: computeKpis(config, rows),
       perDay: byCampaignDay(config, rows),
       drops: dropReasonBreakdown(config, rows),
       intents: intentDistribution(rows),
       regions: regionSplit(rows),
-    };
-  }, [config]);
+    }),
+    [config, rows],
+  );
 
   void rows;
 

@@ -13,7 +13,7 @@ import {
   Legend,
 } from "recharts";
 import { useProgram } from "@/programs/context";
-import { getCampaignData } from "@/programs/data";
+import { useCampaignData } from "@/programs/useCampaignData";
 import { byCampaignDay, dropReasonBreakdown, intentDistribution } from "@/programs/metrics";
 import { Panel } from "@/components/Panel";
 
@@ -23,7 +23,7 @@ export const Route = createFileRoute("/analytics")({
 
 function Analytics() {
   const { config } = useProgram();
-  const rows = useMemo(() => getCampaignData(config), [config]);
+  const { rows } = useCampaignData(config);
   const perDay = useMemo(() => byCampaignDay(config, rows), [config, rows]);
   const drops = useMemo(() => dropReasonBreakdown(config, rows), [config, rows]);
   const intents = useMemo(() => intentDistribution(rows), [rows]);
