@@ -124,7 +124,7 @@ function Launch() {
     }
     setCreating(true);
     try {
-      const contacts = buildContacts(parsed);
+      const contacts = buildContacts(parsed) as any;
       const res: any = await createBatchFn({
         data: { agentId, batchName, contacts },
       });
