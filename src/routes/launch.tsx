@@ -1,12 +1,15 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useState, useCallback, useRef } from "react";
+import { useServerFn } from "@tanstack/react-start";
 import { useProgram } from "@/programs/context";
+import { useProgramOverrides } from "@/lib/program-overrides";
+import { rayaCreateBatch, rayaStartBatch } from "@/lib/raya.functions";
 import { Panel } from "@/components/Panel";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
-import { Upload, FileText, Check } from "lucide-react";
+import { Upload, FileText, Rocket, Check } from "lucide-react";
 import { toast } from "sonner";
 import {
   Table,
@@ -16,6 +19,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { ScheduleEditor, type ScheduleState, defaultSchedule } from "@/components/ScheduleEditor";
 
 export const Route = createFileRoute("/launch")({
   component: Launch,
@@ -26,33 +30,83 @@ function detectRegion(filename: string): { region: string; language: string; cit
   if (f.includes("ka") || f.includes("kannada") || f.includes("hubli")) {
     return { region: "KA", language: "Kannada", city: "Hubli-Dharwad" };
   }
-  if (f.includes("gzb") || f.includes("hindi") || f.includes("ghaziabad")) {
-    return { region: "GZB", language: "Hindi", city: "Ghaziabad" };
-  }
   return { region: "GZB", language: "Hindi", city: "Ghaziabad" };
 }
 
-function parseCsvPreview(text: string, max = 20) {
+interface ParsedCsv {
+  headers: string[];
+  rows: string[][];
+  total: number;
+  all: string[][];
+}
+
+function parseCsv(text: string): ParsedCsv {
   const lines = text.trim().split(/\r?\n/);
-  if (!lines.length) return { headers: [], rows: [], total: 0 };
+  if (!lines.length) return { headers: [], rows: [], total: 0, all: [] };
   const headers = lines[0].split(",").map((h) => h.trim());
-  const rows = lines.slice(1, max + 1).map((l) => l.split(","));
-  return { headers, rows, total: lines.length - 1 };
+  const all = lines.slice(1).map((l) => l.split(",").map((c) => c.trim()));
+  return { headers, rows: all.slice(0, 20), total: all.length, all };
+}
+
+function pickColumn(headers: string[], candidates: string[]): number {
+  const lc = headers.map((h) => h.toLowerCase());
+  for (const c of candidates) {
+    const i = lc.indexOf(c.toLowerCase());
+    if (i >= 0) return i;
+  }
+  return -1;
+}
+
+function buildContacts(parsed: ParsedCsv) {
+  const nameIdx = pickColumn(parsed.headers, ["contact_name", "name", "seeker_name", "candidate_name"]);
+  const phoneIdx = pickColumn(parsed.headers, ["contact_phone", "phone", "mobile", "phone_number"]);
+  const ccIdx = pickColumn(parsed.headers, ["country_code", "cc"]);
+  if (phoneIdx < 0) throw new Error("CSV must include a phone column (phone / contact_phone / mobile).");
+
+  return parsed.all.map((row, i) => {
+    const contact: Record<string, any> = {
+      contact_name: nameIdx >= 0 ? row[nameIdx] || `Contact ${i + 1}` : `Contact ${i + 1}`,
+      contact_phone: (row[phoneIdx] ?? "").replace(/[^\d]/g, ""),
+      country_code: ccIdx >= 0 && row[ccIdx] ? row[ccIdx].replace(/[^\d]/g, "") || "91" : "91",
+    };
+    parsed.headers.forEach((h, j) => {
+      if (j === nameIdx || j === phoneIdx || j === ccIdx) return;
+      if (!h) return;
+      contact[h] = row[j] ?? "";
+    });
+    return contact;
+  });
 }
 
 function Launch() {
-  const { config } = useProgram();
+  const { config, programId } = useProgram();
+  const overrides = useProgramOverrides(programId);
+  const agentId = overrides.rayaAgentId || config.rayaAgentId;
+
   const [drag, setDrag] = useState(false);
   const [file, setFile] = useState<File | null>(null);
-  const [preview, setPreview] = useState<{ headers: string[]; rows: string[][]; total: number } | null>(null);
+  const [parsed, setParsed] = useState<ParsedCsv | null>(null);
   const [detected, setDetected] = useState<{ region: string; language: string; city: string } | null>(null);
-  const [scheduleAt, setScheduleAt] = useState("");
+  const [batchName, setBatchName] = useState("");
+  const [schedule, setSchedule] = useState<ScheduleState>(defaultSchedule);
+  const [maxRetries, setMaxRetries] = useState(2);
+  const [createdBatchId, setCreatedBatchId] = useState<string | null>(null);
+  const [creating, setCreating] = useState(false);
+  const [starting, setStarting] = useState(false);
+  const [startStatus, setStartStatus] = useState<string | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+
+  const createBatchFn = useServerFn(rayaCreateBatch);
+  const startBatchFn = useServerFn(rayaStartBatch);
 
   const handleFile = useCallback((f: File) => {
     setFile(f);
-    setDetected(detectRegion(f.name));
-    f.text().then((t) => setPreview(parseCsvPreview(t)));
+    setCreatedBatchId(null);
+    setStartStatus(null);
+    const region = detectRegion(f.name);
+    setDetected(region);
+    setBatchName(`${f.name.replace(/\.csv$/i, "")} · ${new Date().toISOString().slice(0, 10)}`);
+    f.text().then((t) => setParsed(parseCsv(t)));
   }, []);
 
   const onDrop = (e: React.DragEvent) => {
@@ -62,10 +116,53 @@ function Launch() {
     if (f) handleFile(f);
   };
 
-  const launch = () => {
-    toast.message("Raya integration pending — Phase 2", {
-      description: `Would create & schedule a ${preview?.total ?? 0}-row batch for ${config.label}.`,
-    });
+  const create = async () => {
+    if (!parsed) return;
+    if (!agentId) {
+      toast.error("Set the Raya agent id for this program in Settings first.");
+      return;
+    }
+    setCreating(true);
+    try {
+      const contacts = buildContacts(parsed);
+      const res: any = await createBatchFn({
+        data: { agentId, batchName, contacts },
+      });
+      const id = res?.id ?? res?.batch_id ?? res?.batch?.id ?? res?.data?.id;
+      if (!id) throw new Error("Batch created but no id returned.");
+      setCreatedBatchId(String(id));
+      toast.success(`Batch created · ${id}`);
+    } catch (e: any) {
+      toast.error(e?.message ?? "Failed to create batch");
+    } finally {
+      setCreating(false);
+    }
+  };
+
+  const start = async () => {
+    if (!createdBatchId) return;
+    setStarting(true);
+    try {
+      const res: any = await startBatchFn({
+        data: {
+          batchId: createdBatchId,
+          schedule: {
+            timezone: schedule.timezone,
+            start_time: schedule.startTime,
+            end_time: schedule.endTime,
+            days: schedule.days,
+          },
+          maxRetries,
+        },
+      });
+      const status = res?.status ?? res?.batch?.status ?? "started";
+      setStartStatus(String(status));
+      toast.success(`Batch started · ${status}`);
+    } catch (e: any) {
+      toast.error(e?.message ?? "Failed to start batch");
+    } finally {
+      setStarting(false);
+    }
   };
 
   return (
@@ -89,7 +186,7 @@ function Launch() {
             </div>
             <p className="text-sm font-medium">Drop CSV here, or click to browse</p>
             <p className="text-xs text-muted-foreground">
-              Filename hint: include "KA"/"Kannada"/"Hubli" or "GZB"/"Hindi"/"Ghaziabad"
+              Required columns: phone (or contact_phone). Optional: contact_name, country_code, and any extras passed as agent_args.
             </p>
             <input
               ref={inputRef}
@@ -103,7 +200,7 @@ function Launch() {
           {file && (
             <div className="mt-4 grid gap-3 sm:grid-cols-3">
               <InfoTile icon={<FileText className="h-4 w-4" />} label="File" value={file.name} />
-              <InfoTile label="Rows" value={preview?.total?.toLocaleString() ?? "—"} />
+              <InfoTile label="Rows" value={parsed?.total?.toLocaleString() ?? "—"} />
               <InfoTile
                 label="Detected region"
                 value={detected ? `${detected.region} · ${detected.language}` : "—"}
@@ -112,14 +209,14 @@ function Launch() {
             </div>
           )}
 
-          {preview && preview.headers.length > 0 && (
+          {parsed && parsed.headers.length > 0 && (
             <div className="mt-5">
               <p className="text-xs text-muted-foreground mb-2">Preview · first 20 rows</p>
               <div className="max-h-72 overflow-auto rounded-md border">
                 <Table>
                   <TableHeader>
                     <TableRow>
-                      {preview.headers.map((h) => (
+                      {parsed.headers.map((h) => (
                         <TableHead key={h} className="whitespace-nowrap text-xs">
                           {h}
                         </TableHead>
@@ -127,7 +224,7 @@ function Launch() {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {preview.rows.map((r, i) => (
+                    {parsed.rows.map((r, i) => (
                       <TableRow key={i}>
                         {r.map((c, j) => (
                           <TableCell key={j} className="text-xs whitespace-nowrap">
@@ -157,39 +254,75 @@ function Launch() {
               </li>
             ))}
           </ol>
+          <div className="mt-4 border-t pt-3 text-xs">
+            <div className="flex items-center justify-between">
+              <span className="text-muted-foreground">Agent</span>
+              <span className="font-mono">{agentId || <em className="text-destructive not-italic">not set</em>}</span>
+            </div>
+          </div>
+        </Panel>
+      </div>
 
-          <div className="mt-5 space-y-3 border-t pt-4">
+      <div className="grid gap-4 lg:grid-cols-2">
+        <Panel title="1 · Create batch" description="Posts contacts to Raya">
+          <div className="space-y-3">
             <div>
-              <Label htmlFor="schedule" className="text-xs">
-                Schedule call window
-              </Label>
+              <Label htmlFor="batchName" className="text-xs">Batch name</Label>
+              <Input id="batchName" value={batchName} onChange={(e) => setBatchName(e.target.value)} className="mt-1" />
+            </div>
+            <div className="flex items-center gap-2 text-xs text-muted-foreground">
+              <span>Contacts will be built from:</span>
+              <Badge variant="secondary" className="bg-muted">name</Badge>
+              <Badge variant="secondary" className="bg-muted">phone</Badge>
+              <Badge variant="secondary" className="bg-muted">country_code</Badge>
+              <span>+ extras → agent_args</span>
+            </div>
+            <Button
+              onClick={create}
+              disabled={!parsed || creating}
+              className="w-full bg-brand text-brand-foreground hover:bg-brand/90 gap-1.5"
+            >
+              {creating ? "Creating…" : <><Rocket className="h-4 w-4" /> Create batch</>}
+            </Button>
+            {createdBatchId && (
+              <div className="rounded-md bg-brand-soft text-brand px-3 py-2 text-xs flex items-center gap-2">
+                <Check className="h-3.5 w-3.5" /> Batch id: <span className="font-mono">{createdBatchId}</span>
+              </div>
+            )}
+          </div>
+        </Panel>
+
+        <Panel title="2 · Schedule & start" description="Recurring call window">
+          <ScheduleEditor value={schedule} onChange={setSchedule} />
+          <div className="mt-3 grid grid-cols-2 gap-3">
+            <div>
+              <Label htmlFor="retries" className="text-xs">Max retries</Label>
               <Input
-                id="schedule"
-                type="datetime-local"
-                value={scheduleAt}
-                onChange={(e) => setScheduleAt(e.target.value)}
+                id="retries"
+                type="number"
+                min={0}
+                max={10}
+                value={maxRetries}
+                onChange={(e) => setMaxRetries(Number(e.target.value) || 0)}
                 className="mt-1"
               />
             </div>
-            {detected && (
-              <div className="flex items-center justify-between text-xs">
-                <span className="text-muted-foreground">Region</span>
-                <Badge variant="secondary" className="bg-brand-soft text-brand">
-                  {detected.region} · {detected.language}
-                </Badge>
-              </div>
-            )}
-            <Button
-              onClick={launch}
-              disabled={!file}
-              className="w-full bg-brand text-brand-foreground hover:bg-brand/90 gap-1.5"
-            >
-              <Check className="h-4 w-4" /> Create & schedule batch
-            </Button>
-            <p className="text-[11px] text-muted-foreground text-center">
-              Phase 2 — Raya integration pending
-            </p>
           </div>
+          <Button
+            onClick={start}
+            disabled={!createdBatchId || starting}
+            className="mt-4 w-full bg-brand text-brand-foreground hover:bg-brand/90 gap-1.5"
+          >
+            {starting ? "Starting…" : "Start batch"}
+          </Button>
+          {startStatus && (
+            <div className="mt-2 rounded-md bg-brand-soft text-brand px-3 py-2 text-xs flex items-center gap-2">
+              <Check className="h-3.5 w-3.5" /> Status: {startStatus}
+            </div>
+          )}
+          <p className="mt-2 text-[11px] text-muted-foreground">
+            Note: Raya rate-limits single calls to 1 per 20s by default.
+          </p>
         </Panel>
       </div>
     </div>
