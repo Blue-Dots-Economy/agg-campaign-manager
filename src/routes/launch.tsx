@@ -7,9 +7,10 @@ import { useProgramOverrides } from "@/lib/program-overrides";
 import {
   rayaCreateBatch,
   rayaStartBatch,
-  rayaListAgents,
   validateContacts,
 } from "@/lib/raya.functions";
+import { listProgramAgents } from "@/lib/agents.functions";
+import { Link } from "@tanstack/react-router";
 import { registry, type ProgramId } from "@/programs/registry";
 import { Panel } from "@/components/Panel";
 import { Button } from "@/components/ui/button";
