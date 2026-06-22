@@ -30,6 +30,14 @@ const NAV = [
 export function Sidebar() {
   const { config, programId, setProgramId } = useProgram();
   const pathname = useRouterState({ select: (s) => s.location.pathname });
+  const listFn = useServerFn(listConnections);
+  const { data: conns } = useQuery({
+    queryKey: ["connections", programId],
+    queryFn: () => listFn({ data: { program: programId } }),
+  });
+  const enabled = (conns ?? []).filter((c) => c.enabled);
+  const allConnected = enabled.length > 0 && enabled.every((c) => c.status === "connected");
+
 
   return (
     <aside className="hidden md:flex w-64 shrink-0 flex-col bg-sidebar text-sidebar-foreground">
