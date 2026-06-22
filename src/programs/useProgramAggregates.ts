@@ -17,6 +17,11 @@ export function useProgramAggregates(config: ProgramConfig) {
     gcTime: 30 * 60_000,
     placeholderData: keepPreviousData,
     refetchOnWindowFocus: false,
+    refetchOnReconnect: false,
+    refetchOnMount: false,
+    refetchInterval: false,
+    retry: 1,
+    retryDelay: 1500,
   });
   return query;
 }
