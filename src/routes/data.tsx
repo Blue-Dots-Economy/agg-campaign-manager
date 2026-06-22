@@ -92,34 +92,3 @@ function DataUploads() {
     </Panel>
   );
 }
-
-    <Panel title="Data & uploads" description="History of CSV uploads appended to the master sheets">
-      <Table>
-        <TableHeader>
-          <TableRow>
-            <TableHead>Date</TableHead>
-            <TableHead>Program</TableHead>
-            <TableHead>File</TableHead>
-            <TableHead className="text-right">Rows added</TableHead>
-            <TableHead>Status</TableHead>
-          </TableRow>
-        </TableHeader>
-        <TableBody>
-          {MOCK_UPLOADS.map((u, i) => (
-            <TableRow key={i}>
-              <TableCell className="text-sm text-muted-foreground">{u.date}</TableCell>
-              <TableCell>{u.program}</TableCell>
-              <TableCell className="font-mono text-xs">{u.file}</TableCell>
-              <TableCell className="text-right tabular-nums">{u.rows.toLocaleString()}</TableCell>
-              <TableCell>
-                <Badge variant="secondary" className={STATUS[u.status]}>
-                  {u.status}
-                </Badge>
-              </TableCell>
-            </TableRow>
-          ))}
-        </TableBody>
-      </Table>
-    </Panel>
-  );
-}
