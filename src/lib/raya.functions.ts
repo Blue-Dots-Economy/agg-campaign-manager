@@ -9,7 +9,7 @@ export interface RayaContact {
   contact_name: string;
   contact_phone: string;
   country_code: string;
-  [extra: string]: unknown;
+  [extra: string]: any;
 }
 
 export interface RayaSchedule {
