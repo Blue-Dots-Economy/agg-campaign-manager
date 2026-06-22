@@ -83,13 +83,15 @@ function quoteTab(tab: string): string {
   return `'${tab.replace(/'/g, "''")}'!`;
 }
 
-// Columns we never need on the client — they balloon Worker memory on 20k+ row sheets.
-const HEAVY_HEADERS = new Set([
+// Columns excluded from the bulk read — they balloon Worker memory on 20k+ row sheets.
+// Fetched on demand via getCallDetail when a user opens a specific call.
+function normalizeHeader(h: string): string {
+  return String(h ?? "").trim().toLowerCase().replace(/[\s\-]+/g, "_");
+}
+const HEAVY_HEADERS_NORM = new Set([
   "call_transcript",
   "final_summary",
   "call_recording_url",
-  "Intent Score Reasoning",
-  "primary_topic",
 ]);
 
 /** Fetch the spreadsheet's tab titles in order. */
