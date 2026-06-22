@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { Plug, Trash2, RefreshCw, Copy, CheckCircle2, AlertCircle, Loader2 } from "lucide-react";
@@ -18,6 +18,12 @@ import {
   DialogFooter,
   DialogTrigger,
 } from "@/components/ui/dialog";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import { toast } from "sonner";
 import {
   listConnections,
@@ -25,6 +31,7 @@ import {
   updateConnection,
   deleteConnection,
   testConnection,
+  revalidateConnections,
   type SheetConnection,
 } from "@/lib/connections.functions";
 const DEFAULT_SA_EMAIL = "blue-dots-admin@blue-dots-project.iam.gserviceaccount.com";
@@ -95,6 +102,7 @@ function ProgramConnections({ program }: { program: ProgramId }) {
   const updateFn = useServerFn(updateConnection);
   const deleteFn = useServerFn(deleteConnection);
   const testFn = useServerFn(testConnection);
+  const revalidateFn = useServerFn(revalidateConnections);
 
   const { data, isLoading } = useQuery({
     queryKey: ["connections", program],
@@ -105,6 +113,19 @@ function ProgramConnections({ program }: { program: ProgramId }) {
     qc.invalidateQueries({ queryKey: ["connections", program] });
     qc.invalidateQueries({ queryKey: ["program-rows", program] });
   };
+
+  // Re-validate every enabled connection on mount so a stale "error" badge
+  // recovers automatically once the underlying issue (secret / sharing) is fixed.
+  useEffect(() => {
+    let cancelled = false;
+    revalidateFn({ data: { program } })
+      .then((res) => {
+        if (!cancelled && res.checked > 0) invalidate();
+      })
+      .catch(() => { /* surfaced per-row */ });
+    return () => { cancelled = true; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [program]);
 
   const toggle = useMutation({
     mutationFn: (vars: { id: string; enabled: boolean }) =>
@@ -147,12 +168,17 @@ function ProgramConnections({ program }: { program: ProgramId }) {
               <div className="flex items-center gap-2">
                 <Plug className="h-4 w-4 text-brand" />
                 <div className="font-medium">{c.name}</div>
-                <StatusBadge status={c.status} enabled={c.enabled} />
+                <StatusBadge status={c.status} enabled={c.enabled} lastError={c.last_error} />
               </div>
               <div className="mt-1 text-xs text-muted-foreground font-mono">
                 {maskId(c.sheet_id)}
                 {c.tab_name ? ` · ${c.tab_name}` : ""}
               </div>
+              {c.status === "error" && c.last_error && (
+                <div className="mt-1 text-xs text-red-600 break-all">
+                  {c.last_error.length > 200 ? `${c.last_error.slice(0, 200)}…` : c.last_error}
+                </div>
+              )}
             </div>
             <div className="text-xs text-muted-foreground text-right min-w-[120px]">
               <div>{c.row_count ?? "—"} rows</div>
@@ -197,7 +223,15 @@ function ProgramConnections({ program }: { program: ProgramId }) {
   );
 }
 
-function StatusBadge({ status, enabled }: { status: string; enabled: boolean }) {
+function StatusBadge({
+  status,
+  enabled,
+  lastError,
+}: {
+  status: string;
+  enabled: boolean;
+  lastError?: string | null;
+}) {
   if (!enabled) return <Badge variant="secondary">disabled</Badge>;
   if (status === "connected")
     return (
@@ -205,12 +239,24 @@ function StatusBadge({ status, enabled }: { status: string; enabled: boolean }) 
         <CheckCircle2 className="mr-1 h-3 w-3" /> connected
       </Badge>
     );
-  if (status === "error")
-    return (
-      <Badge className="bg-red-100 text-red-700 hover:bg-red-100">
+  if (status === "error") {
+    const badge = (
+      <Badge className="bg-red-100 text-red-700 hover:bg-red-100 cursor-help">
         <AlertCircle className="mr-1 h-3 w-3" /> error
       </Badge>
     );
+    if (!lastError) return badge;
+    return (
+      <TooltipProvider>
+        <Tooltip>
+          <TooltipTrigger asChild>{badge}</TooltipTrigger>
+          <TooltipContent className="max-w-md whitespace-pre-wrap break-words text-xs">
+            {lastError}
+          </TooltipContent>
+        </Tooltip>
+      </TooltipProvider>
+    );
+  }
   return <Badge variant="outline">checking</Badge>;
 }
 
