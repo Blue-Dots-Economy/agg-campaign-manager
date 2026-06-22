@@ -2,13 +2,12 @@ import { useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { fetchProgramRows } from "@/lib/connections.functions";
 import type { CallRow } from "./data";
-import { getCampaignData } from "./data";
 import type { ProgramConfig } from "./registry";
 
 export function useCampaignData(config: ProgramConfig): {
   rows: CallRow[];
   isLoading: boolean;
-  source: "sheets" | "mock";
+  source: "sheets" | "empty";
   connectionCount: number;
 } {
   const fn = useServerFn(fetchProgramRows);
@@ -26,9 +25,9 @@ export function useCampaignData(config: ProgramConfig): {
     };
   }
   return {
-    rows: getCampaignData(config),
+    rows: [],
     isLoading: query.isLoading,
-    source: "mock",
+    source: "empty",
     connectionCount: 0,
   };
 }

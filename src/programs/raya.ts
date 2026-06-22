@@ -3,7 +3,6 @@
 export interface RayaBatchInput {
   programId: "kkb" | "dkb";
   agentId: string;
-  fromNumber: string;
   rows: Array<Record<string, unknown>>;
   region: string;
   language: string;

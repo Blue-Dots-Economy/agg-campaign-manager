@@ -1,8 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { createClient } from "@supabase/supabase-js";
 import type { CallRow } from "@/programs/data";
-import { getCampaignData } from "@/programs/data";
-import { registry, type ProgramId } from "@/programs/registry";
+import { type ProgramId } from "@/programs/registry";
 
 export interface SheetConnection {
   id: string;
@@ -303,9 +302,9 @@ export const fetchProgramRows = createServerFn({ method: "GET" })
 
     if (!process.env.GOOGLE_SERVICE_ACCOUNT_JSON || list.length === 0) {
       return {
-        source: "mock" as const,
+        source: "empty" as const,
         connectionCount: list.length,
-        rows: getCampaignData(registry[data.program]),
+        rows: [] as CallRow[],
         errors: [] as { id: string; name: string; message: string }[],
       };
     }
@@ -346,9 +345,9 @@ export const fetchProgramRows = createServerFn({ method: "GET" })
 
     if (out.length === 0) {
       return {
-        source: "mock" as const,
+        source: "empty" as const,
         connectionCount: list.length,
-        rows: getCampaignData(registry[data.program]),
+        rows: [] as CallRow[],
         errors,
       };
     }

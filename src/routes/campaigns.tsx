@@ -7,6 +7,7 @@ import { type CallRow } from "@/programs/data";
 import { useCampaignData } from "@/programs/useCampaignData";
 import { byCampaignDay } from "@/programs/metrics";
 import { Panel } from "@/components/Panel";
+import { NoDataState, LoadingState } from "@/components/EmptyState";
 import { getCallDetailFn } from "@/lib/connections.functions";
 import {
   Table,
@@ -31,7 +32,7 @@ export const Route = createFileRoute("/campaigns")({
 
 function Campaigns() {
   const { config } = useProgram();
-  const { rows, source } = useCampaignData(config);
+  const { rows, source, isLoading } = useCampaignData(config);
   const campaigns = useMemo(() => byCampaignDay(config, rows), [config, rows]);
   const [openDay, setOpenDay] = useState<string | null>(null);
   const [filter, setFilter] = useState("");
@@ -69,6 +70,9 @@ function Campaigns() {
     : config.successMetric === "applications"
       ? "Applied"
       : "Interviews";
+
+  if (isLoading) return <LoadingState />;
+  if (source === "empty" || rows.length === 0) return <NoDataState />;
 
   return (
     <div className="space-y-6">

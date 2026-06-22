@@ -30,6 +30,7 @@ import {
 } from "@/programs/metrics";
 import { KpiCard } from "@/components/KpiCard";
 import { Panel } from "@/components/Panel";
+import { NoDataState, LoadingState } from "@/components/EmptyState";
 
 export const Route = createFileRoute("/")({
   component: Overview,
@@ -55,7 +56,7 @@ const tooltipStyle = {
 
 function Overview() {
   const { config } = useProgram();
-  const { rows } = useCampaignData(config);
+  const { rows, isLoading, source } = useCampaignData(config);
   const isDkb = config.id === "dkb";
 
   const kpis = useMemo(() => computeKpis(config, rows), [config, rows]);
@@ -71,6 +72,9 @@ function Overview() {
   const jobStatus = useMemo(() => (isDkb ? jobStatusBreakdown(rows) : []), [rows, isDkb]);
   const outcomes = useMemo(() => (isDkb ? callOutcomeBreakdown(rows) : []), [rows, isDkb]);
   const dkbIntents = useMemo(() => (isDkb ? intentDistributionDkb(rows) : []), [rows, isDkb]);
+
+  if (isLoading) return <LoadingState />;
+  if (source === "empty" || rows.length === 0) return <NoDataState />;
 
   return (
     <div className="space-y-6">

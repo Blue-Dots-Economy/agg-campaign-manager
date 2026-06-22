@@ -6,7 +6,6 @@ import type { ProgramId } from "@/programs/registry";
 
 interface Overrides {
   rayaAgentId?: string;
-  fromNumber?: string;
   sheetCsvUrl?: string;
 }
 
