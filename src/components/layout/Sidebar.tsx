@@ -93,9 +93,21 @@ export function Sidebar() {
       </nav>
 
       <div className="px-5 py-4 border-t border-sidebar-border text-[11px] opacity-85">
-        Connected: {config.sheetLabel} ·{" "}
-        <span className="inline-flex items-center gap-1">
-          <span className="h-1.5 w-1.5 rounded-full bg-emerald-300" />
+        {enabled.length === 0 ? (
+          <>No sheets connected · <Link to="/connections" className="underline">add one</Link></>
+        ) : (
+          <>
+            {enabled.length} sheet{enabled.length === 1 ? "" : "s"} ·{" "}
+            <span className="inline-flex items-center gap-1">
+              <span className={cn("h-1.5 w-1.5 rounded-full", allConnected ? "bg-emerald-300" : "bg-amber-300")} />
+              {allConnected ? "connected" : "check status"}
+            </span>
+          </>
+        )}
+      </div>
+    </aside>
+  );
+}
           connected
         </span>
       </div>
