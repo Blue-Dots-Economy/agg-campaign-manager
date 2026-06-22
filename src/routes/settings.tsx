@@ -22,7 +22,6 @@ function Settings() {
 
   const [agentId, setAgentId] = useState("");
   const [sheetUrl, setSheetUrl] = useState("");
-  const [fromNumber, setFromNumber] = useState("");
   const [keyConfigured, setKeyConfigured] = useState<boolean | null>(null);
 
   const keyStatusFn = useServerFn(rayaKeyStatus);
@@ -31,7 +30,6 @@ function Settings() {
     const o = getOverrides(programId);
     setAgentId(o.rayaAgentId ?? config.rayaAgentId ?? "");
     setSheetUrl(o.sheetCsvUrl ?? config.sheetCsvUrl ?? "");
-    setFromNumber(o.fromNumber ?? config.fromNumber ?? "");
   }, [programId, config]);
 
   useEffect(() => {
@@ -41,7 +39,7 @@ function Settings() {
   }, [keyStatusFn]);
 
   const save = () => {
-    setOverrides(programId, { rayaAgentId: agentId, sheetCsvUrl: sheetUrl, fromNumber });
+    setOverrides(programId, { rayaAgentId: agentId, sheetCsvUrl: sheetUrl });
     toast.success("Settings saved");
   };
 
@@ -92,10 +90,6 @@ function Settings() {
               placeholder="https://docs.google.com/…/pub?output=csv"
               className="mt-1"
             />
-          </div>
-          <div>
-            <Label htmlFor="from" className="text-xs">From-number</Label>
-            <Input id="from" value={fromNumber} onChange={(e) => setFromNumber(e.target.value)} className="mt-1" />
           </div>
           <div className="sm:col-span-2 flex items-center justify-between border-t pt-3 mt-1">
             <p className="text-xs text-muted-foreground">

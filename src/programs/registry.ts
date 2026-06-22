@@ -7,7 +7,8 @@ export interface KpiDef {
   label: string;
   icon: string; // lucide icon name
   format: "number" | "percent";
-  target?: number; // for the progress ring (out of 100 for percent, or a target count)
+  /** Optional target for the progress ring. When omitted, the ring is hidden. */
+  target?: number;
 }
 
 export interface LaunchStep {
@@ -23,7 +24,6 @@ export interface ProgramConfig {
   sheetCsvUrl: string;
   sheetLabel: string;
   rayaAgentId: string;
-  fromNumber: string;
   columns: string[];
   kpis: KpiDef[];
   dropReasons: string[];
@@ -116,15 +116,14 @@ export const kkb: ProgramConfig = {
   sheetCsvUrl: "",
   sheetLabel: "KKB master sheet",
   rayaAgentId: "",
-  fromNumber: "+91-80-4718-0000",
   columns: KKB_COLUMNS,
   successMetric: "applications",
   kpis: [
-    { key: "total_calls", label: "Total calls", icon: "Phone", format: "number", target: 1000 },
-    { key: "answered_pct", label: "Answered %", icon: "PhoneCall", format: "percent", target: 100 },
-    { key: "engaged_pct", label: "Engaged %", icon: "MessageCircle", format: "percent", target: 100 },
-    { key: "applications", label: "Applications", icon: "FileCheck", format: "number", target: 300 },
-    { key: "high_intent", label: "High-intent (≥5)", icon: "Flame", format: "number", target: 200 },
+    { key: "total_calls", label: "Total calls", icon: "Phone", format: "number" },
+    { key: "answered_pct", label: "Answered %", icon: "PhoneCall", format: "percent" },
+    { key: "engaged_pct", label: "Engaged %", icon: "MessageCircle", format: "percent" },
+    { key: "applications", label: "Applications", icon: "FileCheck", format: "number" },
+    { key: "high_intent", label: "High-intent (≥5)", icon: "Flame", format: "number" },
   ],
   dropReasons: [
     "early_hangup",
@@ -151,16 +150,15 @@ export const dkb: ProgramConfig = {
   sheetCsvUrl: "",
   sheetLabel: "DKB master sheet",
   rayaAgentId: "",
-  fromNumber: "+91-80-4718-0001",
   columns: DKB_COLUMNS,
   successMetric: "interviews",
   kpis: [
-    { key: "total_calls", label: "Total calls", icon: "Phone", format: "number", target: 6000 },
-    { key: "answered_pct", label: "Answered %", icon: "PhoneCall", format: "percent", target: 100 },
-    { key: "jobs_verified", label: "Jobs verified", icon: "ShieldCheck", format: "number", target: 1000 },
-    { key: "new_jobs_posted", label: "New jobs posted", icon: "Plus", format: "number", target: 150 },
-    { key: "high_intent", label: "High-intent (≥5)", icon: "Flame", format: "number", target: 200 },
-    { key: "talent_insights_shown", label: "Talent insights shown", icon: "Sparkles", format: "number", target: 400 },
+    { key: "total_calls", label: "Total calls", icon: "Phone", format: "number" },
+    { key: "answered_pct", label: "Answered %", icon: "PhoneCall", format: "percent" },
+    { key: "jobs_verified", label: "Jobs verified", icon: "ShieldCheck", format: "number" },
+    { key: "new_jobs_posted", label: "New jobs posted", icon: "Plus", format: "number" },
+    { key: "high_intent", label: "High-intent (≥5)", icon: "Flame", format: "number" },
+    { key: "talent_insights_shown", label: "Talent insights shown", icon: "Sparkles", format: "number" },
   ],
   dropReasons: [
     "Early Disconnect",
