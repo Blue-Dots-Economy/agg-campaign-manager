@@ -42,7 +42,7 @@ export function Sidebar() {
 
 
   return (
-    <aside className="hidden md:flex w-64 shrink-0 flex-col bg-sidebar text-sidebar-foreground">
+    <aside className="hidden h-fit w-64 shrink-0 self-start overflow-hidden rounded-r-2xl bg-sidebar text-sidebar-foreground md:sticky md:top-4 md:flex md:max-h-[calc(100vh-2rem)] md:flex-col">
       <div className="px-5 pt-6 pb-4">
         <div className="flex items-center gap-2">
           <div className="h-9 w-9 rounded-lg bg-sidebar-accent flex items-center justify-center">
@@ -72,7 +72,7 @@ export function Sidebar() {
         </div>
       </div>
 
-      <nav className="flex-1 px-3 py-2 space-y-0.5">
+      <nav className="px-3 py-2 space-y-0.5">
         {NAV.map((item) => {
           const active = item.to === "/" ? pathname === "/" : pathname.startsWith(item.to);
           const Icon = item.icon;

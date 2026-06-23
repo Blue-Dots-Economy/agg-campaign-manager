@@ -65,7 +65,7 @@ export function VerticalFunnel({
   return (
     <div className="rounded-xl border bg-card p-5">
       {title ? <p className="mb-4 text-sm font-medium text-foreground">{title}</p> : null}
-      <div className="space-y-2 max-h-80 overflow-y-auto">
+      <div className="space-y-2">
         {stages.map((s, i) => {
           const pct = baseline > 0 ? Math.min(100, Math.max(0, (s.value / baseline) * 100)) : 0;
           const width = visualWidth(s.value);
