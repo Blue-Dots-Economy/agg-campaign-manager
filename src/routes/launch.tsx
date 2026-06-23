@@ -122,6 +122,11 @@ function LaunchWizard() {
   const validateFn = useServerFn(validateContacts);
   const createBatchFn = useServerFn(rayaCreateBatch);
   const startBatchFn = useServerFn(rayaStartBatch);
+  const usage = useConcurrencyUsage();
+  const refreshUsage = useRefreshConcurrency();
+  const available = usage.data?.available ?? Infinity;
+  const cap = usage.data?.cap ?? 20;
+
 
   // Sync chosen program back to global context so the rest of the dashboard follows.
   useEffect(() => { if (program !== ctxProgram) setProgramId(program); }, [program, ctxProgram, setProgramId]);
