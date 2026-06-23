@@ -13,6 +13,8 @@ export interface MetricCardProps {
   unit?: string;
   /** Optional bottom-right small badge (e.g. denominator). Ignored when trend pill present. */
   trailing?: React.ReactNode;
+  /** Optional time-series for the sparkline rendered in the empty right side. */
+  trend?: number[];
   className?: string;
 }
 
@@ -34,6 +36,7 @@ export function MetricCard({
   format = "number",
   unit,
   trailing,
+  trend,
   className,
 }: MetricCardProps) {
   const numericValue = typeof value === "number" ? value : null;
@@ -59,21 +62,31 @@ export function MetricCard({
       ? `from ${formatValue(previous as number, format, unit)} (prev period)`
       : undefined);
 
+  const sparkSeries = (trend ?? []).filter((n) => Number.isFinite(n));
+  const showSpark = sparkSeries.length >= 2;
+
   return (
-    <div
-      className={`rounded-xl border bg-card p-5 ${className ?? ""}`}
-    >
-      <p className="text-sm font-medium text-foreground">{label}</p>
-      <div className="mt-2 flex items-center gap-2 flex-wrap">
-        <p className="text-3xl font-semibold tracking-tight text-foreground tabular-nums">
-          {display}
-        </p>
-        {hasTrend && trendPct !== null ? <TrendPill pct={trendPct} /> : null}
-        {!hasTrend && trailing ? <span className="ml-auto">{trailing}</span> : null}
+    <div className={`relative overflow-hidden rounded-xl border bg-card p-5 ${className ?? ""}`}>
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0 flex-1">
+          <p className="text-sm font-medium text-foreground">{label}</p>
+          <div className="mt-2 flex items-center gap-2 flex-wrap">
+            <p className="text-3xl font-semibold tracking-tight text-foreground tabular-nums">
+              {display}
+            </p>
+            {hasTrend && trendPct !== null ? <TrendPill pct={trendPct} /> : null}
+            {!hasTrend && trailing ? <span>{trailing}</span> : null}
+          </div>
+          {subLine ? (
+            <p className="mt-2 text-[13px] text-muted-foreground">{subLine}</p>
+          ) : null}
+        </div>
+        {showSpark ? (
+          <div className="shrink-0 self-center">
+            <Sparkline data={sparkSeries} />
+          </div>
+        ) : null}
       </div>
-      {subLine ? (
-        <p className="mt-2 text-[13px] text-muted-foreground">{subLine}</p>
-      ) : null}
     </div>
   );
 }
@@ -90,5 +103,52 @@ function TrendPill({ pct }: { pct: number }) {
     >
       {display}
     </span>
+  );
+}
+
+interface SparkProps {
+  data: number[];
+  width?: number;
+  height?: number;
+}
+
+function Sparkline({ data, width = 110, height = 40 }: SparkProps) {
+  const n = data.length;
+  const min = Math.min(...data);
+  const max = Math.max(...data);
+  const range = max - min || 1;
+  const padY = 3;
+  const innerH = height - padY * 2;
+  const stepX = n > 1 ? width / (n - 1) : 0;
+  const points = data.map((v, i) => {
+    const x = i * stepX;
+    const y = padY + innerH - ((v - min) / range) * innerH;
+    return [x, y] as const;
+  });
+  const linePath = points.map(([x, y], i) => `${i === 0 ? "M" : "L"}${x.toFixed(1)},${y.toFixed(1)}`).join(" ");
+  const areaPath = `${linePath} L${(points[n - 1][0]).toFixed(1)},${height} L0,${height} Z`;
+
+  // Direction: compare mean of first third vs last third (robust to single-point spikes).
+  const seg = Math.max(1, Math.floor(n / 3));
+  const avg = (arr: number[]) => arr.reduce((a, b) => a + b, 0) / arr.length;
+  const headAvg = avg(data.slice(0, seg));
+  const tailAvg = avg(data.slice(-seg));
+  const denom = Math.abs(headAvg) || 1;
+  const change = (tailAvg - headAvg) / denom;
+
+  let color: { stroke: string; fill: string };
+  if (change > 0.05) {
+    color = { stroke: "rgb(16,185,129)", fill: "rgba(16,185,129,0.15)" }; // emerald
+  } else if (change < -0.05) {
+    color = { stroke: "rgb(244,63,94)", fill: "rgba(244,63,94,0.15)" }; // rose
+  } else {
+    color = { stroke: "rgb(217,119,6)", fill: "rgba(217,119,6,0.15)" }; // amber
+  }
+
+  return (
+    <svg width={width} height={height} viewBox={`0 0 ${width} ${height}`} aria-hidden>
+      <path d={areaPath} fill={color.fill} />
+      <path d={linePath} fill="none" stroke={color.stroke} strokeWidth={1.75} strokeLinejoin="round" strokeLinecap="round" />
+    </svg>
   );
 }

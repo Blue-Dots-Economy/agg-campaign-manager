@@ -119,11 +119,13 @@ function Overview() {
           <DkbOverviewMetrics
             m={metrics as unknown as DkbMetrics}
             previous={prevMetrics as unknown as DkbMetrics | undefined}
+            perDay={perDay}
           />
         ) : (
           <KkbOverviewMetrics
             m={metrics as unknown as KkbMetrics}
             previous={prevMetrics as unknown as KkbMetrics | undefined}
+            perDay={perDay}
           />
         )
       ) : (

@@ -2,6 +2,19 @@ import { MetricSection, SplitBar, SegmentedBar } from "@/components/metrics/prim
 import { MetricCard } from "@/components/metrics/MetricCard";
 import { VerticalFunnel, type VerticalFunnelStage, type FunnelColor } from "@/components/metrics/VerticalFunnel";
 
+export interface DailyPoint {
+  day: string;
+  rows: number;
+  answered: number;
+  engaged: number;
+  converted: number;
+  new_jobs: number;
+}
+
+const safeDiv = (n: number, d: number) => (d > 0 ? n / d : 0);
+const series = <T,>(arr: T[] | undefined, fn: (p: T) => number): number[] =>
+  (arr ?? []).map(fn).filter((v) => Number.isFinite(v));
+
 export interface KkbMetrics {
   totalCalls: number;
   answeredCalls: number;
@@ -61,9 +74,11 @@ function prev<T extends object>(prev: T | undefined, key: keyof T): number | nul
 export function KkbOverviewMetrics({
   m,
   previous,
+  perDay,
 }: {
   m: KkbMetrics;
   previous?: KkbMetrics;
+  perDay?: DailyPoint[];
 }) {
   const appRate = m.answeredSeekers > 0 ? (m.appliedSeekers / m.answeredSeekers) * 100 : 0;
   const productivePct = m.totalCalls > 0 ? (m.productiveCalls / m.totalCalls) * 100 : 0;
@@ -162,12 +177,14 @@ export function KkbOverviewMetrics({
                 value={m.totalApplications}
                 sub={previous ? undefined : "Across all calls"}
                 previous={prev(previous, "totalApplications")}
+                trend={series(perDay, (p) => p.converted)}
               />
               <MetricCard
                 label="Did not apply"
                 value={m.didNotApply}
                 sub={previous ? undefined : "Answered but did not apply"}
                 previous={prev(previous, "didNotApply")}
+                trend={series(perDay, (p) => Math.max(0, p.answered - p.converted))}
               />
             </div>
           </div>
@@ -183,6 +200,7 @@ export function KkbOverviewMetrics({
             format="percent"
             sub={previous ? undefined : `${m.productiveCalls.toLocaleString()} calls — answered + > 30s`}
             previous={prevProductivePct}
+            trend={series(perDay, (p) => safeDiv(p.engaged, p.rows) * 100)}
           />
           <MetricCard
             label="Application rate"
@@ -190,6 +208,7 @@ export function KkbOverviewMetrics({
             format="percent"
             sub={previous ? undefined : "Applied / answered seekers"}
             previous={prevAppRate}
+            trend={series(perDay, (p) => safeDiv(p.converted, p.answered) * 100)}
           />
         </div>
       </MetricSection>
@@ -200,9 +219,11 @@ export function KkbOverviewMetrics({
 export function DkbOverviewMetrics({
   m,
   previous,
+  perDay,
 }: {
   m: DkbMetrics;
   previous?: DkbMetrics;
+  perDay?: DailyPoint[];
 }) {
   const productiveDenom = m.answeredCalls;
   const productivePct = productiveDenom > 0 ? (m.productiveCalls / productiveDenom) * 100 : 0;
@@ -260,6 +281,7 @@ export function DkbOverviewMetrics({
             value={m.newOpenings}
             sub={previous ? undefined : "From new jobs posted"}
             previous={prev(previous, "newOpenings")}
+            trend={series(perDay, (p) => p.new_jobs)}
           />
         </div>
       </MetricSection>
@@ -284,12 +306,14 @@ export function DkbOverviewMetrics({
               value={m.newJobsDiscussed}
               sub={previous ? undefined : "Providers that mentioned a new role"}
               previous={prev(previous, "newJobsDiscussed")}
+              trend={series(perDay, (p) => p.new_jobs)}
             />
             <MetricCard
               label="New openings captured"
               value={m.newOpenings}
               sub={previous ? undefined : "Vacancies from new jobs posted"}
               previous={prev(previous, "newOpenings")}
+              trend={series(perDay, (p) => p.new_jobs)}
             />
           </div>
         </div>
@@ -304,6 +328,7 @@ export function DkbOverviewMetrics({
             format="percent"
             sub={previous ? undefined : `${m.productiveCalls.toLocaleString()} calls — answered + > 30s`}
             previous={prevProductivePct}
+            trend={series(perDay, (p) => safeDiv(p.engaged, p.rows) * 100)}
           />
           <MetricCard
             label="Avg call duration"
