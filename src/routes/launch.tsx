@@ -10,6 +10,7 @@ import {
   validateContacts,
 } from "@/lib/raya.functions";
 import { listProgramAgents } from "@/lib/agents.functions";
+import { useConcurrencyUsage, useRefreshConcurrency } from "@/hooks/useConcurrencyUsage";
 import { Link } from "@tanstack/react-router";
 import { registry, type ProgramId } from "@/programs/registry";
 import { Panel } from "@/components/Panel";
