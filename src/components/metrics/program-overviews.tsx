@@ -9,6 +9,7 @@ export interface DailyPoint {
   engaged: number;
   converted: number;
   new_jobs: number;
+  high_intent: number;
 }
 
 const safeDiv = (n: number, d: number) => (d > 0 ? n / d : 0);
@@ -174,6 +175,13 @@ export function KkbOverviewMetrics({
                 sub={previous ? undefined : `${m.productiveCalls.toLocaleString()} calls — answered + > 30s`}
                 previous={prevProductivePct}
                 trend={series(perDay, (p) => safeDiv(p.engaged, p.rows) * 100)}
+              />
+              <MetricCard
+                label="High Intent Seekers"
+                value={m.highIntentCalls}
+                sub={previous ? undefined : "Intent score ≥ 5"}
+                previous={prev(previous, "highIntentCalls")}
+                trend={series(perDay, (p) => p.high_intent)}
               />
               <MetricCard
                 label="Application rate"
