@@ -174,15 +174,13 @@ function Overview() {
             <Panel title="Drop reasons" description="Where conversations ended">
               <div className="h-72">
                 <ResponsiveContainer>
-                  <PieChart>
-                    <Pie data={drops} dataKey="count" nameKey="reason" innerRadius={50} outerRadius={85} paddingAngle={2}>
-                      {drops.map((_, i) => (
-                        <Cell key={i} fill={PIE_COLORS[i % PIE_COLORS.length]} />
-                      ))}
-                    </Pie>
+                  <BarChart data={drops} layout="vertical" margin={{ top: 10, right: 16, left: 10, bottom: 0 }}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border)" horizontal={false} />
+                    <XAxis type="number" tick={{ fontSize: 11 }} stroke="var(--color-muted-foreground)" />
+                    <YAxis dataKey="reason" type="category" tick={{ fontSize: 10 }} stroke="var(--color-muted-foreground)" width={150} />
                     <Tooltip {...tooltipStyle} />
-                    <Legend wrapperStyle={{ fontSize: 11 }} />
-                  </PieChart>
+                    <Bar dataKey="count" fill="var(--color-chart-1)" radius={[0, 4, 4, 0]} />
+                  </BarChart>
                 </ResponsiveContainer>
               </div>
             </Panel>
