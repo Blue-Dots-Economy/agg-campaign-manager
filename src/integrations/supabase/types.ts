@@ -211,6 +211,7 @@ export type Database = {
       }
       get_program_aggregates: { Args: { _program: string }; Returns: Json }
       get_program_metric_groups: { Args: { _program: string }; Returns: Json }
+      get_program_metrics_raw: { Args: { _program: string }; Returns: Json }
     }
     Enums: {
       [_ in never]: never

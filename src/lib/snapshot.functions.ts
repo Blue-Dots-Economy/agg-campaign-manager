@@ -318,6 +318,8 @@ export interface MetricGroup {
   cards: MetricCardDef[];
 }
 
+export type ProgramMetricsRaw = Record<string, number> & { program?: string };
+
 export interface AggregatePayload {
   source: "snapshot" | "empty";
   hasSnapshot: boolean;
@@ -327,6 +329,7 @@ export interface AggregatePayload {
   syncStatus: string;
   aggregates: ProgramAggregates;
   metricGroups: MetricGroup[];
+  metrics: ProgramMetricsRaw;
   /** Lightweight per-day index for the Campaigns table (no row payload). */
   campaigns: ProgramAggregates["perDay"];
   error?: string;
@@ -346,6 +349,7 @@ function emptyPayload(
     syncStatus: state?.status ?? "idle",
     aggregates: emptyAggregates(),
     metricGroups: [],
+    metrics: {},
     campaigns: [],
     error,
   };
@@ -358,7 +362,20 @@ interface AggregateRpcPayload {
   stateRowCount?: number;
   aggregates?: unknown;
   metricGroups?: unknown;
+  metrics?: unknown;
 }
+
+function normalizeMetricsRaw(value: unknown): ProgramMetricsRaw {
+  if (!value || typeof value !== "object") return {};
+  const out: ProgramMetricsRaw = {};
+  for (const [k, v] of Object.entries(value as Record<string, unknown>)) {
+    if (k === "program") out.program = String(v);
+    else if (typeof v === "number" && Number.isFinite(v)) out[k] = v;
+    else if (typeof v === "string" && v !== "" && !isNaN(Number(v))) out[k] = Number(v);
+  }
+  return out;
+}
+
 
 function normalizeMetricGroups(value: unknown): MetricGroup[] {
   if (!Array.isArray(value)) return [];
@@ -408,6 +425,7 @@ export const fetchProgramAggregates = createServerFn({ method: "GET" })
       if (!payload.stateRowCount) return emptyPayload(payload.connectionCount ?? 0, null);
       const aggregates = normalizeAggregates(payload.aggregates);
       const metricGroups = normalizeMetricGroups(payload.metricGroups);
+      const metrics = normalizeMetricsRaw(payload.metrics);
       const totalRows = Number(aggregates.kpis.total_calls ?? payload.stateRowCount ?? 0);
       if (totalRows === 0) return emptyPayload(payload.connectionCount ?? 0, null);
       return {
@@ -419,6 +437,7 @@ export const fetchProgramAggregates = createServerFn({ method: "GET" })
         syncStatus: payload.syncStatus ?? "idle",
         aggregates,
         metricGroups,
+        metrics,
         campaigns: aggregates.perDay,
       };
     } catch (e) {
