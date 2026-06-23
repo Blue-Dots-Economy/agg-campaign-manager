@@ -301,6 +301,23 @@ function normalizeAggregates(value: unknown): ProgramAggregates {
   };
 }
 
+export type MetricAccent = "green" | "amber" | "red" | "blue";
+
+export interface MetricCardDef {
+  key: string;
+  label: string;
+  value: string;
+  sub: string;
+  accent: MetricAccent;
+}
+
+export interface MetricGroup {
+  key: string;
+  title: string;
+  subtitle?: string;
+  cards: MetricCardDef[];
+}
+
 export interface AggregatePayload {
   source: "snapshot" | "empty";
   hasSnapshot: boolean;
@@ -309,6 +326,7 @@ export interface AggregatePayload {
   lastSyncedAt: string | null;
   syncStatus: string;
   aggregates: ProgramAggregates;
+  metricGroups: MetricGroup[];
   /** Lightweight per-day index for the Campaigns table (no row payload). */
   campaigns: ProgramAggregates["perDay"];
   error?: string;
@@ -327,6 +345,7 @@ function emptyPayload(
     lastSyncedAt: state?.last_synced_at ?? null,
     syncStatus: state?.status ?? "idle",
     aggregates: emptyAggregates(),
+    metricGroups: [],
     campaigns: [],
     error,
   };
@@ -338,6 +357,36 @@ interface AggregateRpcPayload {
   syncStatus?: string;
   stateRowCount?: number;
   aggregates?: unknown;
+  metricGroups?: unknown;
+}
+
+function normalizeMetricGroups(value: unknown): MetricGroup[] {
+  if (!Array.isArray(value)) return [];
+  const allowed: MetricAccent[] = ["green", "amber", "red", "blue"];
+  return value.flatMap((g): MetricGroup[] => {
+    if (!g || typeof g !== "object") return [];
+    const o = g as Record<string, unknown>;
+    const cards = Array.isArray(o.cards)
+      ? o.cards.flatMap((c): MetricCardDef[] => {
+          if (!c || typeof c !== "object") return [];
+          const x = c as Record<string, unknown>;
+          const accent = allowed.includes(x.accent as MetricAccent) ? (x.accent as MetricAccent) : "blue";
+          return [{
+            key: String(x.key ?? ""),
+            label: String(x.label ?? ""),
+            value: String(x.value ?? ""),
+            sub: String(x.sub ?? ""),
+            accent,
+          }];
+        })
+      : [];
+    return [{
+      key: String(o.key ?? ""),
+      title: String(o.title ?? ""),
+      subtitle: o.subtitle ? String(o.subtitle) : undefined,
+      cards,
+    }];
+  });
 }
 
 export const fetchProgramAggregates = createServerFn({ method: "GET" })
@@ -358,6 +407,7 @@ export const fetchProgramAggregates = createServerFn({ method: "GET" })
       }
       if (!payload.stateRowCount) return emptyPayload(payload.connectionCount ?? 0, null);
       const aggregates = normalizeAggregates(payload.aggregates);
+      const metricGroups = normalizeMetricGroups(payload.metricGroups);
       const totalRows = Number(aggregates.kpis.total_calls ?? payload.stateRowCount ?? 0);
       if (totalRows === 0) return emptyPayload(payload.connectionCount ?? 0, null);
       return {
@@ -368,12 +418,14 @@ export const fetchProgramAggregates = createServerFn({ method: "GET" })
         lastSyncedAt: payload.lastSyncedAt ?? null,
         syncStatus: payload.syncStatus ?? "idle",
         aggregates,
+        metricGroups,
         campaigns: aggregates.perDay,
       };
     } catch (e) {
       return emptyPayload(0, null, e instanceof Error ? e.message : String(e));
     }
   });
+
 
 export const fetchCampaignDayRowsFn = createServerFn({ method: "GET" })
   .inputValidator((d: { program: ProgramId; day: string }) => d)
