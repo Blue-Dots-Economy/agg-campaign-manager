@@ -237,32 +237,6 @@ export const syncProgramSnapshot = createServerFn({ method: "POST" })
   .inputValidator((d: { program: ProgramId }) => d)
   .handler(async ({ data }) => performSync(data.program));
 
-async function countConnections(program: ProgramId): Promise<number> {
-  const client = sb();
-  const { count } = await client
-    .from("sheet_connections")
-    .select("id", { count: "exact", head: true })
-    .eq("program", program)
-    .eq("enabled", true);
-  return count ?? 0;
-}
-
-async function getSyncState(program: ProgramId) {
-  const client = sb();
-  const { data } = await client
-    .from("program_sync_state")
-    .select("*")
-    .eq("program", program)
-    .maybeSingle();
-  return data as {
-    program: string;
-    last_synced_at: string | null;
-    row_count: number;
-    status: string;
-    last_error: string | null;
-  } | null;
-}
-
 export interface CampaignRollup {
   day: string;
   date: string;
