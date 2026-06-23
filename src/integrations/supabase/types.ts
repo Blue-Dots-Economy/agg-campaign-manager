@@ -193,6 +193,10 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      get_program_aggregate_payload: {
+        Args: { _program: string }
+        Returns: Json
+      }
       get_program_aggregates: { Args: { _program: string }; Returns: Json }
     }
     Enums: {
