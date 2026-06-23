@@ -96,8 +96,67 @@ export const rayaCreateBatch = createServerFn({ method: "POST" })
       batch_name: data.batchName,
       contacts: data.contacts,
     };
-    const res = await rayaFetch("/batch", { method: "POST", json: body });
-    return res as Record<string, any>;
+    let res: any;
+    try {
+      res = await rayaFetch("/batch", { method: "POST", json: body });
+    } catch (e) {
+      // Raya 400 validation: { status:"error", message, errors:[{row,field,...}] }
+      if (e instanceof RayaApiError && e.body && typeof e.body === "object") {
+        const b = e.body as Record<string, any>;
+        if (b.status === "error" || Array.isArray(b.errors)) {
+          return {
+            ok: false as const,
+            batchId: null,
+            validation: {
+              message: b.message ?? "Validation failed",
+              totalRows: b.totalRows,
+              validRows: b.validRows,
+              invalidRows: b.invalidRows,
+              errors: Array.isArray(b.errors) ? b.errors : [],
+            },
+          };
+        }
+      }
+      throw e;
+    }
+
+    const r = (res ?? {}) as Record<string, any>;
+    // Raya success uses camelCase `batchId` (number). Fall back to other common keys.
+    const rawId =
+      r.batchId ??
+      r.batch_id ??
+      r.id ??
+      r.data?.batchId ??
+      r.data?.batch_id ??
+      r.data?.id ??
+      r.batch?.id ??
+      r.batch?.batchId;
+
+    if (r.status === "error" || (!rawId && typeof r.invalidRows === "number" && r.invalidRows > 0)) {
+      return {
+        ok: false as const,
+        batchId: null,
+        validation: {
+          message: r.message ?? "Validation failed",
+          totalRows: r.totalRows,
+          validRows: r.validRows,
+          invalidRows: r.invalidRows,
+          errors: Array.isArray(r.errors) ? r.errors : [],
+        },
+      };
+    }
+
+    if (!rawId) throw new Error("Raya did not return a batchId.");
+
+    return {
+      ok: true as const,
+      batchId: String(rawId),
+      totalRows: r.totalRows,
+      validRows: r.validRows,
+      invalidRows: r.invalidRows,
+      contactsInserted: r.contactsInserted,
+      message: r.message,
+    };
   });
 
 // ---------- startBatch ----------
