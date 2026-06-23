@@ -192,7 +192,9 @@ function Overview() {
               title="Drop analysis"
               description="Where conversations ended, by stage and reason (region split: GZB vs KA). Heuristic classifier over free-text drop_reason — structured buckets map exactly; the long tail is keyword-bucketed (fallback = Other)."
             >
-              <DropAnalysisTable rows={dropAnalysis} />
+              <div className="max-h-80 overflow-y-auto">
+                <DropAnalysisTable rows={dropAnalysis} />
+              </div>
             </Panel>
           </div>
 
