@@ -107,7 +107,7 @@ function LaunchWizard() {
   const [validating, setValidating] = useState(false);
   const [proceedInvalid, setProceedInvalid] = useState(false);
 
-  const [schedule, setSchedule] = useState<ScheduleState>(defaultSchedule);
+  const [schedule, setSchedule] = useState<ScheduleState>(() => makeDefaultSchedule());
   const [concurrency, setConcurrency] = useState(5);
   const [maxRetries, setMaxRetries] = useState(2);
   const [retryAfterHrs, setRetryAfterHrs] = useState(24);
