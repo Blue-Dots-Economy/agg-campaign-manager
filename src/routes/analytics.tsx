@@ -60,7 +60,7 @@ function Analytics() {
       >
         <div className="h-72">
           <ResponsiveContainer>
-            <AreaChart data={perDay} margin={{ top: 10, right: 16, left: -10, bottom: 0 }}>
+            <AreaChart data={dayRollup} margin={{ top: 10, right: 16, left: -10, bottom: 0 }}>
               <defs>
                 <linearGradient id="a1" x1="0" y1="0" x2="0" y2="1">
                   <stop offset="5%" stopColor="var(--color-chart-1)" stopOpacity={0.4} />
@@ -195,7 +195,7 @@ function Analytics() {
       >
         <div className="h-72">
           <ResponsiveContainer>
-            <BarChart data={perDay} margin={{ top: 10, right: 16, left: -10, bottom: 0 }}>
+            <BarChart data={dayRollup} margin={{ top: 10, right: 16, left: -10, bottom: 0 }}>
               <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border)" vertical={false} />
               <XAxis dataKey="day" tick={{ fontSize: 11 }} stroke="var(--color-muted-foreground)" />
               <YAxis tick={{ fontSize: 11 }} stroke="var(--color-muted-foreground)" />
