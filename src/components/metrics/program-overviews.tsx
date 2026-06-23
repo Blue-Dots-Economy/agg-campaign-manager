@@ -165,51 +165,26 @@ export function KkbOverviewMetrics({
             <VerticalFunnel stages={stages} />
           </div>
           <div className="grid gap-3 lg:col-span-2 lg:grid-cols-1">
-            <MetricCard
-              label="Avg call duration"
-              value={`${m.avgDuration.toFixed(1)} sec`}
-              sub="Answered calls only"
-              previous={prev(previous, "avgDuration")}
-            />
+            <SplitBar answered={m.answeredCalls} unanswered={m.unansweredCalls} />
             <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-1">
               <MetricCard
-                label="Total applications"
-                value={m.totalApplications}
-                sub={previous ? undefined : "Across all calls"}
-                previous={prev(previous, "totalApplications")}
-                trend={series(perDay, (p) => p.converted)}
+                label="Productive conversations"
+                value={productivePct}
+                format="percent"
+                sub={previous ? undefined : `${m.productiveCalls.toLocaleString()} calls — answered + > 30s`}
+                previous={prevProductivePct}
+                trend={series(perDay, (p) => safeDiv(p.engaged, p.rows) * 100)}
               />
               <MetricCard
-                label="Did not apply"
-                value={m.didNotApply}
-                sub={previous ? undefined : "Answered but did not apply"}
-                previous={prev(previous, "didNotApply")}
-                trend={series(perDay, (p) => Math.max(0, p.answered - p.converted))}
+                label="Application rate"
+                value={appRate}
+                format="percent"
+                sub={previous ? undefined : "Applied / answered seekers"}
+                previous={prevAppRate}
+                trend={series(perDay, (p) => safeDiv(p.converted, p.answered) * 100)}
               />
             </div>
           </div>
-        </div>
-      </MetricSection>
-
-      <MetricSection title="Call metrics" subtitle="Per call (raw rows)">
-        <div className="grid gap-4 lg:grid-cols-3">
-          <SplitBar answered={m.answeredCalls} unanswered={m.unansweredCalls} />
-          <MetricCard
-            label="Productive conversations"
-            value={productivePct}
-            format="percent"
-            sub={previous ? undefined : `${m.productiveCalls.toLocaleString()} calls — answered + > 30s`}
-            previous={prevProductivePct}
-            trend={series(perDay, (p) => safeDiv(p.engaged, p.rows) * 100)}
-          />
-          <MetricCard
-            label="Application rate"
-            value={appRate}
-            format="percent"
-            sub={previous ? undefined : "Applied / answered seekers"}
-            previous={prevAppRate}
-            trend={series(perDay, (p) => safeDiv(p.converted, p.answered) * 100)}
-          />
         </div>
       </MetricSection>
     </div>
