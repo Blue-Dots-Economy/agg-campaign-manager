@@ -42,7 +42,7 @@ export function Sidebar() {
 
 
   return (
-    <aside className="hidden md:flex w-64 shrink-0 self-start flex-col overflow-hidden rounded-r-2xl bg-sidebar text-sidebar-foreground md:sticky md:top-4 md:max-h-[calc(100vh-2rem)]">
+    <aside className="hidden h-fit w-64 shrink-0 self-start overflow-hidden rounded-r-2xl bg-sidebar text-sidebar-foreground md:sticky md:top-4 md:flex md:max-h-[calc(100vh-2rem)] md:flex-col">
       <div className="px-5 pt-6 pb-4">
         <div className="flex items-center gap-2">
           <div className="h-9 w-9 rounded-lg bg-sidebar-accent flex items-center justify-center">
