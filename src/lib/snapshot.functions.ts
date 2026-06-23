@@ -425,6 +425,7 @@ export const fetchProgramAggregates = createServerFn({ method: "GET" })
       if (!payload.stateRowCount) return emptyPayload(payload.connectionCount ?? 0, null);
       const aggregates = normalizeAggregates(payload.aggregates);
       const metricGroups = normalizeMetricGroups(payload.metricGroups);
+      const metrics = normalizeMetricsRaw(payload.metrics);
       const totalRows = Number(aggregates.kpis.total_calls ?? payload.stateRowCount ?? 0);
       if (totalRows === 0) return emptyPayload(payload.connectionCount ?? 0, null);
       return {
@@ -436,6 +437,7 @@ export const fetchProgramAggregates = createServerFn({ method: "GET" })
         syncStatus: payload.syncStatus ?? "idle",
         aggregates,
         metricGroups,
+        metrics,
         campaigns: aggregates.perDay,
       };
     } catch (e) {
