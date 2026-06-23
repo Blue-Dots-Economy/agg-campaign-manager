@@ -68,6 +68,35 @@ function Settings() {
         )}
       </Panel>
 
+      <Panel title="Concurrency cap" description="Account-wide pool of concurrent calls shared across all programs (default 20)">
+        <div className="flex items-end gap-3 max-w-sm">
+          <div className="flex-1">
+            <Label htmlFor="cap" className="text-xs">Max concurrent calls (cap)</Label>
+            <div className="mt-1 flex items-center gap-2">
+              <Gauge className="h-4 w-4 text-brand" />
+              <Input
+                id="cap"
+                type="number"
+                min={1}
+                max={500}
+                value={cap}
+                onChange={(e) => setCap(Math.max(1, Number(e.target.value) || CONCURRENCY_CAP_DEFAULT))}
+              />
+            </div>
+          </div>
+          <Button
+            className="bg-brand text-brand-foreground hover:bg-brand/90"
+            onClick={() => { setConcurrencyCap(cap); toast.success(`Cap set to ${cap}`); }}
+          >
+            Save cap
+          </Button>
+        </div>
+        <p className="text-[11px] text-muted-foreground mt-2">
+          Raya's default account limit is 20 concurrent calls. Adjust if your plan allows more.
+        </p>
+      </Panel>
+
+
       <Panel title={`${config.label} settings`} description="Per-program configuration (saved locally for this session)">
         <div className="grid gap-4 sm:grid-cols-2">
           <div className="sm:col-span-2">
