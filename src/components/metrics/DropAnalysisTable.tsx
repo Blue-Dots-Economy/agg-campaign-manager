@@ -19,7 +19,15 @@ const STAGE_ORDER = [
 
 const fmt = (n: number) => n.toLocaleString();
 
-export function DropAnalysisTable({ rows }: { rows: DropRow[] }) {
+export function DropAnalysisTable({
+  rows,
+  hideRegion,
+}: {
+  rows: DropRow[];
+  hideRegion?: "GZB" | "KA";
+}) {
+  const showGzb = hideRegion !== "GZB";
+  const showKa = hideRegion !== "KA";
   if (!rows || rows.length === 0) {
     return (
       <div className="text-sm text-muted-foreground py-8 text-center">
