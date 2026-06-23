@@ -26,8 +26,8 @@ import {
 } from "@/components/metrics/program-overviews";
 import { Panel } from "@/components/Panel";
 import { NoDataState, LoadingState } from "@/components/EmptyState";
-import { DropAnalysisTable } from "@/components/metrics/DropAnalysisTable";
 import { FunnelSankey } from "@/components/metrics/FunnelSankey";
+import { DropBreakdownPanel } from "@/components/metrics/DropBreakdownPanel";
 import {
   OverviewFilters,
   type OverviewFilterValue,
@@ -273,23 +273,11 @@ function Overview() {
               </div>
             </Panel>
 
-            <div className="space-y-4">
-              <div className="rounded-xl border bg-card p-5">
-                <div className="mb-1 text-sm font-semibold text-foreground">Funnel flow & drop reasons</div>
-                <p className="mb-4 text-xs text-muted-foreground">
-                  Sankey: trunk = survivors through the funnel (teal); ribbons peeling off = drops, colored by reason. Hover a ribbon for source → target counts.
-                </p>
-                <FunnelSankey m={metrics as unknown as KkbMetrics} rows={dropAnalysis} hideRegion={hideRegion} />
-              </div>
-              <Panel
-                title="Drop analysis — detail"
-                description="Exact counts per stage × reason (region split: GZB vs KA). Heuristic classifier over free-text drop_reason — structured buckets map exactly; the long tail is keyword-bucketed (fallback = Other)."
-              >
-                <div className="max-h-80 overflow-y-auto">
-                  <DropAnalysisTable rows={dropAnalysis} hideRegion={hideRegion} />
-                </div>
-              </Panel>
-            </div>
+            <FunnelDropCard
+              metrics={metrics as unknown as KkbMetrics}
+              rows={dropAnalysis}
+              hideRegion={hideRegion}
+            />
           </div>
 
 
@@ -341,6 +329,52 @@ function Overview() {
           </div>
         </>
       )}
+    </div>
+  );
+}
+
+function FunnelDropCard({
+  metrics,
+  rows,
+  hideRegion,
+}: {
+  metrics: KkbMetrics;
+  rows: Array<{ stage: string; reason: string; gzb: number; ka: number; total: number }>;
+  hideRegion?: "GZB" | "KA";
+}) {
+  const [selectedReason, setSelectedReason] = useState<string | null>(null);
+  return (
+    <div className="rounded-xl border bg-card p-5">
+      <div className="mb-1 flex items-baseline justify-between gap-4">
+        <div className="text-sm font-semibold text-foreground">Funnel flow & drop reasons</div>
+        {selectedReason && (
+          <div className="text-xs text-muted-foreground">
+            Filtered by <span className="font-medium text-foreground">{selectedReason}</span>
+          </div>
+        )}
+      </div>
+      <p className="mb-4 text-xs text-muted-foreground">
+        Sankey: trunk = survivors (teal); ribbons peeling off = drops by reason. Click a ribbon or a reason in the panel to break it down by stage.
+      </p>
+      <div className="grid gap-5 lg:grid-cols-5">
+        <div className="lg:col-span-3">
+          <FunnelSankey
+            m={metrics}
+            rows={rows}
+            hideRegion={hideRegion}
+            selectedReason={selectedReason}
+            onSelectReason={setSelectedReason}
+          />
+        </div>
+        <div className="lg:col-span-2 min-h-[420px]">
+          <DropBreakdownPanel
+            rows={rows}
+            hideRegion={hideRegion}
+            selectedReason={selectedReason}
+            onSelectReason={setSelectedReason}
+          />
+        </div>
+      </div>
     </div>
   );
 }
