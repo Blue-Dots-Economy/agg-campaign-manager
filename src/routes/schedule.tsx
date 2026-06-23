@@ -19,7 +19,9 @@ import {
 } from "@/components/ui/table";
 import { ScheduleEditor, type ScheduleState, defaultSchedule } from "@/components/ScheduleEditor";
 import { toast } from "sonner";
-import { RefreshCw, StopCircle, Save } from "lucide-react";
+import { RefreshCw, StopCircle, Save, Gauge } from "lucide-react";
+import { useConcurrencyUsage, useRefreshConcurrency } from "@/hooks/useConcurrencyUsage";
+import { Progress } from "@/components/ui/progress";
 
 export const Route = createFileRoute("/schedule")({
   component: Schedule,
