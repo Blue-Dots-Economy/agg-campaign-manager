@@ -240,6 +240,7 @@ function LaunchWizard() {
         batchId: id,
       });
       toast.success(`Batch launched · ${id}`);
+      refreshUsage();
     } catch (e) {
       const msg = e instanceof Error ? e.message : "Launch failed";
       setLaunchError(msg);
