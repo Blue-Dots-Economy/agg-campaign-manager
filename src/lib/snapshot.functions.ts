@@ -350,45 +350,41 @@ function emptyPayload(
   };
 }
 
+interface AggregateRpcPayload {
+  connectionCount?: number;
+  lastSyncedAt?: string | null;
+  syncStatus?: string;
+  stateRowCount?: number;
+  aggregates?: unknown;
+}
+
 export const fetchProgramAggregates = createServerFn({ method: "GET" })
   .inputValidator((d: { program: ProgramId }) => d)
   .handler(async ({ data }): Promise<AggregatePayload> => {
     const program = data.program;
     try {
-      let state: Awaited<ReturnType<typeof getSyncState>> = null;
-      let connectionCount = 0;
-      try {
-        [state, connectionCount] = await Promise.all([
-          getSyncState(program),
-          countConnections(program),
-        ]);
-      } catch (e) {
-        return emptyPayload(0, null, e instanceof Error ? e.message : String(e));
-      }
-
-      if (!state || state.row_count === 0) {
-        // Never sync inline — Refresh button triggers syncProgramSnapshot explicitly.
-        return emptyPayload(connectionCount, state);
-      }
-
-      let aggregates = emptyAggregates();
+      let payload: AggregateRpcPayload;
       try {
         const client = sb();
-        const { data: rpcData, error } = await client.rpc("get_program_aggregates", {
+        const { data: rpcData, error } = await client.rpc("get_program_aggregate_payload", {
           _program: program,
         });
         if (error) throw new Error(error.message);
-        aggregates = normalizeAggregates(rpcData);
+        payload = (rpcData && typeof rpcData === "object" ? rpcData : {}) as AggregateRpcPayload;
       } catch (e) {
-        return emptyPayload(connectionCount, state, e instanceof Error ? e.message : String(e));
+        return emptyPayload(0, null, e instanceof Error ? e.message : String(e));
       }
+      if (!payload.stateRowCount) return emptyPayload(payload.connectionCount ?? 0, null);
+      const aggregates = normalizeAggregates(payload.aggregates);
+      const totalRows = Number(aggregates.kpis.total_calls ?? payload.stateRowCount ?? 0);
+      if (totalRows === 0) return emptyPayload(payload.connectionCount ?? 0, null);
       return {
         source: "snapshot",
         hasSnapshot: true,
-        totalRows: Number(aggregates.kpis.total_calls ?? state.row_count ?? 0),
-        connectionCount,
-        lastSyncedAt: state.last_synced_at,
-        syncStatus: state.status,
+        totalRows,
+        connectionCount: payload.connectionCount ?? 0,
+        lastSyncedAt: payload.lastSyncedAt ?? null,
+        syncStatus: payload.syncStatus ?? "idle",
         aggregates,
         campaigns: aggregates.perDay,
       };
