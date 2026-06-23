@@ -171,7 +171,8 @@ function Overview() {
                 <ResponsiveContainer>
                   <LineChart data={perDayRollup} margin={{ top: 10, right: 16, left: -10, bottom: 0 }}>
                     <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border)" vertical={false} />
-                    <XAxis dataKey="day" tick={{ fontSize: 11 }} stroke="var(--color-muted-foreground)" />
+                    <XAxis dataKey="label" tick={{ fontSize: 11 }} stroke="var(--color-muted-foreground)" />
+
                     <YAxis tick={{ fontSize: 11 }} stroke="var(--color-muted-foreground)" />
                     <Tooltip {...tooltipStyle} />
                     <Legend wrapperStyle={{ fontSize: 12 }} />
