@@ -1,11 +1,11 @@
 import {
   MetricSection,
-  ConversionFunnel,
   RateDial,
   StatTile,
   SplitBar,
   SegmentedBar,
 } from "@/components/metrics/primitives";
+import { VerticalFunnel, type VerticalFunnelStage } from "@/components/metrics/VerticalFunnel";
 
 export interface KkbMetrics {
   totalCalls: number;
@@ -13,6 +13,14 @@ export interface KkbMetrics {
   unansweredCalls: number;
   productiveCalls: number;
   avgDuration: number;
+  engagedCalls: number;
+  jobsShownCalls: number;
+  highIntentCalls: number;
+  applicationsSubmitted: number;
+  applicationsBlocked: number;
+  applicationsTotal: number;
+  hasInterviewData: boolean;
+  interviewCount: number;
   seekers: number;
   answeredSeekers: number;
   triedSeekers: number;
