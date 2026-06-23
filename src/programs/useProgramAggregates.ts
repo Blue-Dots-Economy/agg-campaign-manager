@@ -8,11 +8,20 @@ import {
 import type { ProgramConfig } from "./registry";
 import { toast } from "sonner";
 
-export function useProgramAggregates(config: ProgramConfig) {
+export interface OverviewFilters {
+  state?: string;             // 'all' | 'GZB' | 'KA'
+  dateFrom?: string | null;   // YYYY-MM-DD
+  dateTo?: string | null;     // YYYY-MM-DD
+}
+
+export function useProgramAggregates(config: ProgramConfig, filters?: OverviewFilters) {
   const fn = useServerFn(fetchProgramAggregates);
+  const state = filters?.state ?? "all";
+  const dateFrom = filters?.dateFrom ?? null;
+  const dateTo = filters?.dateTo ?? null;
   const query = useQuery<AggregatePayload>({
-    queryKey: ["program-aggregates", config.id],
-    queryFn: () => fn({ data: { program: config.id } }),
+    queryKey: ["program-aggregates", config.id, state, dateFrom, dateTo],
+    queryFn: () => fn({ data: { program: config.id, state, dateFrom, dateTo } }),
     staleTime: 5 * 60_000,
     gcTime: 30 * 60_000,
     placeholderData: keepPreviousData,
