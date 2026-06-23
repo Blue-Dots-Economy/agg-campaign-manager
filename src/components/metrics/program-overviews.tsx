@@ -165,13 +165,7 @@ export function KkbOverviewMetrics({ m }: { m: KkbMetrics }) {
             sub={`${m.productiveCalls.toLocaleString()} calls — answered + > 30s`}
             accent="amber"
           />
-          <StatTile
-            icon="IconClock"
-            label="Avg call duration"
-            value={`${m.avgDuration.toFixed(1)} sec`}
-            sub="Answered calls only"
-            accent="blue"
-          />
+          <RateDial value={appRate} label="Application rate" sub="Applied / answered seekers" accent="green" />
         </div>
       </MetricSection>
     </div>
