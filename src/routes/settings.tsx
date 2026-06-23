@@ -10,7 +10,8 @@ import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
-import { CheckCircle2, AlertCircle } from "lucide-react";
+import { CheckCircle2, AlertCircle, Gauge } from "lucide-react";
+import { getConcurrencyCap, setConcurrencyCap, CONCURRENCY_CAP_DEFAULT } from "@/lib/concurrency-cap";
 
 export const Route = createFileRoute("/settings")({
   component: Settings,
