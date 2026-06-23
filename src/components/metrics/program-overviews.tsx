@@ -2,6 +2,19 @@ import { MetricSection, SplitBar, SegmentedBar } from "@/components/metrics/prim
 import { MetricCard } from "@/components/metrics/MetricCard";
 import { VerticalFunnel, type VerticalFunnelStage, type FunnelColor } from "@/components/metrics/VerticalFunnel";
 
+export interface DailyPoint {
+  day: string;
+  rows: number;
+  answered: number;
+  engaged: number;
+  converted: number;
+  new_jobs: number;
+}
+
+const safeDiv = (n: number, d: number) => (d > 0 ? n / d : 0);
+const series = <T,>(arr: T[] | undefined, fn: (p: T) => number): number[] =>
+  (arr ?? []).map(fn).filter((v) => Number.isFinite(v));
+
 export interface KkbMetrics {
   totalCalls: number;
   answeredCalls: number;
