@@ -30,6 +30,13 @@ export interface KkbMetrics {
   totalApplications: number;
 }
 
+export interface DkbProviderFunnelStage {
+  key: string;
+  label: string;
+  providers: number;
+  openings: number;
+}
+
 export interface DkbMetrics {
   totalCalls: number;
   answeredCalls: number;
@@ -46,6 +53,7 @@ export interface DkbMetrics {
   jobsClosed: number;
   companiesUnresolved: number;
   newJobsDiscussed: number;
+  providerFunnel?: DkbProviderFunnelStage[];
 }
 
 export function KkbOverviewMetrics({ m }: { m: KkbMetrics }) {
