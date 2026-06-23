@@ -188,13 +188,26 @@ function LaunchWizard() {
         ...r.extras,
         _region: region,
       }));
-      const created: any = await createBatchFn({ data: { agentId, batchName, contacts } });
-      const id = created?.id ?? created?.batch_id ?? created?.batch?.id ?? created?.data?.id;
-      if (!id) throw new Error("Batch created but no id returned.");
-      setBatchId(String(id));
+      const created = await createBatchFn({ data: { agentId, batchName, contacts } }) as
+        | { ok: true; batchId: string; contactsInserted?: number; totalRows?: number; message?: string }
+        | { ok: false; batchId: null; validation: { message: string; totalRows?: number; validRows?: number; invalidRows?: number; errors: Array<{ row?: number; field?: string; message?: string; value?: any }> } };
+
+      if (!created.ok) {
+        const v = created.validation;
+        const sample = (v.errors ?? []).slice(0, 5)
+          .map((er) => `row ${er.row ?? "?"}${er.field ? ` · ${er.field}` : ""}${er.message ? `: ${er.message}` : ""}`)
+          .join("\n");
+        const more = (v.errors?.length ?? 0) > 5 ? `\n…and ${v.errors!.length - 5} more` : "";
+        throw new Error(
+          `${v.message}${typeof v.invalidRows === "number" ? ` (${v.invalidRows} invalid of ${v.totalRows ?? "?"})` : ""}${sample ? `\n${sample}${more}` : ""}`,
+        );
+      }
+
+      const id = created.batchId;
+      setBatchId(id);
       const started: any = await startBatchFn({
         data: {
-          batchId: String(id),
+          batchId: id,
           schedule: {
             timezone: schedule.timezone,
             start_time: schedule.startTime,
@@ -214,13 +227,13 @@ function LaunchWizard() {
         file: file?.name ?? batchName,
         rows: contacts.length,
         status: "appended",
-        batchId: String(id),
+        batchId: id,
       });
       toast.success(`Batch launched · ${id}`);
     } catch (e) {
       const msg = e instanceof Error ? e.message : "Launch failed";
       setLaunchError(msg);
-      toast.error(msg);
+      toast.error(msg.split("\n")[0]);
       if (file) {
         appendLaunchLog({
           date: new Date().toISOString(),
