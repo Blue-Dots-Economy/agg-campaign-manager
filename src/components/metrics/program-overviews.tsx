@@ -176,6 +176,13 @@ export function KkbOverviewMetrics({
                 trend={series(perDay, (p) => safeDiv(p.engaged, p.rows) * 100)}
               />
               <MetricCard
+                label="High Intent Seekers"
+                value={m.highIntentCalls}
+                sub={previous ? undefined : "Intent score ≥ 5"}
+                previous={prev(previous, "highIntentCalls")}
+                trend={series(perDay, (p) => p.high_intent)}
+              />
+              <MetricCard
                 label="Application rate"
                 value={appRate}
                 format="percent"
