@@ -52,9 +52,11 @@ const fmtPct = (n: number) => `${n.toFixed(1)}%`;
 export function VerticalFunnel({
   title,
   stages,
+  fill = false,
 }: {
   title?: string;
   stages: VerticalFunnelStage[];
+  fill?: boolean;
 }) {
   const baseline = stages[0]?.value ?? 0;
   const visualWidth = (value: number) => {
@@ -63,9 +65,10 @@ export function VerticalFunnel({
     return Math.max(38, Math.sqrt(share) * 100);
   };
   return (
-    <div className="rounded-xl border bg-card p-5">
+    <div className={`rounded-xl border bg-card p-5 ${fill ? "flex h-full flex-col" : ""}`}>
       {title ? <p className="mb-4 text-sm font-medium text-foreground">{title}</p> : null}
-      <div className="space-y-2">
+      <div className={fill ? "flex flex-1 flex-col justify-between gap-2" : "space-y-2"}>
+
         {stages.map((s, i) => {
           const pct = baseline > 0 ? Math.min(100, Math.max(0, (s.value / baseline) * 100)) : 0;
           const width = visualWidth(s.value);
