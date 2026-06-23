@@ -52,35 +52,41 @@ export function VerticalFunnel({
   stages: VerticalFunnelStage[];
 }) {
   const baseline = stages[0]?.value ?? 0;
+  const visualWidth = (value: number) => {
+    if (baseline <= 0) return 100;
+    const share = Math.min(1, Math.max(0, value / baseline));
+    return Math.max(38, Math.sqrt(share) * 100);
+  };
   return (
     <div className="rounded-xl border bg-card p-5">
       {title ? <p className="mb-4 text-sm font-medium text-foreground">{title}</p> : null}
       <div className="space-y-2">
         {stages.map((s, i) => {
           const pct = baseline > 0 ? Math.min(100, Math.max(0, (s.value / baseline) * 100)) : 0;
+          const width = visualWidth(s.value);
           return (
             <React.Fragment key={s.key}>
-              <div
-                className={`relative overflow-hidden rounded-xl ${TINT[s.color]} pl-4 pr-5 py-4`}
-              >
-                <span
-                  className={`absolute inset-y-0 left-0 w-1.5 ${BAR[s.color]}`}
-                  aria-hidden
-                />
-                <div className="flex items-center justify-between gap-4">
-                  <div className="min-w-0">
-                    <p className="text-sm font-semibold text-foreground">{s.label}</p>
-                    {s.description ? (
-                      <p className="mt-0.5 text-[11px] text-muted-foreground">{s.description}</p>
-                    ) : null}
-                  </div>
-                  <div className="text-right">
-                    <p className={`text-2xl font-semibold tabular-nums ${TEXT[s.color]}`}>
-                      {fmtNum(s.value)}
-                    </p>
-                    <p className="mt-0.5 text-[11px] text-muted-foreground tabular-nums">
-                      {s.sub ?? `${fmtPct(pct)} of ${stages[0].label.toLowerCase()}`}
-                    </p>
+              <div className="flex justify-center">
+                <div
+                  className={`relative overflow-hidden rounded-xl ${TINT[s.color]} px-4 py-4 shadow-sm transition-[width] duration-500`}
+                  style={{ width: `${width}%` }}
+                >
+                  <span className={`absolute inset-x-0 top-0 h-1 ${BAR[s.color]}`} aria-hidden />
+                  <div className="flex items-center justify-between gap-4">
+                    <div className="min-w-0">
+                      <p className="text-sm font-semibold text-foreground">{s.label}</p>
+                      {s.description ? (
+                        <p className="mt-0.5 text-[11px] text-muted-foreground">{s.description}</p>
+                      ) : null}
+                    </div>
+                    <div className="shrink-0 text-right">
+                      <p className={`text-2xl font-semibold tabular-nums ${TEXT[s.color]}`}>
+                        {fmtNum(s.value)}
+                      </p>
+                      <p className="mt-0.5 text-[11px] text-muted-foreground tabular-nums">
+                        {s.sub ?? `${fmtPct(pct)} of ${stages[0].label.toLowerCase()}`}
+                      </p>
+                    </div>
                   </div>
                 </div>
               </div>
