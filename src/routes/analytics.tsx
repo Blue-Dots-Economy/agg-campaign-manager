@@ -79,7 +79,8 @@ function Analytics() {
                 </linearGradient>
               </defs>
               <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border)" vertical={false} />
-              <XAxis dataKey="day" tick={{ fontSize: 11 }} stroke="var(--color-muted-foreground)" />
+              <XAxis dataKey="label" tick={{ fontSize: 11 }} stroke="var(--color-muted-foreground)" />
+
               <YAxis tick={{ fontSize: 11 }} stroke="var(--color-muted-foreground)" />
               <Tooltip {...tooltip} />
               <Legend wrapperStyle={{ fontSize: 12 }} />
