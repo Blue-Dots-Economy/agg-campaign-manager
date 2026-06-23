@@ -9,6 +9,7 @@ export interface DailyPoint {
   engaged: number;
   converted: number;
   new_jobs: number;
+  high_intent: number;
 }
 
 const safeDiv = (n: number, d: number) => (d > 0 ? n / d : 0);
