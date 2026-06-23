@@ -57,7 +57,7 @@ export function VerticalFunnel({
       {title ? <p className="mb-4 text-sm font-medium text-foreground">{title}</p> : null}
       <div className="space-y-2">
         {stages.map((s, i) => {
-          const pct = baseline > 0 ? (s.value / baseline) * 100 : 0;
+          const pct = baseline > 0 ? Math.min(100, Math.max(0, (s.value / baseline) * 100)) : 0;
           return (
             <React.Fragment key={s.key}>
               <div
