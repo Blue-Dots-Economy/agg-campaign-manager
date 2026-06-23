@@ -43,6 +43,7 @@ import {
   AlertTriangle,
   Loader2,
   X,
+  Gauge,
 } from "lucide-react";
 import { toast } from "sonner";
 import { ScheduleEditor, type ScheduleState, makeDefaultSchedule } from "@/components/ScheduleEditor";
