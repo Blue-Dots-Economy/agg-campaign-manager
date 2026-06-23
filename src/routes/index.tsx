@@ -186,15 +186,21 @@ function Overview() {
 
             <Panel title="Phases reached" description="How deep the conversation got">
               <div className="h-72">
-                <ResponsiveContainer>
-                  <BarChart data={phases} layout="vertical" margin={{ top: 10, right: 16, left: 10, bottom: 0 }}>
-                    <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border)" horizontal={false} />
-                    <XAxis type="number" tick={{ fontSize: 11 }} stroke="var(--color-muted-foreground)" />
-                    <YAxis dataKey="phase" type="category" tick={{ fontSize: 11 }} stroke="var(--color-muted-foreground)" width={90} />
-                    <Tooltip {...tooltipStyle} />
-                    <Bar dataKey="count" fill="var(--color-chart-2)" radius={[0, 4, 4, 0]} />
-                  </BarChart>
-                </ResponsiveContainer>
+                {phases.some((p) => p.count > 0) ? (
+                  <ResponsiveContainer>
+                    <BarChart data={phases} layout="vertical" margin={{ top: 10, right: 16, left: 10, bottom: 0 }}>
+                      <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border)" horizontal={false} />
+                      <XAxis type="number" tick={{ fontSize: 11 }} stroke="var(--color-muted-foreground)" />
+                      <YAxis dataKey="phase" type="category" tick={{ fontSize: 11 }} stroke="var(--color-muted-foreground)" width={90} />
+                      <Tooltip {...tooltipStyle} />
+                      <Bar dataKey="count" fill="var(--color-chart-2)" radius={[0, 4, 4, 0]} />
+                    </BarChart>
+                  </ResponsiveContainer>
+                ) : (
+                  <div className="flex h-full items-center justify-center text-sm text-muted-foreground">
+                    No phase data captured for this period yet.
+                  </div>
+                )}
               </div>
             </Panel>
           </div>
