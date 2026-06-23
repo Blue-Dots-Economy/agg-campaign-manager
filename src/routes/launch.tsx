@@ -44,7 +44,7 @@ import {
   X,
 } from "lucide-react";
 import { toast } from "sonner";
-import { ScheduleEditor, type ScheduleState, defaultSchedule } from "@/components/ScheduleEditor";
+import { ScheduleEditor, type ScheduleState, makeDefaultSchedule } from "@/components/ScheduleEditor";
 import { appendLaunchLog } from "@/lib/launch-log";
 import { cn } from "@/lib/utils";
 
