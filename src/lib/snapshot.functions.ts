@@ -238,29 +238,6 @@ export const syncProgramSnapshot = createServerFn({ method: "POST" })
   .inputValidator((d: { program: ProgramId }) => d)
   .handler(async ({ data }) => performSync(data.program));
 
-async function loadRows(program: ProgramId): Promise<CallRow[]> {
-  const client = sb();
-  const out: CallRow[] = [];
-  const PAGE = 1000;
-  let from = 0;
-  // paginate to bypass PostgREST 1000-row default cap
-  // (KKB has ~22k rows)
-  // eslint-disable-next-line no-constant-condition
-  while (true) {
-    const { data, error } = await client
-      .from("call_rows")
-      .select("data")
-      .eq("program", program)
-      .range(from, from + PAGE - 1);
-    if (error) throw new Error(error.message);
-    const batch = (data ?? []) as Array<{ data: CallRow }>;
-    for (const r of batch) out.push(r.data);
-    if (batch.length < PAGE) break;
-    from += PAGE;
-  }
-  return out;
-}
-
 async function countConnections(program: ProgramId): Promise<number> {
   const client = sb();
   const { count } = await client
@@ -287,22 +264,61 @@ async function getSyncState(program: ProgramId) {
   } | null;
 }
 
-function buildAggregates(config: ProgramConfig, rows: CallRow[]) {
-  const isDkb = config.id === "dkb";
+export interface CampaignRollup {
+  day: string;
+  date: string;
+  type: string;
+  language: string;
+  rows: number;
+  answered: number;
+  engaged: number;
+  converted: number;
+  new_jobs: number;
+  answered_pct: number;
+  high_intent: number;
+}
+
+export interface ProgramAggregates {
+  kpis: Record<string, number>;
+  perDay: CampaignRollup[];
+  drops: Array<{ reason: string; count: number }>;
+  intents: Array<{ score: string; count: number }>;
+  regions: Array<{ region: string; count: number }>;
+  phases: Array<{ phase: string; count: number }>;
+  jobStatus: Array<{ status: string; count: number }>;
+  outcomes: Array<{ outcome: string; count: number }>;
+  dkbIntents: Array<{ score: string; count: number }>;
+}
+
+function emptyAggregates(): ProgramAggregates {
   return {
-    kpis: computeKpis(config, rows),
-    perDay: byCampaignDay(config, rows),
-    drops: isDkb ? [] : dropReasonBreakdown(config, rows),
-    intents: isDkb ? [] : intentDistribution(rows),
-    regions: isDkb ? [] : regionSplit(rows),
-    phases: isDkb ? phasesReachedBreakdown(rows) : [],
-    jobStatus: isDkb ? jobStatusBreakdown(rows) : [],
-    outcomes: isDkb ? callOutcomeBreakdown(rows) : [],
-    dkbIntents: isDkb ? intentDistributionDkb(rows) : [],
+    kpis: {},
+    perDay: [],
+    drops: [],
+    intents: [],
+    regions: [],
+    phases: [],
+    jobStatus: [],
+    outcomes: [],
+    dkbIntents: [],
   };
 }
 
-export type ProgramAggregates = ReturnType<typeof buildAggregates>;
+function normalizeAggregates(value: unknown): ProgramAggregates {
+  if (!value || typeof value !== "object") return emptyAggregates();
+  const raw = value as Partial<ProgramAggregates>;
+  return {
+    kpis: raw.kpis && typeof raw.kpis === "object" ? raw.kpis : {},
+    perDay: Array.isArray(raw.perDay) ? raw.perDay : [],
+    drops: Array.isArray(raw.drops) ? raw.drops : [],
+    intents: Array.isArray(raw.intents) ? raw.intents : [],
+    regions: Array.isArray(raw.regions) ? raw.regions : [],
+    phases: Array.isArray(raw.phases) ? raw.phases : [],
+    jobStatus: Array.isArray(raw.jobStatus) ? raw.jobStatus : [],
+    outcomes: Array.isArray(raw.outcomes) ? raw.outcomes : [],
+    dkbIntents: Array.isArray(raw.dkbIntents) ? raw.dkbIntents : [],
+  };
+}
 
 export interface AggregatePayload {
   source: "snapshot" | "empty";
@@ -318,7 +334,6 @@ export interface AggregatePayload {
 }
 
 function emptyPayload(
-  config: ProgramConfig,
   connectionCount: number,
   state: { last_synced_at: string | null; status: string } | null,
   error?: string,
@@ -330,7 +345,7 @@ function emptyPayload(
     connectionCount,
     lastSyncedAt: state?.last_synced_at ?? null,
     syncStatus: state?.status ?? "idle",
-    aggregates: buildAggregates(config, []),
+    aggregates: emptyAggregates(),
     campaigns: [],
     error,
   };
