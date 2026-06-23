@@ -321,7 +321,17 @@ export interface MetricGroup {
   cards: MetricCardDef[];
 }
 
-export type ProgramMetricsRaw = Record<string, unknown> & { program?: string };
+export interface ProviderFunnelStage {
+  key: string;
+  label: string;
+  providers: number;
+  openings: number;
+}
+export interface ProgramMetricsRaw {
+  program?: string;
+  providerFunnel?: ProviderFunnelStage[];
+  [k: string]: number | string | ProviderFunnelStage[] | undefined;
+}
 
 export interface AggregatePayload {
   source: "snapshot" | "empty";
