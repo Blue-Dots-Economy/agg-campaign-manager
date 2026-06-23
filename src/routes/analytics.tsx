@@ -42,14 +42,17 @@ function Analytics() {
   const { perDay, drops, intents, phases, jobStatus, outcomes, dkbIntents } = data.aggregates;
 
   const dayRollup = useMemo(() => {
-    const m = new Map<string, { day: string; rows: number; answered: number; engaged: number; converted: number; new_jobs: number; high_intent: number; sort: number }>();
+    // Group by the actual parsed campaign_date so the trend chart is in true
+    // chronological order with real calendar gaps preserved.
+    const m = new Map<string, { day: string; date: string; label: string; rows: number; answered: number; engaged: number; converted: number; new_jobs: number; high_intent: number }>();
     for (const p of perDay) {
-      const cur = m.get(p.day) ?? { day: p.day, rows: 0, answered: 0, engaged: 0, converted: 0, new_jobs: 0, high_intent: 0, sort: parseInt(p.day.replace(/\D/g, ""), 10) || 0 };
+      const key = p.date || p.day;
+      const cur = m.get(key) ?? { day: p.day, date: p.date, label: p.date || p.day, rows: 0, answered: 0, engaged: 0, converted: 0, new_jobs: 0, high_intent: 0 };
       cur.rows += p.rows; cur.answered += p.answered; cur.engaged += p.engaged;
       cur.converted += p.converted; cur.new_jobs += p.new_jobs; cur.high_intent += p.high_intent;
-      m.set(p.day, cur);
+      m.set(key, cur);
     }
-    return [...m.values()].sort((a, b) => a.sort - b.sort);
+    return [...m.values()].sort((a, b) => (a.date || "").localeCompare(b.date || ""));
   }, [perDay]);
 
   return (
