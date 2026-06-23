@@ -256,7 +256,7 @@ function Overview() {
                 <ResponsiveContainer>
                   <LineChart
                     data={perDayRollup.map((d) => ({
-                      day: d.day,
+                      label: d.label,
                       answered: d.rows > 0 ? Math.round((d.answered / d.rows) * 1000) / 10 : 0,
                       engaged: d.rows > 0 ? Math.round((d.engaged / d.rows) * 1000) / 10 : 0,
                       converted: d.rows > 0 ? Math.round((d.converted / d.rows) * 1000) / 10 : 0,
@@ -264,7 +264,7 @@ function Overview() {
                     margin={{ top: 10, right: 16, left: -10, bottom: 0 }}
                   >
                     <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border)" vertical={false} />
-                    <XAxis dataKey="day" tick={{ fontSize: 11 }} stroke="var(--color-muted-foreground)" />
+                    <XAxis dataKey="label" tick={{ fontSize: 11 }} stroke="var(--color-muted-foreground)" />
                     <YAxis tick={{ fontSize: 11 }} stroke="var(--color-muted-foreground)" unit="%" />
                     <Tooltip
                       {...tooltipStyle}
