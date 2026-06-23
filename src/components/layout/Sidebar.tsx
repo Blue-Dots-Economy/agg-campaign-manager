@@ -94,7 +94,7 @@ export function Sidebar() {
         })}
       </nav>
 
-      <div className="px-5 py-4 border-t border-sidebar-border text-[11px] opacity-85">
+      <div className="mt-auto px-5 py-4 border-t border-sidebar-border text-[11px] opacity-85">
         {enabled.length === 0 ? (
           <>No sheets connected · <Link to="/connections" className="underline">add one</Link></>
         ) : (
