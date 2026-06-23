@@ -104,9 +104,9 @@ function Campaigns() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {campaigns.map((c) => (
+              {campaigns.map((c, i) => (
                 <TableRow
-                  key={c.day}
+                  key={`${c.day}|${c.type}|${c.language}|${i}`}
                   className="cursor-pointer"
                   onClick={() => setOpenDay(c.day)}
                 >
