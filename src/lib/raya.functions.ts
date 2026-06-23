@@ -100,26 +100,28 @@ export const rayaCreateBatch = createServerFn({ method: "POST" })
     try {
       res = await rayaFetch("/batch", { method: "POST", json: body });
     } catch (e) {
-      // Raya 400 validation shape: { status:"error", message, errors:[{row,field,...}] }
+      // Raya 400 validation: { status:"error", message, errors:[{row,field,...}] }
       if (e instanceof RayaApiError && e.body && typeof e.body === "object") {
         const b = e.body as Record<string, any>;
         if (b.status === "error" || Array.isArray(b.errors)) {
-          const err: any = new Error(b.message || "Raya rejected the contacts.");
-          err.rayaValidation = {
-            message: b.message ?? "Validation failed",
-            totalRows: b.totalRows,
-            validRows: b.validRows,
-            invalidRows: b.invalidRows,
-            errors: Array.isArray(b.errors) ? b.errors : [],
+          return {
+            ok: false as const,
+            batchId: null,
+            validation: {
+              message: b.message ?? "Validation failed",
+              totalRows: b.totalRows,
+              validRows: b.validRows,
+              invalidRows: b.invalidRows,
+              errors: Array.isArray(b.errors) ? b.errors : [],
+            },
           };
-          throw err;
         }
       }
       throw e;
     }
 
     const r = (res ?? {}) as Record<string, any>;
-    // Raya success shape uses camelCase `batchId` (number). Fall back to other common keys.
+    // Raya success uses camelCase `batchId` (number). Fall back to other common keys.
     const rawId =
       r.batchId ??
       r.batch_id ??
@@ -131,25 +133,29 @@ export const rayaCreateBatch = createServerFn({ method: "POST" })
       r.batch?.batchId;
 
     if (r.status === "error" || (!rawId && typeof r.invalidRows === "number" && r.invalidRows > 0)) {
-      const err: any = new Error(r.message || "Raya rejected the contacts.");
-      err.rayaValidation = {
-        message: r.message ?? "Validation failed",
-        totalRows: r.totalRows,
-        validRows: r.validRows,
-        invalidRows: r.invalidRows,
-        errors: Array.isArray(r.errors) ? r.errors : [],
+      return {
+        ok: false as const,
+        batchId: null,
+        validation: {
+          message: r.message ?? "Validation failed",
+          totalRows: r.totalRows,
+          validRows: r.validRows,
+          invalidRows: r.invalidRows,
+          errors: Array.isArray(r.errors) ? r.errors : [],
+        },
       };
-      throw err;
     }
 
+    if (!rawId) throw new Error("Raya did not return a batchId.");
+
     return {
-      batchId: rawId != null ? String(rawId) : null,
+      ok: true as const,
+      batchId: String(rawId),
       totalRows: r.totalRows,
       validRows: r.validRows,
       invalidRows: r.invalidRows,
       contactsInserted: r.contactsInserted,
       message: r.message,
-      raw: r,
     };
   });
 
