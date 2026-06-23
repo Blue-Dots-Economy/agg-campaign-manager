@@ -16,8 +16,10 @@ export type Database = {
     Tables: {
       call_rows: {
         Row: {
+          applications_count: number | null
           applied_to_job: boolean | null
           call_answered: boolean | null
+          call_duration_seconds: number | null
           call_engaged: boolean | null
           call_id: string
           call_outcome: string | null
@@ -35,13 +37,17 @@ export type Database = {
           language: string | null
           new_job_posted: string | null
           phases_reached: string | null
+          phone: string | null
           program: string
           synced_at: string
           talent_insights_shown: string | null
+          tried_to_apply: boolean | null
         }
         Insert: {
+          applications_count?: number | null
           applied_to_job?: boolean | null
           call_answered?: boolean | null
+          call_duration_seconds?: number | null
           call_engaged?: boolean | null
           call_id?: string
           call_outcome?: string | null
@@ -59,13 +65,17 @@ export type Database = {
           language?: string | null
           new_job_posted?: string | null
           phases_reached?: string | null
+          phone?: string | null
           program: string
           synced_at?: string
           talent_insights_shown?: string | null
+          tried_to_apply?: boolean | null
         }
         Update: {
+          applications_count?: number | null
           applied_to_job?: boolean | null
           call_answered?: boolean | null
+          call_duration_seconds?: number | null
           call_engaged?: boolean | null
           call_id?: string
           call_outcome?: string | null
@@ -83,9 +93,11 @@ export type Database = {
           language?: string | null
           new_job_posted?: string | null
           phases_reached?: string | null
+          phone?: string | null
           program?: string
           synced_at?: string
           talent_insights_shown?: string | null
+          tried_to_apply?: boolean | null
         }
         Relationships: []
       }
@@ -198,6 +210,7 @@ export type Database = {
         Returns: Json
       }
       get_program_aggregates: { Args: { _program: string }; Returns: Json }
+      get_program_metric_groups: { Args: { _program: string }; Returns: Json }
     }
     Enums: {
       [_ in never]: never
