@@ -1,3 +1,5 @@
+import { Fragment } from "react";
+
 export type DropRow = {
   stage: string;
   reason: string;
