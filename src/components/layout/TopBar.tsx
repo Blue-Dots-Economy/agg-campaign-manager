@@ -3,6 +3,7 @@ import { Button } from "@/components/ui/button";
 import { useProgram } from "@/programs/context";
 import { Link } from "@tanstack/react-router";
 import { useSyncProgram, useProgramAggregates } from "@/programs/useProgramAggregates";
+import { ConcurrencyChip } from "@/components/ConcurrencyChip";
 
 export function TopBar() {
   const { config } = useProgram();
