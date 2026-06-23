@@ -279,7 +279,6 @@ function Overview() {
               hideRegion={hideRegion}
             />
           </div>
-          </div>
 
 
           <div className="grid gap-4 lg:grid-cols-3">
