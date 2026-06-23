@@ -137,6 +137,7 @@ function Schedule() {
       await stopFn({ data: { batchId: id } });
       toast.success("Batch stopped");
       load();
+      refreshUsage();
     } catch (e: any) {
       toast.error(e?.message ?? "Failed to stop batch");
     }
