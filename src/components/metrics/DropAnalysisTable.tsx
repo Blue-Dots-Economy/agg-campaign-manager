@@ -19,7 +19,15 @@ const STAGE_ORDER = [
 
 const fmt = (n: number) => n.toLocaleString();
 
-export function DropAnalysisTable({ rows }: { rows: DropRow[] }) {
+export function DropAnalysisTable({
+  rows,
+  hideRegion,
+}: {
+  rows: DropRow[];
+  hideRegion?: "GZB" | "KA";
+}) {
+  const showGzb = hideRegion !== "GZB";
+  const showKa = hideRegion !== "KA";
   if (!rows || rows.length === 0) {
     return (
       <div className="text-sm text-muted-foreground py-8 text-center">
@@ -49,8 +57,8 @@ export function DropAnalysisTable({ rows }: { rows: DropRow[] }) {
           <tr className="bg-primary text-primary-foreground">
             <th className="text-left font-semibold px-4 py-2.5">Drop point (stage)</th>
             <th className="text-left font-semibold px-4 py-2.5">Drop reason</th>
-            <th className="text-right font-semibold px-4 py-2.5 w-24">GZB</th>
-            <th className="text-right font-semibold px-4 py-2.5 w-24">KA</th>
+            {showGzb && <th className="text-right font-semibold px-4 py-2.5 w-24">GZB</th>}
+            {showKa && <th className="text-right font-semibold px-4 py-2.5 w-24">KA</th>}
             <th className="text-right font-semibold px-4 py-2.5 w-28">Total</th>
           </tr>
         </thead>
@@ -74,16 +82,16 @@ export function DropAnalysisTable({ rows }: { rows: DropRow[] }) {
                       {i === 0 ? <span className="font-medium text-foreground">{stage}</span> : ""}
                     </td>
                     <td className="px-4 py-2">{r.reason}</td>
-                    <td className="px-4 py-2 text-right tabular-nums">{fmt(r.gzb)}</td>
-                    <td className="px-4 py-2 text-right tabular-nums">{fmt(r.ka)}</td>
+                    {showGzb && <td className="px-4 py-2 text-right tabular-nums">{fmt(r.gzb)}</td>}
+                    {showKa && <td className="px-4 py-2 text-right tabular-nums">{fmt(r.ka)}</td>}
                     <td className="px-4 py-2 text-right tabular-nums font-medium">{fmt(r.total)}</td>
                   </tr>
                 ))}
                 <tr className="border-t border-border bg-primary/5 font-semibold">
                   <td className="px-4 py-2">{stage}</td>
                   <td className="px-4 py-2 text-muted-foreground">Subtotal</td>
-                  <td className="px-4 py-2 text-right tabular-nums">{fmt(sG)}</td>
-                  <td className="px-4 py-2 text-right tabular-nums">{fmt(sK)}</td>
+                  {showGzb && <td className="px-4 py-2 text-right tabular-nums">{fmt(sG)}</td>}
+                  {showKa && <td className="px-4 py-2 text-right tabular-nums">{fmt(sK)}</td>}
                   <td className="px-4 py-2 text-right tabular-nums">{fmt(sT)}</td>
                 </tr>
               </Fragment>
@@ -93,8 +101,8 @@ export function DropAnalysisTable({ rows }: { rows: DropRow[] }) {
             <td className="px-4 py-2.5" colSpan={2}>
               Total drops
             </td>
-            <td className="px-4 py-2.5 text-right tabular-nums">{fmt(grandG)}</td>
-            <td className="px-4 py-2.5 text-right tabular-nums">{fmt(grandK)}</td>
+            {showGzb && <td className="px-4 py-2.5 text-right tabular-nums">{fmt(grandG)}</td>}
+            {showKa && <td className="px-4 py-2.5 text-right tabular-nums">{fmt(grandK)}</td>}
             <td className="px-4 py-2.5 text-right tabular-nums">{fmt(grandT)}</td>
           </tr>
         </tbody>

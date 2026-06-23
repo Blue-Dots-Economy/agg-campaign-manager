@@ -205,13 +205,50 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      get_program_aggregate_payload: {
-        Args: { _program: string }
-        Returns: Json
-      }
-      get_program_aggregates: { Args: { _program: string }; Returns: Json }
-      get_program_metric_groups: { Args: { _program: string }; Returns: Json }
-      get_program_metrics_raw: { Args: { _program: string }; Returns: Json }
+      get_program_aggregate_payload:
+        | { Args: { _program: string }; Returns: Json }
+        | {
+            Args: {
+              _date_from?: string
+              _date_to?: string
+              _program: string
+              _state?: string
+            }
+            Returns: Json
+          }
+      get_program_aggregates:
+        | { Args: { _program: string }; Returns: Json }
+        | {
+            Args: {
+              _date_from?: string
+              _date_to?: string
+              _program: string
+              _state?: string
+            }
+            Returns: Json
+          }
+      get_program_metric_groups:
+        | { Args: { _program: string }; Returns: Json }
+        | {
+            Args: {
+              _date_from?: string
+              _date_to?: string
+              _program: string
+              _state?: string
+            }
+            Returns: Json
+          }
+      get_program_metrics_raw:
+        | { Args: { _program: string }; Returns: Json }
+        | {
+            Args: {
+              _date_from?: string
+              _date_to?: string
+              _program: string
+              _state?: string
+            }
+            Returns: Json
+          }
     }
     Enums: {
       [_ in never]: never

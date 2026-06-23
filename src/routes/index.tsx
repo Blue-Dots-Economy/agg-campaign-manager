@@ -14,6 +14,7 @@ import {
   Bar,
   Legend,
 } from "recharts";
+import { useState } from "react";
 import { useProgram } from "@/programs/context";
 import { useProgramAggregates } from "@/programs/useProgramAggregates";
 import { KpiCard } from "@/components/KpiCard";
@@ -26,6 +27,10 @@ import {
 import { Panel } from "@/components/Panel";
 import { NoDataState, LoadingState } from "@/components/EmptyState";
 import { DropAnalysisTable } from "@/components/metrics/DropAnalysisTable";
+import {
+  OverviewFilters,
+  type OverviewFilterValue,
+} from "@/components/metrics/OverviewFilters";
 
 export const Route = createFileRoute("/")({
   component: Overview,
@@ -52,19 +57,44 @@ const tooltipStyle = {
 function Overview() {
   const { config } = useProgram();
   const isDkb = config.id === "dkb";
-  const query = useProgramAggregates(config);
+  const [filters, setFilters] = useState<OverviewFilterValue>({
+    state: "all",
+    dateFrom: null,
+    dateTo: null,
+  });
+  const query = useProgramAggregates(config, filters);
   const data = query.data;
 
   if (query.isLoading && !data) return <LoadingState />;
-  if (!data || data.source === "empty" || data.totalRows === 0) return <NoDataState />;
+
+  const filterBar = (
+    <div className="flex items-center justify-between gap-3 flex-wrap">
+      <OverviewFilters value={filters} onChange={setFilters} />
+      {query.isFetching && (
+        <span className="text-xs text-muted-foreground">Updating…</span>
+      )}
+    </div>
+  );
+
+  if (!data || data.source === "empty" || data.totalRows === 0) {
+    return (
+      <div className="space-y-6">
+        {filterBar}
+        <NoDataState />
+      </div>
+    );
+  }
 
   const { kpis, perDay, intents, regions, phases, jobStatus, outcomes, dkbIntents, dropAnalysis } =
     data.aggregates;
   const metrics = data.metrics ?? {};
   const hasMetrics = Object.keys(metrics).length > 0;
+  const hideRegion: "GZB" | "KA" | undefined =
+    filters.state === "GZB" ? "KA" : filters.state === "KA" ? "GZB" : undefined;
 
   return (
     <div className="space-y-6">
+      {filterBar}
       {hasMetrics ? (
         isDkb ? (
           <DkbOverviewMetrics m={metrics as unknown as DkbMetrics} />
@@ -193,7 +223,7 @@ function Overview() {
               description="Where conversations ended, by stage and reason (region split: GZB vs KA). Heuristic classifier over free-text drop_reason — structured buckets map exactly; the long tail is keyword-bucketed (fallback = Other)."
             >
               <div className="max-h-80 overflow-y-auto">
-                <DropAnalysisTable rows={dropAnalysis} />
+                <DropAnalysisTable rows={dropAnalysis} hideRegion={hideRegion} />
               </div>
             </Panel>
           </div>
