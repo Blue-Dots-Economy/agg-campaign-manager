@@ -2,7 +2,6 @@ import { createServerFn } from "@tanstack/react-start";
 import { createClient } from "@supabase/supabase-js";
 import type { CallRow } from "@/programs/data";
 import type { ProgramId } from "@/programs/registry";
-import { registry as PROGRAMS } from "@/programs/registry";
 
 function sb() {
   return createClient(
