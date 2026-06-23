@@ -73,7 +73,14 @@ async function rayaFetch(
         (typeof p.detail === "string" && p.detail) ||
         null;
       if (m) msg = `Raya API ${res.status}: ${m}`;
+      else {
+        // No standard message field — surface the whole body so the user can see why Raya rejected it.
+        try { msg = `Raya API ${res.status}: ${JSON.stringify(parsed).slice(0, 600)}`; } catch { /* ignore */ }
+      }
+    } else if (typeof parsed === "string" && parsed.trim()) {
+      msg = `Raya API ${res.status}: ${parsed.slice(0, 600)}`;
     }
+    console.error("[raya] non-OK response", { path, status: res.status, body: parsed });
     throw new RayaApiError(res.status, parsed, msg);
   }
   return parsed;
