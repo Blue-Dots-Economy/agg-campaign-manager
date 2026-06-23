@@ -210,8 +210,8 @@ export function SplitBar({
   const pickup = total > 0 ? (answered / total) * 100 : 0;
 
   // Donut chart geometry
-  const size = 140;
-  const stroke = 18;
+  const size = 160;
+  const stroke = 22;
   const radius = (size - stroke) / 2;
   const circ = 2 * Math.PI * radius;
   const answeredOffset = circ * (1 - answered / (total || 1));
@@ -223,32 +223,37 @@ export function SplitBar({
         <p className="text-sm font-medium text-foreground">{title}</p>
         <p className="text-[11px] text-muted-foreground">{fmtNum(total)} calls</p>
       </div>
-      <div className="mt-2 flex items-baseline gap-3">
-        <span className="text-3xl font-semibold tracking-tight text-emerald-600 dark:text-emerald-400">
-          {fmtPct(pickup)}
-        </span>
-        <span className="text-xs text-muted-foreground">pickup rate</span>
-      </div>
-      <div className="mt-4 flex h-3 w-full overflow-hidden rounded-full bg-muted">
-        <div className="bg-emerald-500" style={{ width: `${pickup}%` }} />
-        <div className="bg-rose-500" style={{ width: `${100 - pickup}%` }} />
-      </div>
-      <ul className="mt-4 grid grid-cols-2 gap-2 text-xs">
-        <li className="flex items-center justify-between rounded-md bg-emerald-500/10 px-3 py-2">
-          <span className="text-muted-foreground">Answered</span>
-          <span className="font-medium tabular-nums text-emerald-600 dark:text-emerald-400">{fmtNum(answered)}</span>
-        </li>
-        <li className="flex items-center justify-between rounded-md bg-rose-500/10 px-3 py-2">
-          <span className="text-muted-foreground">Unanswered</span>
-          <span className="font-medium tabular-nums text-rose-600 dark:text-rose-400">{fmtNum(unanswered)}</span>
-        </li>
-      </ul>
 
-      {/* Donut chart */}
-      <div className="mt-5 flex items-center justify-center">
-        <div className="relative" style={{ width: size, height: size }}>
+      <div className="mt-4 flex items-center gap-6">
+        {/* Left: pickup rate + legend */}
+        <div className="flex-1 space-y-4">
+          <div>
+            <span className="text-4xl font-semibold tracking-tight text-emerald-600 dark:text-emerald-400">
+              {fmtPct(pickup)}
+            </span>
+            <p className="mt-0.5 text-xs text-muted-foreground">pickup rate</p>
+          </div>
+          <div className="space-y-2">
+            <div className="flex items-center justify-between rounded-md bg-emerald-500/10 px-3 py-2 text-xs">
+              <span className="flex items-center gap-2 text-muted-foreground">
+                <span className="h-2.5 w-2.5 rounded-full bg-emerald-500" />
+                Answered
+              </span>
+              <span className="font-medium tabular-nums text-emerald-600 dark:text-emerald-400">{fmtNum(answered)}</span>
+            </div>
+            <div className="flex items-center justify-between rounded-md bg-rose-500/10 px-3 py-2 text-xs">
+              <span className="flex items-center gap-2 text-muted-foreground">
+                <span className="h-2.5 w-2.5 rounded-full bg-rose-500" />
+                Unanswered
+              </span>
+              <span className="font-medium tabular-nums text-rose-600 dark:text-rose-400">{fmtNum(unanswered)}</span>
+            </div>
+          </div>
+        </div>
+
+        {/* Right: donut chart */}
+        <div className="relative shrink-0" style={{ width: size, height: size }}>
           <svg width={size} height={size} className="-rotate-90">
-            {/* Background ring */}
             <circle
               cx={size / 2}
               cy={size / 2}
@@ -256,7 +261,6 @@ export function SplitBar({
               className="fill-none stroke-muted"
               strokeWidth={stroke}
             />
-            {/* Answered segment (emerald) */}
             <circle
               cx={size / 2}
               cy={size / 2}
@@ -268,7 +272,6 @@ export function SplitBar({
               strokeDashoffset={answeredOffset}
               style={{ transition: "stroke-dashoffset 700ms ease" }}
             />
-            {/* Unanswered segment (rose) — starts after answered */}
             <circle
               cx={size / 2}
               cy={size / 2}
@@ -278,17 +281,13 @@ export function SplitBar({
               strokeLinecap="round"
               strokeDasharray={circ}
               strokeDashoffset={unansweredOffset}
-              style={{
-                transition: "stroke-dashoffset 700ms ease",
-                strokeDashoffset: unansweredOffset,
-              }}
+              style={{ transition: "stroke-dashoffset 700ms ease" }}
               transform={`rotate(${(answered / (total || 1)) * 360} ${size / 2} ${size / 2})`}
             />
           </svg>
-          {/* Center label */}
           <div className="absolute inset-0 flex flex-col items-center justify-center">
             <span className="text-[11px] text-muted-foreground">Total</span>
-            <span className="text-sm font-semibold text-foreground">{fmtNum(total)}</span>
+            <span className="text-base font-semibold text-foreground">{fmtNum(total)}</span>
           </div>
         </div>
       </div>
