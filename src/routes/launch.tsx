@@ -41,6 +41,7 @@ import {
   ChevronRight,
   AlertTriangle,
   Loader2,
+  X,
 } from "lucide-react";
 import { toast } from "sonner";
 import { ScheduleEditor, type ScheduleState, defaultSchedule } from "@/components/ScheduleEditor";
