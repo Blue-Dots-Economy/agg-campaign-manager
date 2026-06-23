@@ -410,15 +410,21 @@ function normalizeMetricGroups(value: unknown): MetricGroup[] {
 }
 
 export const fetchProgramAggregates = createServerFn({ method: "GET" })
-  .inputValidator((d: { program: ProgramId }) => d)
+  .inputValidator((d: { program: ProgramId; state?: string; dateFrom?: string | null; dateTo?: string | null }) => d)
   .handler(async ({ data }): Promise<AggregatePayload> => {
     const program = data.program;
+    const state = data.state && data.state !== "all" ? data.state : "all";
+    const dateFrom = data.dateFrom ?? null;
+    const dateTo = data.dateTo ?? null;
     try {
       let payload: AggregateRpcPayload;
       try {
         const client = sb();
         const { data: rpcData, error } = await client.rpc("get_program_aggregate_payload", {
           _program: program,
+          _state: state,
+          _date_from: dateFrom,
+          _date_to: dateTo,
         });
         if (error) throw new Error(error.message);
         payload = (rpcData && typeof rpcData === "object" ? rpcData : {}) as AggregateRpcPayload;
