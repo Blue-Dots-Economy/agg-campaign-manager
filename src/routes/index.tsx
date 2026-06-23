@@ -106,6 +106,16 @@ function Overview() {
 
   const { kpis, perDay, intents, regions, phases, jobStatus, outcomes, dkbIntents, dropAnalysis } =
     data.aggregates;
+  const perDayRollup = useMemo(() => {
+    const m = new Map<string, { day: string; date: string; rows: number; answered: number; engaged: number; converted: number; new_jobs: number; high_intent: number; sort: number }>();
+    for (const p of perDay) {
+      const cur = m.get(p.day) ?? { day: p.day, date: p.date, rows: 0, answered: 0, engaged: 0, converted: 0, new_jobs: 0, high_intent: 0, sort: parseInt(p.day.replace(/\D/g, ""), 10) || 0 };
+      cur.rows += p.rows; cur.answered += p.answered; cur.engaged += p.engaged;
+      cur.converted += p.converted; cur.new_jobs += p.new_jobs; cur.high_intent += p.high_intent;
+      m.set(p.day, cur);
+    }
+    return [...m.values()].sort((a, b) => a.sort - b.sort);
+  }, [perDay]);
   const metrics = data.metrics ?? {};
   const hasMetrics = Object.keys(metrics).length > 0;
   const hideRegion: "GZB" | "KA" | undefined =
