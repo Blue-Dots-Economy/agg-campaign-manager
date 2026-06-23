@@ -208,11 +208,14 @@ export function DkbOverviewMetrics({
   previous?: DkbMetrics;
   perDay?: DailyPoint[];
 }) {
-  const productiveDenom = m.answeredCalls;
+  const pickupPct = m.totalCalls > 0 ? (m.answeredCalls / m.totalCalls) * 100 : 0;
+  const productiveDenom = m.totalCalls;
   const productivePct = productiveDenom > 0 ? (m.productiveCalls / productiveDenom) * 100 : 0;
+  const prevPickupPct =
+    previous && previous.totalCalls > 0 ? (previous.answeredCalls / previous.totalCalls) * 100 : null;
   const prevProductivePct =
-    previous && previous.answeredCalls > 0
-      ? (previous.productiveCalls / previous.answeredCalls) * 100
+    previous && previous.totalCalls > 0
+      ? (previous.productiveCalls / previous.totalCalls) * 100
       : null;
 
   const funnelData = m.providerFunnel ?? [];
@@ -237,41 +240,15 @@ export function DkbOverviewMetrics({
         i === 0
           ? "100% of called"
           : `${ofCalled.toFixed(1)}% of called  ·  −${step.toFixed(1)}% step`,
+      nextAnnotation: i < funnelData.length - 1 ? undefined : undefined,
     };
   });
 
   return (
     <div className="space-y-8">
       <MetricSection
-        title="Outcome metrics — Openings"
-        subtitle="Vacancy-weighted (sum of num_vacancies_input)"
-      >
-        <div className="grid gap-4 lg:grid-cols-3">
-          <div className="lg:col-span-2">
-            <SegmentedBar
-              title="Total openings (before campaign)"
-              totalLabel="Total"
-              total={m.totalOpenings}
-              segments={[
-                { label: "Active", value: m.activeOpenings, color: "green" },
-                { label: "Closed", value: m.closedOpenings, color: "red" },
-                { label: "Unresolved", value: m.unresolvedOpenings, color: "amber" },
-              ]}
-            />
-          </div>
-          <MetricCard
-            label="New openings captured"
-            value={m.newOpenings}
-            sub={previous ? undefined : "From new jobs posted"}
-            previous={prev(previous, "newOpenings")}
-            trend={series(perDay, (p) => p.new_jobs)}
-          />
-        </div>
-      </MetricSection>
-
-      <MetricSection
-        title="DKB Provider Funnel"
-        subtitle="Per unique provider (contact phone) — Called → Picked up → Engaged → Actively hiring"
+        title="Outcome metrics"
+        subtitle="Provider funnel — Called → Picked up → Engaged → Actively hiring"
       >
         <div className="grid gap-4 lg:grid-cols-5">
           <div className="lg:col-span-3">
@@ -285,6 +262,13 @@ export function DkbOverviewMetrics({
           </div>
           <div className="grid gap-3 lg:col-span-2 lg:grid-cols-1">
             <MetricCard
+              label="New openings captured"
+              value={m.newOpenings}
+              sub={previous ? undefined : "Vacancies from new jobs posted"}
+              previous={prev(previous, "newOpenings")}
+              trend={series(perDay, (p) => p.new_jobs)}
+            />
+            <MetricCard
               label="New jobs discussed"
               value={m.newJobsDiscussed}
               sub={previous ? undefined : "Providers that mentioned a new role"}
@@ -292,19 +276,65 @@ export function DkbOverviewMetrics({
               trend={series(perDay, (p) => p.new_jobs)}
             />
             <MetricCard
-              label="New openings captured"
-              value={m.newOpenings}
-              sub={previous ? undefined : "Vacancies from new jobs posted"}
-              previous={prev(previous, "newOpenings")}
-              trend={series(perDay, (p) => p.new_jobs)}
+              label="Active openings"
+              value={m.activeOpenings}
+              sub={previous ? undefined : "Currently hiring (post-campaign)"}
+              previous={prev(previous, "activeOpenings")}
             />
           </div>
         </div>
       </MetricSection>
 
+      <MetricSection
+        title="Openings & companies"
+        subtitle="Vacancy-weighted (sum of num_vacancies_input)"
+      >
+        <div className="grid gap-4 lg:grid-cols-2">
+          <SegmentedBar
+            title="Openings by status"
+            totalLabel="Total"
+            total={m.totalOpenings}
+            segments={[
+              { label: "Active", value: m.activeOpenings, color: "green" },
+              { label: "Closed", value: m.closedOpenings, color: "red" },
+              { label: "Unresolved", value: m.unresolvedOpenings, color: "amber" },
+            ]}
+          />
+          <SegmentedBar
+            title="Companies by job status"
+            totalLabel="Companies called"
+            total={m.companiesCalled}
+            segments={[
+              { label: "Active jobs", value: m.jobsActive, color: "green" },
+              { label: "Closed jobs", value: m.jobsClosed, color: "red" },
+              { label: "Unresolved", value: m.companiesUnresolved, color: "amber" },
+            ]}
+          />
+        </div>
+      </MetricSection>
+
       <MetricSection title="Call metrics" subtitle="Per call (raw rows)">
-        <div className="grid gap-4 lg:grid-cols-3">
-          <SplitBar answered={m.answeredCalls} unanswered={m.unansweredCalls} />
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
+          <MetricCard
+            label="Total calls"
+            value={m.totalCalls}
+            sub={previous ? undefined : "All dialled attempts"}
+            previous={prev(previous, "totalCalls")}
+            trend={series(perDay, (p) => p.rows)}
+          />
+          <MetricCard
+            label="Answered"
+            value={m.answeredCalls}
+            sub={previous ? `${pickupPct.toFixed(1)}% pickup` : `${pickupPct.toFixed(1)}% pickup rate`}
+            previous={prev(previous, "answeredCalls")}
+            trend={series(perDay, (p) => p.answered)}
+          />
+          <MetricCard
+            label="Unanswered"
+            value={m.unansweredCalls}
+            sub={previous ? undefined : "No pickup"}
+            previous={prev(previous, "unansweredCalls")}
+          />
           <MetricCard
             label="Productive conversations"
             value={productivePct}
@@ -324,3 +354,5 @@ export function DkbOverviewMetrics({
     </div>
   );
 }
+// Suppress unused-var warning for prevPickupPct in this layout iteration.
+void prevPickupPct;
