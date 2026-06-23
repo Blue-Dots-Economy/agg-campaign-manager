@@ -64,7 +64,7 @@ export function DropAnalysisTable({ rows }: { rows: DropRow[] }) {
             grandK += sK;
             grandT += sT;
             return (
-              <>
+              <Fragment key={stage}>
                 {reasons.map((r, i) => (
                   <tr
                     key={`${stage}-${r.reason}`}
@@ -79,17 +79,14 @@ export function DropAnalysisTable({ rows }: { rows: DropRow[] }) {
                     <td className="px-4 py-2 text-right tabular-nums font-medium">{fmt(r.total)}</td>
                   </tr>
                 ))}
-                <tr
-                  key={`${stage}-subtotal`}
-                  className="border-t border-border bg-primary/5 font-semibold"
-                >
+                <tr className="border-t border-border bg-primary/5 font-semibold">
                   <td className="px-4 py-2">{stage}</td>
                   <td className="px-4 py-2 text-muted-foreground">Subtotal</td>
                   <td className="px-4 py-2 text-right tabular-nums">{fmt(sG)}</td>
                   <td className="px-4 py-2 text-right tabular-nums">{fmt(sK)}</td>
                   <td className="px-4 py-2 text-right tabular-nums">{fmt(sT)}</td>
                 </tr>
-              </>
+              </Fragment>
             );
           })}
           <tr className="border-t-2 border-primary/40 bg-primary/10 font-bold">
