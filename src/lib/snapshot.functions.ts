@@ -3,17 +3,6 @@ import { createClient } from "@supabase/supabase-js";
 import type { CallRow } from "@/programs/data";
 import type { ProgramId, ProgramConfig } from "@/programs/registry";
 import { registry as PROGRAMS } from "@/programs/registry";
-import {
-  computeKpis,
-  byCampaignDay,
-  dropReasonBreakdown,
-  intentDistribution,
-  regionSplit,
-  phasesReachedBreakdown,
-  jobStatusBreakdown,
-  callOutcomeBreakdown,
-  intentDistributionDkb,
-} from "@/programs/metrics";
 
 function sb() {
   return createClient(
@@ -139,6 +128,20 @@ async function performSync(program: ProgramId): Promise<SyncResult> {
     call_id: string;
     campaign_day: string;
     intent_score: number | null;
+    call_answered: boolean;
+    call_engaged: boolean;
+    applied_to_job: boolean;
+    call_status: string;
+    job_status: string;
+    new_job_posted: string;
+    talent_insights_shown: string;
+    phases_reached: string;
+    drop_reason: string;
+    call_outcome: string;
+    city_campaign: string;
+    campaign_date: string;
+    campaign_type: string;
+    language: string;
     data: CallRow;
   }> = [];
 
@@ -159,6 +162,20 @@ async function performSync(program: ProgramId): Promise<SyncResult> {
             call_id: mapped.call_id || "",
             campaign_day: mapped.campaign_day || "",
             intent_score: Number.isFinite(mapped["Intent Score"]) ? mapped["Intent Score"] : null,
+            call_answered: mapped.call_answered,
+            call_engaged: mapped.call_engaged,
+            applied_to_job: mapped.applied_to_job,
+            call_status: mapped.raw?.call_status ?? "",
+            job_status: mapped.raw?.job_status ?? "",
+            new_job_posted: mapped.raw?.new_job_posted ?? "",
+            talent_insights_shown: mapped.raw?.talent_insights_shown ?? "",
+            phases_reached: mapped.raw?.phases_reached ?? "",
+            drop_reason: mapped.drop_reason || mapped.raw?.drop_reason || "",
+            call_outcome: mapped.raw?.call_outcome || mapped.call_outcome || "",
+            city_campaign: mapped.raw?.city_campaign || mapped.city_campaign || "",
+            campaign_date: mapped.campaign_date || mapped.raw?.campaign_date || "",
+            campaign_type: mapped.campaign_type || mapped.raw?.campaign_type || "",
+            language: mapped.language || mapped.raw?.language || "",
             data: mapped,
           });
         }
