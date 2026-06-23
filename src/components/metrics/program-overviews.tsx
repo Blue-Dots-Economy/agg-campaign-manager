@@ -183,6 +183,32 @@ export function KkbOverviewMetrics({ m }: { m: KkbMetrics }) {
 export function DkbOverviewMetrics({ m }: { m: DkbMetrics }) {
   const productiveDenom = m.answeredCalls;
   const productivePct = productiveDenom > 0 ? (m.productiveCalls / productiveDenom) * 100 : 0;
+
+  const funnelData = m.providerFunnel ?? [];
+  const calledProviders = funnelData[0]?.providers ?? 0;
+  const colors: FunnelColor[] = ["blue", "green", "green", "coral"];
+  const pct = (n: number, d: number) => (d > 0 ? (n / d) * 100 : 0);
+  const drop = (n: number, d: number) => (d > 0 ? Math.max(0, (1 - n / d) * 100) : 0);
+
+  const funnelStages: VerticalFunnelStage[] = funnelData.map((s, i) => {
+    const prev = i > 0 ? funnelData[i - 1] : undefined;
+    const ofCalled = pct(s.providers, calledProviders);
+    const step = i === 0 ? 0 : drop(s.providers, prev?.providers ?? 0);
+    return {
+      key: s.key,
+      label: s.label,
+      value: s.providers,
+      unit: "providers",
+      secondaryValue: s.openings,
+      secondaryLabel: "openings",
+      color: colors[i] ?? "blue",
+      sub:
+        i === 0
+          ? "100% of called"
+          : `${ofCalled.toFixed(1)}% of called  ·  −${step.toFixed(1)}% step`,
+    };
+  });
+
   return (
     <div className="space-y-8">
       <MetricSection
@@ -213,31 +239,38 @@ export function DkbOverviewMetrics({ m }: { m: DkbMetrics }) {
       </MetricSection>
 
       <MetricSection
-        title="Outcome metrics — Companies"
-        subtitle="Per unique company (deduped by contact phone)"
+        title="DKB Provider Funnel"
+        subtitle="Per unique provider (contact phone) — Called → Picked up → Engaged → Actively hiring"
       >
-        <div className="grid gap-4 lg:grid-cols-3">
-          <div className="lg:col-span-2">
-            <SegmentedBar
-              title="Companies called"
-              totalLabel="Unique phones"
-              total={m.companiesCalled}
-              segments={[
-                { label: "Jobs confirmed active", value: m.jobsActive, color: "green" },
-                { label: "Jobs confirmed closed", value: m.jobsClosed, color: "red" },
-                { label: "Unresolved", value: m.companiesUnresolved, color: "amber" },
-              ]}
+        <div className="grid gap-4 lg:grid-cols-5">
+          <div className="lg:col-span-3">
+            {funnelStages.length > 0 ? (
+              <VerticalFunnel stages={funnelStages} />
+            ) : (
+              <div className="rounded-xl border bg-card p-5 text-sm text-muted-foreground">
+                No provider data available for the current filters.
+              </div>
+            )}
+          </div>
+          <div className="grid gap-3 lg:col-span-2 lg:grid-cols-1">
+            <StatTile
+              icon="IconBriefcase"
+              label="New jobs discussed"
+              value={m.newJobsDiscussed}
+              sub="Providers that mentioned a new role"
+              accent="blue"
+            />
+            <StatTile
+              icon="IconSparkles"
+              label="New openings captured"
+              value={m.newOpenings}
+              sub="Vacancies from new jobs posted"
+              accent="green"
             />
           </div>
-          <StatTile
-            icon="IconBriefcase"
-            label="New jobs discussed"
-            value={m.newJobsDiscussed}
-            sub="Companies that mentioned a new role"
-            accent="blue"
-          />
         </div>
       </MetricSection>
+
 
       <MetricSection title="Call metrics" subtitle="Per call (raw rows)">
         <div className="grid gap-4 lg:grid-cols-3">
