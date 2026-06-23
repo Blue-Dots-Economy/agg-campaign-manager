@@ -1,7 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { createClient } from "@supabase/supabase-js";
 import type { CallRow } from "@/programs/data";
-import type { ProgramId, ProgramConfig } from "@/programs/registry";
+import type { ProgramId } from "@/programs/registry";
 import { registry as PROGRAMS } from "@/programs/registry";
 
 function sb() {
@@ -355,7 +355,6 @@ export const fetchProgramAggregates = createServerFn({ method: "GET" })
   .inputValidator((d: { program: ProgramId }) => d)
   .handler(async ({ data }): Promise<AggregatePayload> => {
     const program = data.program;
-    const config = PROGRAMS[program];
     try {
       let state: Awaited<ReturnType<typeof getSyncState>> = null;
       let connectionCount = 0;
@@ -365,25 +364,29 @@ export const fetchProgramAggregates = createServerFn({ method: "GET" })
           countConnections(program),
         ]);
       } catch (e) {
-        return emptyPayload(config, 0, null, e instanceof Error ? e.message : String(e));
+        return emptyPayload(0, null, e instanceof Error ? e.message : String(e));
       }
 
       if (!state || state.row_count === 0) {
         // Never sync inline — Refresh button triggers syncProgramSnapshot explicitly.
-        return emptyPayload(config, connectionCount, state);
+        return emptyPayload(connectionCount, state);
       }
 
-      let rows: CallRow[] = [];
+      let aggregates = emptyAggregates();
       try {
-        rows = await loadRows(program);
+        const client = sb();
+        const { data: rpcData, error } = await client.rpc("get_program_aggregates", {
+          _program: program,
+        });
+        if (error) throw new Error(error.message);
+        aggregates = normalizeAggregates(rpcData);
       } catch (e) {
-        return emptyPayload(config, connectionCount, state, e instanceof Error ? e.message : String(e));
+        return emptyPayload(connectionCount, state, e instanceof Error ? e.message : String(e));
       }
-      const aggregates = buildAggregates(config, rows);
       return {
         source: "snapshot",
         hasSnapshot: true,
-        totalRows: rows.length,
+        totalRows: Number(aggregates.kpis.total_calls ?? state.row_count ?? 0),
         connectionCount,
         lastSyncedAt: state.last_synced_at,
         syncStatus: state.status,
@@ -391,7 +394,7 @@ export const fetchProgramAggregates = createServerFn({ method: "GET" })
         campaigns: aggregates.perDay,
       };
     } catch (e) {
-      return emptyPayload(config, 0, null, e instanceof Error ? e.message : String(e));
+      return emptyPayload(0, null, e instanceof Error ? e.message : String(e));
     }
   });
 
