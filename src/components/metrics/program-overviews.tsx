@@ -215,6 +215,8 @@ export function DkbOverviewMetrics({
     previous && previous.totalCalls > 0
       ? (previous.productiveCalls / previous.totalCalls) * 100
       : null;
+  const highIntentTotal = (perDay ?? []).reduce((sum, p) => sum + (p.high_intent ?? 0), 0);
+  const prevHighIntent: number | null = null;
 
   const funnelData = m.providerFunnel ?? [];
   const calledProviders = funnelData[0]?.providers ?? 0;
