@@ -130,6 +130,7 @@ async function performSync(program: ProgramId): Promise<SyncResult> {
     call_answered: boolean;
     call_engaged: boolean;
     applied_to_job: boolean;
+    tried_to_apply: boolean;
     call_status: string;
     job_status: string;
     new_job_posted: string;
@@ -141,6 +142,9 @@ async function performSync(program: ProgramId): Promise<SyncResult> {
     campaign_date: string;
     campaign_type: string;
     language: string;
+    phone: string;
+    call_duration_seconds: number | null;
+    applications_count: number | null;
     data: CallRow;
   }> = [];
 
@@ -164,6 +168,7 @@ async function performSync(program: ProgramId): Promise<SyncResult> {
             call_answered: mapped.call_answered,
             call_engaged: mapped.call_engaged,
             applied_to_job: mapped.applied_to_job,
+            tried_to_apply: mapped.tried_to_apply,
             call_status: mapped.raw?.call_status ?? "",
             job_status: mapped.raw?.job_status ?? "",
             new_job_posted: mapped.raw?.new_job_posted ?? "",
@@ -175,6 +180,9 @@ async function performSync(program: ProgramId): Promise<SyncResult> {
             campaign_date: mapped.campaign_date || mapped.raw?.campaign_date || "",
             campaign_type: mapped.campaign_type || mapped.raw?.campaign_type || "",
             language: mapped.language || mapped.raw?.language || "",
+            phone: mapped.phone || "",
+            call_duration_seconds: Number.isFinite(mapped.call_duration_seconds) ? mapped.call_duration_seconds : null,
+            applications_count: Number.isFinite(mapped.applications_count) ? mapped.applications_count : null,
             data: mapped,
           });
         }
