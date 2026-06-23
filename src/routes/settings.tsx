@@ -24,6 +24,7 @@ function Settings() {
   const [agentId, setAgentId] = useState("");
   const [sheetUrl, setSheetUrl] = useState("");
   const [keyConfigured, setKeyConfigured] = useState<boolean | null>(null);
+  const [cap, setCap] = useState<number>(() => getConcurrencyCap());
 
   const keyStatusFn = useServerFn(rayaKeyStatus);
 
