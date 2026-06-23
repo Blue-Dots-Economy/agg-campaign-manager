@@ -159,9 +159,13 @@ function LaunchWizard() {
       return proceedInvalid;
     }
     if (step === 3) return schedule.startTime < schedule.endTime && schedule.days.length > 0;
-    if (step === 4) return concurrency > 0 && maxRetries >= 0 && retryAfterHrs > 0;
+    if (step === 4) {
+      if (!(concurrency > 0 && maxRetries >= 0 && retryAfterHrs > 0)) return false;
+      if (Number.isFinite(available) && concurrency > (available as number)) return false;
+      return true;
+    }
     return true;
-  }, [step, program, agentId, report, proceedInvalid, schedule, concurrency, maxRetries, retryAfterHrs]);
+  }, [step, program, agentId, report, proceedInvalid, schedule, concurrency, maxRetries, retryAfterHrs, available]);
 
   const onFile = useCallback(async (f: File) => {
     setFile(f);
