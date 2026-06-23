@@ -16,6 +16,30 @@ export const defaultSchedule: ScheduleState = {
   days: [1, 2, 3, 4, 5],
 };
 
+// Today (in IST) selected, start time = now + 5 min (IST), end = 18:00.
+export function makeDefaultSchedule(): ScheduleState {
+  const tz = "Asia/Kolkata";
+  const now = new Date(Date.now() + 5 * 60 * 1000);
+  const parts = new Intl.DateTimeFormat("en-GB", {
+    timeZone: tz,
+    weekday: "short",
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+  }).formatToParts(now);
+  const get = (t: string) => parts.find((p) => p.type === t)?.value ?? "";
+  const weekdayMap: Record<string, number> = { Mon: 1, Tue: 2, Wed: 3, Thu: 4, Fri: 5, Sat: 6, Sun: 7 };
+  const day = weekdayMap[get("weekday")] ?? 1;
+  const hh = get("hour");
+  const mm = get("minute");
+  return {
+    timezone: tz,
+    startTime: `${hh}:${mm}`,
+    endTime: "18:00",
+    days: [day],
+  };
+}
+
 const DAYS: { v: number; label: string }[] = [
   { v: 1, label: "Mon" },
   { v: 2, label: "Tue" },
