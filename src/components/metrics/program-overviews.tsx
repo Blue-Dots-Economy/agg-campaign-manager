@@ -5,7 +5,7 @@ import {
   SplitBar,
   SegmentedBar,
 } from "@/components/metrics/primitives";
-import { VerticalFunnel, type VerticalFunnelStage } from "@/components/metrics/VerticalFunnel";
+import { VerticalFunnel, type VerticalFunnelStage, type FunnelColor } from "@/components/metrics/VerticalFunnel";
 
 export interface KkbMetrics {
   totalCalls: number;
