@@ -211,8 +211,6 @@ export function DkbOverviewMetrics({
   const pickupPct = m.totalCalls > 0 ? (m.answeredCalls / m.totalCalls) * 100 : 0;
   const productiveDenom = m.totalCalls;
   const productivePct = productiveDenom > 0 ? (m.productiveCalls / productiveDenom) * 100 : 0;
-  const prevPickupPct =
-    previous && previous.totalCalls > 0 ? (previous.answeredCalls / previous.totalCalls) * 100 : null;
   const prevProductivePct =
     previous && previous.totalCalls > 0
       ? (previous.productiveCalls / previous.totalCalls) * 100
