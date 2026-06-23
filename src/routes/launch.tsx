@@ -340,6 +340,12 @@ function LaunchWizard() {
 
       {step === 4 && (
         <Panel title="Step 5 · Concurrency & retries" description="How aggressively Raya should dial">
+          <div className="mb-4 max-w-2xl rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-800 flex items-start gap-2">
+            <AlertTriangle className="h-4 w-4 mt-0.5 shrink-0" />
+            <div>
+              Raya rate limit: <strong>1 call per 20 seconds</strong> by default. Keep concurrency low or launches will be throttled (HTTP 429).
+            </div>
+          </div>
           <div className="grid gap-4 sm:grid-cols-3 max-w-2xl">
             <NumberField label="Concurrency" value={concurrency} onChange={setConcurrency} min={1} max={100} />
             <NumberField label="Max retries" value={maxRetries} onChange={setMaxRetries} min={0} max={10} />
