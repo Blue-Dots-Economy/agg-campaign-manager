@@ -74,9 +74,11 @@ function prev<T extends object>(prev: T | undefined, key: keyof T): number | nul
 export function KkbOverviewMetrics({
   m,
   previous,
+  perDay,
 }: {
   m: KkbMetrics;
   previous?: KkbMetrics;
+  perDay?: DailyPoint[];
 }) {
   const appRate = m.answeredSeekers > 0 ? (m.appliedSeekers / m.answeredSeekers) * 100 : 0;
   const productivePct = m.totalCalls > 0 ? (m.productiveCalls / m.totalCalls) * 100 : 0;
