@@ -161,10 +161,11 @@ export function KkbOverviewMetrics({
   return (
     <div className="space-y-8">
       <MetricSection title="Outcome metrics" subtitle="Funnel from calls made to applications">
-        <div className="grid gap-4 lg:grid-cols-5">
+        <div className="grid items-stretch gap-4 lg:grid-cols-5">
           <div className="lg:col-span-3">
-            <VerticalFunnel stages={stages} />
+            <VerticalFunnel stages={stages} fill />
           </div>
+
           <div className="grid gap-3 lg:col-span-2 lg:grid-cols-1">
             <SplitBar answered={m.answeredCalls} unanswered={m.unansweredCalls} />
             <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-1">
