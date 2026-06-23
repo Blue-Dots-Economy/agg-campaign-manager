@@ -130,13 +130,13 @@ function Overview() {
           <DkbOverviewMetrics
             m={metrics as unknown as DkbMetrics}
             previous={prevMetrics as unknown as DkbMetrics | undefined}
-            perDay={perDay}
+            perDay={perDayRollup}
           />
         ) : (
           <KkbOverviewMetrics
             m={metrics as unknown as KkbMetrics}
             previous={prevMetrics as unknown as KkbMetrics | undefined}
-            perDay={perDay}
+            perDay={perDayRollup}
           />
         )
       ) : (
@@ -164,7 +164,7 @@ function Overview() {
             >
               <div className="h-72">
                 <ResponsiveContainer>
-                  <LineChart data={perDay} margin={{ top: 10, right: 16, left: -10, bottom: 0 }}>
+                  <LineChart data={perDayRollup} margin={{ top: 10, right: 16, left: -10, bottom: 0 }}>
                     <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border)" vertical={false} />
                     <XAxis dataKey="day" tick={{ fontSize: 11 }} stroke="var(--color-muted-foreground)" />
                     <YAxis tick={{ fontSize: 11 }} stroke="var(--color-muted-foreground)" />
@@ -249,7 +249,7 @@ function Overview() {
               <div className="h-72">
                 <ResponsiveContainer>
                   <LineChart
-                    data={perDay.map((d) => ({
+                    data={perDayRollup.map((d) => ({
                       day: d.day,
                       answered: d.rows > 0 ? Math.round((d.answered / d.rows) * 1000) / 10 : 0,
                       engaged: d.rows > 0 ? Math.round((d.engaged / d.rows) * 1000) / 10 : 0,
