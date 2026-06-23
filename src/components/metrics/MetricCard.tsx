@@ -80,7 +80,6 @@ export function MetricCard({
 
 function TrendPill({ pct }: { pct: number }) {
   const positive = pct >= 0;
-  const Icon = positive ? IconArrowUpRight : IconArrowDownRight;
   const cls = positive
     ? "bg-emerald-500/10 text-emerald-700 dark:text-emerald-400"
     : "bg-rose-500/10 text-rose-700 dark:text-rose-400";
