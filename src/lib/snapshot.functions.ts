@@ -321,7 +321,17 @@ export interface MetricGroup {
   cards: MetricCardDef[];
 }
 
-export type ProgramMetricsRaw = Record<string, number> & { program?: string };
+export interface ProviderFunnelStage {
+  key: string;
+  label: string;
+  providers: number;
+  openings: number;
+}
+export interface ProgramMetricsRaw {
+  program?: string;
+  providerFunnel?: ProviderFunnelStage[];
+  [k: string]: number | string | ProviderFunnelStage[] | undefined;
+}
 
 export interface AggregatePayload {
   source: "snapshot" | "empty";
@@ -373,6 +383,18 @@ function normalizeMetricsRaw(value: unknown): ProgramMetricsRaw {
   const out: ProgramMetricsRaw = {};
   for (const [k, v] of Object.entries(value as Record<string, unknown>)) {
     if (k === "program") out.program = String(v);
+    else if (k === "providerFunnel" && Array.isArray(v)) {
+      out.providerFunnel = v.flatMap((it) => {
+        if (!it || typeof it !== "object") return [];
+        const o = it as Record<string, unknown>;
+        return [{
+          key: String(o.key ?? ""),
+          label: String(o.label ?? ""),
+          providers: Number(o.providers ?? 0) || 0,
+          openings: Number(o.openings ?? 0) || 0,
+        }];
+      });
+    }
     else if (typeof v === "number" && Number.isFinite(v)) out[k] = v;
     else if (typeof v === "string" && v !== "" && !isNaN(Number(v))) out[k] = Number(v);
   }
