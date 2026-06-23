@@ -53,7 +53,7 @@ export function KkbOverviewMetrics({ m }: { m: KkbMetrics }) {
   const productivePct = m.totalCalls > 0 ? (m.productiveCalls / m.totalCalls) * 100 : 0;
 
   const pct = (n: number, d: number) => (d > 0 ? (n / d) * 100 : 0);
-  const dropPct = (n: number, d: number) => (d > 0 ? (1 - n / d) * 100 : 0);
+  const dropPct = (n: number, d: number) => (d > 0 ? Math.max(0, (1 - n / d) * 100) : 0);
 
   const stages: VerticalFunnelStage[] = [
     {
