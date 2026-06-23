@@ -54,14 +54,24 @@ function Overview() {
 
   const { kpis, perDay, drops, intents, regions, phases, jobStatus, outcomes, dkbIntents } =
     data.aggregates;
+  const metricGroups = data.metricGroups ?? [];
 
   return (
     <div className="space-y-6">
-      <div className={`grid gap-4 grid-cols-2 ${isDkb ? "lg:grid-cols-6" : "lg:grid-cols-5"}`}>
-        {config.kpis.map((def) => (
-          <KpiCard key={def.key} def={def} value={kpis[def.key] ?? 0} />
-        ))}
-      </div>
+      {metricGroups.length > 0 ? (
+        <div className="space-y-6">
+          {metricGroups.map((g) => (
+            <MetricGroupSection key={g.key} group={g} />
+          ))}
+        </div>
+      ) : (
+        <div className={`grid gap-4 grid-cols-2 ${isDkb ? "lg:grid-cols-6" : "lg:grid-cols-5"}`}>
+          {config.kpis.map((def) => (
+            <KpiCard key={def.key} def={def} value={kpis[def.key] ?? 0} />
+          ))}
+        </div>
+      )}
+
 
       {isDkb ? (
         <>
