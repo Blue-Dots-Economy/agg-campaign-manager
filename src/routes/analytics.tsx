@@ -41,6 +41,17 @@ function Analytics() {
 
   const { perDay, drops, intents, phases, jobStatus, outcomes, dkbIntents } = data.aggregates;
 
+  const dayRollup = useMemo(() => {
+    const m = new Map<string, { day: string; rows: number; answered: number; engaged: number; converted: number; new_jobs: number; high_intent: number; sort: number }>();
+    for (const p of perDay) {
+      const cur = m.get(p.day) ?? { day: p.day, rows: 0, answered: 0, engaged: 0, converted: 0, new_jobs: 0, high_intent: 0, sort: parseInt(p.day.replace(/\D/g, ""), 10) || 0 };
+      cur.rows += p.rows; cur.answered += p.answered; cur.engaged += p.engaged;
+      cur.converted += p.converted; cur.new_jobs += p.new_jobs; cur.high_intent += p.high_intent;
+      m.set(p.day, cur);
+    }
+    return [...m.values()].sort((a, b) => a.sort - b.sort);
+  }, [perDay]);
+
   return (
     <div className="space-y-6">
       <Panel
