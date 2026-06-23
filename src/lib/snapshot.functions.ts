@@ -269,6 +269,7 @@ export interface ProgramAggregates {
   jobStatus: Array<{ status: string; count: number }>;
   outcomes: Array<{ outcome: string; count: number }>;
   dkbIntents: Array<{ score: string; count: number }>;
+  dropAnalysis: Array<{ stage: string; reason: string; gzb: number; ka: number; total: number }>;
 }
 
 function emptyAggregates(): ProgramAggregates {
@@ -282,6 +283,7 @@ function emptyAggregates(): ProgramAggregates {
     jobStatus: [],
     outcomes: [],
     dkbIntents: [],
+    dropAnalysis: [],
   };
 }
 
@@ -298,6 +300,7 @@ function normalizeAggregates(value: unknown): ProgramAggregates {
     jobStatus: Array.isArray(raw.jobStatus) ? raw.jobStatus : [],
     outcomes: Array.isArray(raw.outcomes) ? raw.outcomes : [],
     dkbIntents: Array.isArray(raw.dkbIntents) ? raw.dkbIntents : [],
+    dropAnalysis: Array.isArray(raw.dropAnalysis) ? raw.dropAnalysis : [],
   };
 }
 

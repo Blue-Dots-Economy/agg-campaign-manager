@@ -25,6 +25,7 @@ import {
 } from "@/components/metrics/program-overviews";
 import { Panel } from "@/components/Panel";
 import { NoDataState, LoadingState } from "@/components/EmptyState";
+import { DropAnalysisTable } from "@/components/metrics/DropAnalysisTable";
 
 export const Route = createFileRoute("/")({
   component: Overview,
@@ -57,7 +58,7 @@ function Overview() {
   if (query.isLoading && !data) return <LoadingState />;
   if (!data || data.source === "empty" || data.totalRows === 0) return <NoDataState />;
 
-  const { kpis, perDay, drops, intents, regions, phases, jobStatus, outcomes, dkbIntents } =
+  const { kpis, perDay, intents, regions, phases, jobStatus, outcomes, dkbIntents, dropAnalysis } =
     data.aggregates;
   const metrics = data.metrics ?? {};
   const hasMetrics = Object.keys(metrics).length > 0;
@@ -166,9 +167,8 @@ function Overview() {
         </>
       ) : (
         <>
-          <div className="grid gap-4 lg:grid-cols-3">
+          <div className="grid gap-4">
             <Panel
-              className="lg:col-span-2"
               title="Campaign performance"
               description="Answered, engaged and converted by campaign day"
             >
@@ -188,20 +188,14 @@ function Overview() {
               </div>
             </Panel>
 
-            <Panel title="Drop reasons" description="Where conversations ended">
-              <div className="h-72">
-                <ResponsiveContainer>
-                  <BarChart data={drops} layout="vertical" margin={{ top: 10, right: 16, left: 10, bottom: 0 }}>
-                    <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border)" horizontal={false} />
-                    <XAxis type="number" tick={{ fontSize: 11 }} stroke="var(--color-muted-foreground)" />
-                    <YAxis dataKey="reason" type="category" tick={{ fontSize: 10 }} stroke="var(--color-muted-foreground)" width={150} />
-                    <Tooltip {...tooltipStyle} />
-                    <Bar dataKey="count" fill="var(--color-chart-1)" radius={[0, 4, 4, 0]} />
-                  </BarChart>
-                </ResponsiveContainer>
-              </div>
+            <Panel
+              title="Drop analysis"
+              description="Where conversations ended, by stage and reason (region split: GZB vs KA). Heuristic classifier over free-text drop_reason — structured buckets map exactly; the long tail is keyword-bucketed (fallback = Other)."
+            >
+              <DropAnalysisTable rows={dropAnalysis} />
             </Panel>
           </div>
+
 
           <div className="grid gap-4 lg:grid-cols-3">
             <Panel className="lg:col-span-2" title="Intent score distribution" description="0–10 score from voice agent">
