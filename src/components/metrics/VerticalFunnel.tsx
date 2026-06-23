@@ -39,6 +39,11 @@ export interface VerticalFunnelStage {
   sub?: string;
   /** Annotation shown in the arrow gap below this stage (i.e. on the way to the NEXT one) */
   nextAnnotation?: string;
+  /** Optional secondary metric shown inside the bar (e.g. openings under providers) */
+  secondaryValue?: number;
+  secondaryLabel?: string;
+  /** Optional unit label for the primary value (e.g. "providers") */
+  unit?: string;
 }
 
 const fmtNum = (n: number) => Math.round(n).toLocaleString();
@@ -82,7 +87,22 @@ export function VerticalFunnel({
                     <div className="shrink-0 text-right">
                       <p className={`text-2xl font-semibold tabular-nums ${TEXT[s.color]}`}>
                         {fmtNum(s.value)}
+                        {s.unit ? (
+                          <span className="ml-1 text-[11px] font-normal text-muted-foreground">
+                            {s.unit}
+                          </span>
+                        ) : null}
                       </p>
+                      {s.secondaryValue !== undefined ? (
+                        <p className="mt-0.5 text-[11px] font-medium text-foreground/80 tabular-nums">
+                          {fmtNum(s.secondaryValue)}
+                          {s.secondaryLabel ? (
+                            <span className="ml-1 font-normal text-muted-foreground">
+                              {s.secondaryLabel}
+                            </span>
+                          ) : null}
+                        </p>
+                      ) : null}
                       <p className="mt-0.5 text-[11px] text-muted-foreground tabular-nums">
                         {s.sub ?? `${fmtPct(pct)} of ${stages[0].label.toLowerCase()}`}
                       </p>
