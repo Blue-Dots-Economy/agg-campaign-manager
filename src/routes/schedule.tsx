@@ -154,6 +154,7 @@ function Schedule() {
 
   return (
     <div className="space-y-6">
+      <ConcurrencyBudgetPanel usage={usage} />
       <Panel
         title="Scheduled batches"
         description={agentId ? `Agent ${agentId} · ${batches.length} batches` : "Set the Raya agent id in Settings"}
