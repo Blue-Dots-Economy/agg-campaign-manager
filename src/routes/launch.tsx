@@ -189,6 +189,12 @@ function LaunchWizard() {
 
   const launch = async () => {
     if (!report) return;
+    if (Number.isFinite(available) && concurrency > (available as number)) {
+      const msg = `Only ${available} concurrency available — reduce concurrency or stop a running batch.`;
+      setLaunchError(msg);
+      toast.error(msg);
+      return;
+    }
     setLaunching(true); setLaunchError(null);
     try {
       const contacts = report.validRows.map((r) => ({
