@@ -59,16 +59,17 @@ function Overview() {
 
   const { kpis, perDay, drops, intents, regions, phases, jobStatus, outcomes, dkbIntents } =
     data.aggregates;
-  const metricGroups = data.metricGroups ?? [];
+  const metrics = data.metrics ?? {};
+  const hasMetrics = Object.keys(metrics).length > 0;
 
   return (
     <div className="space-y-6">
-      {metricGroups.length > 0 ? (
-        <div className="space-y-6">
-          {metricGroups.map((g) => (
-            <MetricGroupSection key={g.key} group={g} />
-          ))}
-        </div>
+      {hasMetrics ? (
+        isDkb ? (
+          <DkbOverviewMetrics m={metrics as unknown as DkbMetrics} />
+        ) : (
+          <KkbOverviewMetrics m={metrics as unknown as KkbMetrics} />
+        )
       ) : (
         <div className={`grid gap-4 grid-cols-2 ${isDkb ? "lg:grid-cols-6" : "lg:grid-cols-5"}`}>
           {config.kpis.map((def) => (
