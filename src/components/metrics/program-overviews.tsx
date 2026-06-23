@@ -352,5 +352,3 @@ export function DkbOverviewMetrics({
     </div>
   );
 }
-// Suppress unused-var warning for prevPickupPct in this layout iteration.
-void prevPickupPct;
