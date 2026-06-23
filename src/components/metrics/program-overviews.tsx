@@ -177,12 +177,14 @@ export function KkbOverviewMetrics({
                 value={m.totalApplications}
                 sub={previous ? undefined : "Across all calls"}
                 previous={prev(previous, "totalApplications")}
+                trend={series(perDay, (p) => p.converted)}
               />
               <MetricCard
                 label="Did not apply"
                 value={m.didNotApply}
                 sub={previous ? undefined : "Answered but did not apply"}
                 previous={prev(previous, "didNotApply")}
+                trend={series(perDay, (p) => Math.max(0, p.answered - p.converted))}
               />
             </div>
           </div>
@@ -198,6 +200,7 @@ export function KkbOverviewMetrics({
             format="percent"
             sub={previous ? undefined : `${m.productiveCalls.toLocaleString()} calls — answered + > 30s`}
             previous={prevProductivePct}
+            trend={series(perDay, (p) => safeDiv(p.engaged, p.rows) * 100)}
           />
           <MetricCard
             label="Application rate"
@@ -205,6 +208,7 @@ export function KkbOverviewMetrics({
             format="percent"
             sub={previous ? undefined : "Applied / answered seekers"}
             previous={prevAppRate}
+            trend={series(perDay, (p) => safeDiv(p.converted, p.answered) * 100)}
           />
         </div>
       </MetricSection>
