@@ -251,16 +251,17 @@ export function DkbOverviewMetrics({
         title="Outcome metrics"
         subtitle="Provider funnel — Called → Picked up → Engaged → Actively hiring"
       >
-        <div className="grid gap-4 lg:grid-cols-5">
+        <div className="grid items-stretch gap-4 lg:grid-cols-5">
           <div className="lg:col-span-3">
             {funnelStages.length > 0 ? (
-              <VerticalFunnel stages={funnelStages} />
+              <VerticalFunnel stages={funnelStages} fill />
             ) : (
               <div className="rounded-xl border bg-card p-5 text-sm text-muted-foreground">
                 No provider data available for the current filters.
               </div>
             )}
           </div>
+
           <div className="grid gap-3 lg:col-span-2 lg:grid-cols-1">
             <SplitBar answered={m.answeredCalls} unanswered={m.unansweredCalls} />
             <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-1">
