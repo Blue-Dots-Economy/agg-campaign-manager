@@ -321,7 +321,7 @@ export interface MetricGroup {
   cards: MetricCardDef[];
 }
 
-export type ProgramMetricsRaw = Record<string, number> & { program?: string };
+export type ProgramMetricsRaw = Record<string, unknown> & { program?: string };
 
 export interface AggregatePayload {
   source: "snapshot" | "empty";
