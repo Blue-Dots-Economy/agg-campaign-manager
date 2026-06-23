@@ -21,6 +21,7 @@ export function TopBar() {
         </p>
       </div>
       <div className="flex items-center gap-2">
+        <ConcurrencyChip />
         <span className="inline-flex items-center gap-1.5 rounded-full bg-brand-soft text-brand px-3 py-1 text-xs font-medium">
           <span className="h-1.5 w-1.5 rounded-full bg-brand" />
           {config.label} program
