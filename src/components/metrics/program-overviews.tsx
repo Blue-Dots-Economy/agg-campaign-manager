@@ -281,6 +281,7 @@ export function DkbOverviewMetrics({
             value={m.newOpenings}
             sub={previous ? undefined : "From new jobs posted"}
             previous={prev(previous, "newOpenings")}
+            trend={series(perDay, (p) => p.new_jobs)}
           />
         </div>
       </MetricSection>
@@ -305,12 +306,14 @@ export function DkbOverviewMetrics({
               value={m.newJobsDiscussed}
               sub={previous ? undefined : "Providers that mentioned a new role"}
               previous={prev(previous, "newJobsDiscussed")}
+              trend={series(perDay, (p) => p.new_jobs)}
             />
             <MetricCard
               label="New openings captured"
               value={m.newOpenings}
               sub={previous ? undefined : "Vacancies from new jobs posted"}
               previous={prev(previous, "newOpenings")}
+              trend={series(perDay, (p) => p.new_jobs)}
             />
           </div>
         </div>
@@ -325,6 +328,7 @@ export function DkbOverviewMetrics({
             format="percent"
             sub={previous ? undefined : `${m.productiveCalls.toLocaleString()} calls — answered + > 30s`}
             previous={prevProductivePct}
+            trend={series(perDay, (p) => safeDiv(p.engaged, p.rows) * 100)}
           />
           <MetricCard
             label="Avg call duration"
