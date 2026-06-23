@@ -71,6 +71,8 @@ function Schedule() {
   const listFn = useServerFn(rayaListBatches);
   const stopFn = useServerFn(rayaStopBatch);
   const updateFn = useServerFn(rayaUpdateBatch);
+  const usage = useConcurrencyUsage();
+  const refreshUsage = useRefreshConcurrency();
 
   const load = async () => {
     if (!agentId) {
