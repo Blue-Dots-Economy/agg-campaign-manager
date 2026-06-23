@@ -273,12 +273,29 @@ function Overview() {
 
 
           <div className="grid gap-4 lg:grid-cols-3">
-            <Panel className="lg:col-span-2" title="Intent score distribution" description="0–10 score from voice agent">
+            <Panel className="lg:col-span-2" title="Intent score distribution" description="Engaged callers only (score 1–10), bucketed">
               <div className="h-64">
                 <ResponsiveContainer>
-                  <BarChart data={intents} margin={{ top: 10, right: 16, left: -10, bottom: 0 }}>
+                  <BarChart
+                    data={(() => {
+                      const buckets = [
+                        { range: "Low (1–4)", count: 0 },
+                        { range: "Medium (5–7)", count: 0 },
+                        { range: "High (8–10)", count: 0 },
+                      ];
+                      for (const r of intents as Array<{ score: number | string; count: number }>) {
+                        const s = Number(r.score);
+                        if (!Number.isFinite(s) || s <= 0) continue;
+                        if (s <= 4) buckets[0].count += r.count;
+                        else if (s <= 7) buckets[1].count += r.count;
+                        else if (s <= 10) buckets[2].count += r.count;
+                      }
+                      return buckets;
+                    })()}
+                    margin={{ top: 10, right: 16, left: -10, bottom: 0 }}
+                  >
                     <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border)" vertical={false} />
-                    <XAxis dataKey="score" tick={{ fontSize: 11 }} stroke="var(--color-muted-foreground)" />
+                    <XAxis dataKey="range" tick={{ fontSize: 11 }} stroke="var(--color-muted-foreground)" />
                     <YAxis tick={{ fontSize: 11 }} stroke="var(--color-muted-foreground)" />
                     <Tooltip {...tooltipStyle} />
                     <Bar dataKey="count" fill="var(--color-chart-1)" radius={[4, 4, 0, 0]} />
