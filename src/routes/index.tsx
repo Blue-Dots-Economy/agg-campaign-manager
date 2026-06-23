@@ -27,6 +27,7 @@ import {
 import { Panel } from "@/components/Panel";
 import { NoDataState, LoadingState } from "@/components/EmptyState";
 import { DropAnalysisTable } from "@/components/metrics/DropAnalysisTable";
+import { DropStackedBars } from "@/components/metrics/DropStackedBars";
 import {
   OverviewFilters,
   type OverviewFilterValue,
@@ -251,14 +252,23 @@ function Overview() {
               </div>
             </Panel>
 
-            <Panel
-              title="Drop analysis"
-              description="Where conversations ended, by stage and reason (region split: GZB vs KA). Heuristic classifier over free-text drop_reason — structured buckets map exactly; the long tail is keyword-bucketed (fallback = Other)."
-            >
-              <div className="max-h-80 overflow-y-auto">
-                <DropAnalysisTable rows={dropAnalysis} hideRegion={hideRegion} />
+            <div className="space-y-4">
+              <div className="rounded-xl border bg-card p-5">
+                <div className="mb-1 text-sm font-semibold text-foreground">Drops by stage</div>
+                <p className="mb-4 text-xs text-muted-foreground">
+                  Stacked by reason. Bars sorted by total drops; widths share one scale.
+                </p>
+                <DropStackedBars rows={dropAnalysis} hideRegion={hideRegion} />
               </div>
-            </Panel>
+              <Panel
+                title="Drop analysis — detail"
+                description="Exact counts per stage × reason (region split: GZB vs KA). Heuristic classifier over free-text drop_reason — structured buckets map exactly; the long tail is keyword-bucketed (fallback = Other)."
+              >
+                <div className="max-h-80 overflow-y-auto">
+                  <DropAnalysisTable rows={dropAnalysis} hideRegion={hideRegion} />
+                </div>
+              </Panel>
+            </div>
           </div>
 
 
