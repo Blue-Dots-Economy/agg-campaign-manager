@@ -10,6 +10,7 @@ import {
   validateContacts,
 } from "@/lib/raya.functions";
 import { listProgramAgents } from "@/lib/agents.functions";
+import { useConcurrencyUsage, useRefreshConcurrency } from "@/hooks/useConcurrencyUsage";
 import { Link } from "@tanstack/react-router";
 import { registry, type ProgramId } from "@/programs/registry";
 import { Panel } from "@/components/Panel";
@@ -42,6 +43,7 @@ import {
   AlertTriangle,
   Loader2,
   X,
+  Gauge,
 } from "lucide-react";
 import { toast } from "sonner";
 import { ScheduleEditor, type ScheduleState, makeDefaultSchedule } from "@/components/ScheduleEditor";
@@ -122,6 +124,11 @@ function LaunchWizard() {
   const validateFn = useServerFn(validateContacts);
   const createBatchFn = useServerFn(rayaCreateBatch);
   const startBatchFn = useServerFn(rayaStartBatch);
+  const usage = useConcurrencyUsage();
+  const refreshUsage = useRefreshConcurrency();
+  const available = usage.data?.available ?? Infinity;
+  const cap = usage.data?.cap ?? 20;
+
 
   // Sync chosen program back to global context so the rest of the dashboard follows.
   useEffect(() => { if (program !== ctxProgram) setProgramId(program); }, [program, ctxProgram, setProgramId]);
@@ -153,9 +160,13 @@ function LaunchWizard() {
       return proceedInvalid;
     }
     if (step === 3) return schedule.startTime < schedule.endTime && schedule.days.length > 0;
-    if (step === 4) return concurrency > 0 && maxRetries >= 0 && retryAfterHrs > 0;
+    if (step === 4) {
+      if (!(concurrency > 0 && maxRetries >= 0 && retryAfterHrs > 0)) return false;
+      if (Number.isFinite(available) && concurrency > (available as number)) return false;
+      return true;
+    }
     return true;
-  }, [step, program, agentId, report, proceedInvalid, schedule, concurrency, maxRetries, retryAfterHrs]);
+  }, [step, program, agentId, report, proceedInvalid, schedule, concurrency, maxRetries, retryAfterHrs, available]);
 
   const onFile = useCallback(async (f: File) => {
     setFile(f);
@@ -179,6 +190,12 @@ function LaunchWizard() {
 
   const launch = async () => {
     if (!report) return;
+    if (Number.isFinite(available) && concurrency > (available as number)) {
+      const msg = `Only ${available} concurrency available — reduce concurrency or stop a running batch.`;
+      setLaunchError(msg);
+      toast.error(msg);
+      return;
+    }
     setLaunching(true); setLaunchError(null);
     try {
       const contacts = report.validRows.map((r) => ({
@@ -230,6 +247,7 @@ function LaunchWizard() {
         batchId: id,
       });
       toast.success(`Batch launched · ${id}`);
+      refreshUsage();
     } catch (e) {
       const msg = e instanceof Error ? e.message : "Launch failed";
       setLaunchError(msg);
@@ -346,8 +364,33 @@ function LaunchWizard() {
               Raya rate limit: <strong>1 call per 20 seconds</strong> by default. Keep concurrency low or launches will be throttled (HTTP 429).
             </div>
           </div>
+          <div className={cn(
+            "mb-4 max-w-2xl rounded-md border px-3 py-2 text-sm flex items-start gap-2",
+            available === 0
+              ? "border-red-200 bg-red-50 text-red-700"
+              : available <= 5
+                ? "border-amber-200 bg-amber-50 text-amber-800"
+                : "border-brand/20 bg-brand-soft text-brand",
+          )}>
+            <Gauge className="h-4 w-4 mt-0.5 shrink-0" />
+            <div>
+              <strong>{usage.isLoading ? "…" : available}</strong> of {cap} concurrency available right now (account-wide, shared by KKB + DKB).
+              {usage.data?.batches?.length ? (
+                <span className="ml-1 opacity-80">In use by {usage.data.batches.length} batch{usage.data.batches.length === 1 ? "" : "es"}.</span>
+              ) : null}
+              {concurrency > (available as number) && Number.isFinite(available) && (
+                <div className="mt-1 font-medium">Reduce concurrency to {available} or stop a running batch to proceed.</div>
+              )}
+            </div>
+          </div>
           <div className="grid gap-4 sm:grid-cols-3 max-w-2xl">
-            <NumberField label="Concurrency" value={concurrency} onChange={setConcurrency} min={1} max={100} />
+            <NumberField
+              label="Concurrency"
+              value={concurrency}
+              onChange={setConcurrency}
+              min={1}
+              max={Math.max(1, Math.min(100, Number.isFinite(available) ? (available as number) : 100))}
+            />
             <NumberField label="Max retries" value={maxRetries} onChange={setMaxRetries} min={0} max={10} />
             <NumberField label="Retry after (hrs)" value={retryAfterHrs} onChange={setRetryAfterHrs} min={1} max={168} />
           </div>

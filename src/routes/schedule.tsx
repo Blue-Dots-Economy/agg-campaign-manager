@@ -19,7 +19,9 @@ import {
 } from "@/components/ui/table";
 import { ScheduleEditor, type ScheduleState, defaultSchedule } from "@/components/ScheduleEditor";
 import { toast } from "sonner";
-import { RefreshCw, StopCircle, Save } from "lucide-react";
+import { RefreshCw, StopCircle, Save, Gauge } from "lucide-react";
+import { useConcurrencyUsage, useRefreshConcurrency } from "@/hooks/useConcurrencyUsage";
+import { Progress } from "@/components/ui/progress";
 
 export const Route = createFileRoute("/schedule")({
   component: Schedule,
@@ -69,6 +71,8 @@ function Schedule() {
   const listFn = useServerFn(rayaListBatches);
   const stopFn = useServerFn(rayaStopBatch);
   const updateFn = useServerFn(rayaUpdateBatch);
+  const usage = useConcurrencyUsage();
+  const refreshUsage = useRefreshConcurrency();
 
   const load = async () => {
     if (!agentId) {
@@ -133,6 +137,7 @@ function Schedule() {
       await stopFn({ data: { batchId: id } });
       toast.success("Batch stopped");
       load();
+      refreshUsage();
     } catch (e: any) {
       toast.error(e?.message ?? "Failed to stop batch");
     }
@@ -149,6 +154,7 @@ function Schedule() {
 
   return (
     <div className="space-y-6">
+      <ConcurrencyBudgetPanel usage={usage} />
       <Panel
         title="Scheduled batches"
         description={agentId ? `Agent ${agentId} · ${batches.length} batches` : "Set the Raya agent id in Settings"}
@@ -262,5 +268,65 @@ function Schedule() {
         </Panel>
       )}
     </div>
+  );
+}
+
+function ConcurrencyBudgetPanel({ usage }: { usage: ReturnType<typeof useConcurrencyUsage> }) {
+  const data = usage.data;
+  const cap = data?.cap ?? 20;
+  const used = data?.used ?? 0;
+  const available = data?.available ?? cap;
+  const pct = Math.min(100, Math.round((used / cap) * 100));
+  const tone = available === 0 ? "text-red-700" : available <= 5 ? "text-amber-800" : "text-brand";
+
+  return (
+    <Panel
+      title="Concurrency budget"
+      description={`Raya shared pool · ${used} used of ${cap} · ${available} available`}
+      action={
+        <Button variant="outline" size="sm" onClick={() => usage.refetch()} disabled={usage.isFetching} className="gap-1.5">
+          <RefreshCw className={`h-3.5 w-3.5 ${usage.isFetching ? "animate-spin" : ""}`} /> Refresh
+        </Button>
+      }
+    >
+      <div className="flex items-center gap-3 mb-3">
+        <Gauge className={`h-5 w-5 ${tone}`} />
+        <div className="flex-1">
+          <Progress value={pct} className="h-2" />
+        </div>
+        <div className={`text-sm font-semibold ${tone}`}>{used} / {cap}</div>
+      </div>
+      {data?.error && (
+        <div className="rounded-md bg-destructive/10 text-destructive px-3 py-2 text-xs mb-3">{data.error}</div>
+      )}
+      {(data?.batches?.length ?? 0) === 0 ? (
+        <p className="text-xs text-muted-foreground">No batches currently consuming concurrency.</p>
+      ) : (
+        <div className="overflow-x-auto">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Program</TableHead>
+                <TableHead>Agent</TableHead>
+                <TableHead>Batch</TableHead>
+                <TableHead>Status</TableHead>
+                <TableHead className="text-right">Concurrency</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {data!.batches.map((b) => (
+                <TableRow key={`${b.agentId}-${b.batchId}`}>
+                  <TableCell className="text-xs uppercase">{b.program}</TableCell>
+                  <TableCell className="text-sm">{b.agentName}</TableCell>
+                  <TableCell className="text-sm">{b.batchName}</TableCell>
+                  <TableCell><Badge variant="secondary" className="bg-muted">{b.status}</Badge></TableCell>
+                  <TableCell className="text-right font-mono text-sm">{b.concurrency}</TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </div>
+      )}
+    </Panel>
   );
 }
