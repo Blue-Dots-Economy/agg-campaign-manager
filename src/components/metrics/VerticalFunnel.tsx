@@ -114,12 +114,18 @@ export function VerticalFunnel({
                 </div>
               </div>
 
-              {i < stages.length - 1 && s.nextAnnotation ? (
-                <div className="flex items-center justify-center gap-2 py-1 text-[11px] text-muted-foreground">
-                  <IconArrowNarrowDown className="h-3.5 w-3.5" stroke={2} />
-                  <span>{s.nextAnnotation}</span>
-                </div>
-              ) : null}
+              {i < stages.length - 1 ? (() => {
+                const next = stages[i + 1];
+                const dropPct = s.value > 0 ? ((s.value - next.value) / s.value) * 100 : 0;
+                const dropAbs = Math.max(0, s.value - next.value);
+                const annotation = s.nextAnnotation ?? `−${fmtPct(dropPct)} drop · ${fmtNum(dropAbs)} ${s.unit ?? ""} lost`.trim();
+                return (
+                  <div className="flex items-center justify-center gap-2 py-2 text-[11px] font-medium text-muted-foreground">
+                    <IconArrowNarrowDown className="h-3.5 w-3.5" stroke={2} />
+                    <span>{annotation}</span>
+                  </div>
+                );
+              })() : null}
             </React.Fragment>
           );
         })}
