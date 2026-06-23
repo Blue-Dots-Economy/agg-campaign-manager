@@ -16,34 +16,76 @@ export type Database = {
     Tables: {
       call_rows: {
         Row: {
+          applied_to_job: boolean | null
+          call_answered: boolean | null
+          call_engaged: boolean | null
           call_id: string
+          call_outcome: string | null
+          call_status: string | null
+          campaign_date: string | null
           campaign_day: string
+          campaign_type: string | null
+          city_campaign: string | null
           connection_id: string | null
           data: Json
+          drop_reason: string | null
           id: string
           intent_score: number | null
+          job_status: string | null
+          language: string | null
+          new_job_posted: string | null
+          phases_reached: string | null
           program: string
           synced_at: string
+          talent_insights_shown: string | null
         }
         Insert: {
+          applied_to_job?: boolean | null
+          call_answered?: boolean | null
+          call_engaged?: boolean | null
           call_id?: string
+          call_outcome?: string | null
+          call_status?: string | null
+          campaign_date?: string | null
           campaign_day?: string
+          campaign_type?: string | null
+          city_campaign?: string | null
           connection_id?: string | null
           data: Json
+          drop_reason?: string | null
           id?: string
           intent_score?: number | null
+          job_status?: string | null
+          language?: string | null
+          new_job_posted?: string | null
+          phases_reached?: string | null
           program: string
           synced_at?: string
+          talent_insights_shown?: string | null
         }
         Update: {
+          applied_to_job?: boolean | null
+          call_answered?: boolean | null
+          call_engaged?: boolean | null
           call_id?: string
+          call_outcome?: string | null
+          call_status?: string | null
+          campaign_date?: string | null
           campaign_day?: string
+          campaign_type?: string | null
+          city_campaign?: string | null
           connection_id?: string | null
           data?: Json
+          drop_reason?: string | null
           id?: string
           intent_score?: number | null
+          job_status?: string | null
+          language?: string | null
+          new_job_posted?: string | null
+          phases_reached?: string | null
           program?: string
           synced_at?: string
+          talent_insights_shown?: string | null
         }
         Relationships: []
       }
@@ -151,7 +193,11 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      get_program_aggregate_payload: {
+        Args: { _program: string }
+        Returns: Json
+      }
+      get_program_aggregates: { Args: { _program: string }; Returns: Json }
     }
     Enums: {
       [_ in never]: never

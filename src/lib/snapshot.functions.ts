@@ -1,19 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { createClient } from "@supabase/supabase-js";
 import type { CallRow } from "@/programs/data";
-import type { ProgramId, ProgramConfig } from "@/programs/registry";
-import { registry as PROGRAMS } from "@/programs/registry";
-import {
-  computeKpis,
-  byCampaignDay,
-  dropReasonBreakdown,
-  intentDistribution,
-  regionSplit,
-  phasesReachedBreakdown,
-  jobStatusBreakdown,
-  callOutcomeBreakdown,
-  intentDistributionDkb,
-} from "@/programs/metrics";
+import type { ProgramId } from "@/programs/registry";
 
 function sb() {
   return createClient(
@@ -139,6 +127,20 @@ async function performSync(program: ProgramId): Promise<SyncResult> {
     call_id: string;
     campaign_day: string;
     intent_score: number | null;
+    call_answered: boolean;
+    call_engaged: boolean;
+    applied_to_job: boolean;
+    call_status: string;
+    job_status: string;
+    new_job_posted: string;
+    talent_insights_shown: string;
+    phases_reached: string;
+    drop_reason: string;
+    call_outcome: string;
+    city_campaign: string;
+    campaign_date: string;
+    campaign_type: string;
+    language: string;
     data: CallRow;
   }> = [];
 
@@ -159,6 +161,20 @@ async function performSync(program: ProgramId): Promise<SyncResult> {
             call_id: mapped.call_id || "",
             campaign_day: mapped.campaign_day || "",
             intent_score: Number.isFinite(mapped["Intent Score"]) ? mapped["Intent Score"] : null,
+            call_answered: mapped.call_answered,
+            call_engaged: mapped.call_engaged,
+            applied_to_job: mapped.applied_to_job,
+            call_status: mapped.raw?.call_status ?? "",
+            job_status: mapped.raw?.job_status ?? "",
+            new_job_posted: mapped.raw?.new_job_posted ?? "",
+            talent_insights_shown: mapped.raw?.talent_insights_shown ?? "",
+            phases_reached: mapped.raw?.phases_reached ?? "",
+            drop_reason: mapped.drop_reason || mapped.raw?.drop_reason || "",
+            call_outcome: mapped.raw?.call_outcome || mapped.call_outcome || "",
+            city_campaign: mapped.raw?.city_campaign || mapped.city_campaign || "",
+            campaign_date: mapped.campaign_date || mapped.raw?.campaign_date || "",
+            campaign_type: mapped.campaign_type || mapped.raw?.campaign_type || "",
+            language: mapped.language || mapped.raw?.language || "",
             data: mapped,
           });
         }
@@ -221,71 +237,61 @@ export const syncProgramSnapshot = createServerFn({ method: "POST" })
   .inputValidator((d: { program: ProgramId }) => d)
   .handler(async ({ data }) => performSync(data.program));
 
-async function loadRows(program: ProgramId): Promise<CallRow[]> {
-  const client = sb();
-  const out: CallRow[] = [];
-  const PAGE = 1000;
-  let from = 0;
-  // paginate to bypass PostgREST 1000-row default cap
-  // (KKB has ~22k rows)
-  // eslint-disable-next-line no-constant-condition
-  while (true) {
-    const { data, error } = await client
-      .from("call_rows")
-      .select("data")
-      .eq("program", program)
-      .range(from, from + PAGE - 1);
-    if (error) throw new Error(error.message);
-    const batch = (data ?? []) as Array<{ data: CallRow }>;
-    for (const r of batch) out.push(r.data);
-    if (batch.length < PAGE) break;
-    from += PAGE;
-  }
-  return out;
+export interface CampaignRollup {
+  day: string;
+  date: string;
+  type: string;
+  language: string;
+  rows: number;
+  answered: number;
+  engaged: number;
+  converted: number;
+  new_jobs: number;
+  answered_pct: number;
+  high_intent: number;
 }
 
-async function countConnections(program: ProgramId): Promise<number> {
-  const client = sb();
-  const { count } = await client
-    .from("sheet_connections")
-    .select("id", { count: "exact", head: true })
-    .eq("program", program)
-    .eq("enabled", true);
-  return count ?? 0;
+export interface ProgramAggregates {
+  kpis: Record<string, number>;
+  perDay: CampaignRollup[];
+  drops: Array<{ reason: string; count: number }>;
+  intents: Array<{ score: string; count: number }>;
+  regions: Array<{ region: string; count: number }>;
+  phases: Array<{ phase: string; count: number }>;
+  jobStatus: Array<{ status: string; count: number }>;
+  outcomes: Array<{ outcome: string; count: number }>;
+  dkbIntents: Array<{ score: string; count: number }>;
 }
 
-async function getSyncState(program: ProgramId) {
-  const client = sb();
-  const { data } = await client
-    .from("program_sync_state")
-    .select("*")
-    .eq("program", program)
-    .maybeSingle();
-  return data as {
-    program: string;
-    last_synced_at: string | null;
-    row_count: number;
-    status: string;
-    last_error: string | null;
-  } | null;
-}
-
-function buildAggregates(config: ProgramConfig, rows: CallRow[]) {
-  const isDkb = config.id === "dkb";
+function emptyAggregates(): ProgramAggregates {
   return {
-    kpis: computeKpis(config, rows),
-    perDay: byCampaignDay(config, rows),
-    drops: isDkb ? [] : dropReasonBreakdown(config, rows),
-    intents: isDkb ? [] : intentDistribution(rows),
-    regions: isDkb ? [] : regionSplit(rows),
-    phases: isDkb ? phasesReachedBreakdown(rows) : [],
-    jobStatus: isDkb ? jobStatusBreakdown(rows) : [],
-    outcomes: isDkb ? callOutcomeBreakdown(rows) : [],
-    dkbIntents: isDkb ? intentDistributionDkb(rows) : [],
+    kpis: {},
+    perDay: [],
+    drops: [],
+    intents: [],
+    regions: [],
+    phases: [],
+    jobStatus: [],
+    outcomes: [],
+    dkbIntents: [],
   };
 }
 
-export type ProgramAggregates = ReturnType<typeof buildAggregates>;
+function normalizeAggregates(value: unknown): ProgramAggregates {
+  if (!value || typeof value !== "object") return emptyAggregates();
+  const raw = value as Partial<ProgramAggregates>;
+  return {
+    kpis: raw.kpis && typeof raw.kpis === "object" ? raw.kpis : {},
+    perDay: Array.isArray(raw.perDay) ? raw.perDay : [],
+    drops: Array.isArray(raw.drops) ? raw.drops : [],
+    intents: Array.isArray(raw.intents) ? raw.intents : [],
+    regions: Array.isArray(raw.regions) ? raw.regions : [],
+    phases: Array.isArray(raw.phases) ? raw.phases : [],
+    jobStatus: Array.isArray(raw.jobStatus) ? raw.jobStatus : [],
+    outcomes: Array.isArray(raw.outcomes) ? raw.outcomes : [],
+    dkbIntents: Array.isArray(raw.dkbIntents) ? raw.dkbIntents : [],
+  };
+}
 
 export interface AggregatePayload {
   source: "snapshot" | "empty";
@@ -301,7 +307,6 @@ export interface AggregatePayload {
 }
 
 function emptyPayload(
-  config: ProgramConfig,
   connectionCount: number,
   state: { last_synced_at: string | null; status: string } | null,
   error?: string,
@@ -313,53 +318,52 @@ function emptyPayload(
     connectionCount,
     lastSyncedAt: state?.last_synced_at ?? null,
     syncStatus: state?.status ?? "idle",
-    aggregates: buildAggregates(config, []),
+    aggregates: emptyAggregates(),
     campaigns: [],
     error,
   };
+}
+
+interface AggregateRpcPayload {
+  connectionCount?: number;
+  lastSyncedAt?: string | null;
+  syncStatus?: string;
+  stateRowCount?: number;
+  aggregates?: unknown;
 }
 
 export const fetchProgramAggregates = createServerFn({ method: "GET" })
   .inputValidator((d: { program: ProgramId }) => d)
   .handler(async ({ data }): Promise<AggregatePayload> => {
     const program = data.program;
-    const config = PROGRAMS[program];
     try {
-      let state: Awaited<ReturnType<typeof getSyncState>> = null;
-      let connectionCount = 0;
+      let payload: AggregateRpcPayload;
       try {
-        [state, connectionCount] = await Promise.all([
-          getSyncState(program),
-          countConnections(program),
-        ]);
+        const client = sb();
+        const { data: rpcData, error } = await client.rpc("get_program_aggregate_payload", {
+          _program: program,
+        });
+        if (error) throw new Error(error.message);
+        payload = (rpcData && typeof rpcData === "object" ? rpcData : {}) as AggregateRpcPayload;
       } catch (e) {
-        return emptyPayload(config, 0, null, e instanceof Error ? e.message : String(e));
+        return emptyPayload(0, null, e instanceof Error ? e.message : String(e));
       }
-
-      if (!state || state.row_count === 0) {
-        // Never sync inline — Refresh button triggers syncProgramSnapshot explicitly.
-        return emptyPayload(config, connectionCount, state);
-      }
-
-      let rows: CallRow[] = [];
-      try {
-        rows = await loadRows(program);
-      } catch (e) {
-        return emptyPayload(config, connectionCount, state, e instanceof Error ? e.message : String(e));
-      }
-      const aggregates = buildAggregates(config, rows);
+      if (!payload.stateRowCount) return emptyPayload(payload.connectionCount ?? 0, null);
+      const aggregates = normalizeAggregates(payload.aggregates);
+      const totalRows = Number(aggregates.kpis.total_calls ?? payload.stateRowCount ?? 0);
+      if (totalRows === 0) return emptyPayload(payload.connectionCount ?? 0, null);
       return {
         source: "snapshot",
         hasSnapshot: true,
-        totalRows: rows.length,
-        connectionCount,
-        lastSyncedAt: state.last_synced_at,
-        syncStatus: state.status,
+        totalRows,
+        connectionCount: payload.connectionCount ?? 0,
+        lastSyncedAt: payload.lastSyncedAt ?? null,
+        syncStatus: payload.syncStatus ?? "idle",
         aggregates,
         campaigns: aggregates.perDay,
       };
     } catch (e) {
-      return emptyPayload(config, 0, null, e instanceof Error ? e.message : String(e));
+      return emptyPayload(0, null, e instanceof Error ? e.message : String(e));
     }
   });
 
