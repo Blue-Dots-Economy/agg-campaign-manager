@@ -14,6 +14,7 @@ import {
   Bar,
   Legend,
 } from "recharts";
+import { useState } from "react";
 import { useProgram } from "@/programs/context";
 import { useProgramAggregates } from "@/programs/useProgramAggregates";
 import { KpiCard } from "@/components/KpiCard";
@@ -26,6 +27,10 @@ import {
 import { Panel } from "@/components/Panel";
 import { NoDataState, LoadingState } from "@/components/EmptyState";
 import { DropAnalysisTable } from "@/components/metrics/DropAnalysisTable";
+import {
+  OverviewFilters,
+  type OverviewFilterValue,
+} from "@/components/metrics/OverviewFilters";
 
 export const Route = createFileRoute("/")({
   component: Overview,
