@@ -26,8 +26,8 @@ import {
 } from "@/components/metrics/program-overviews";
 import { Panel } from "@/components/Panel";
 import { NoDataState, LoadingState } from "@/components/EmptyState";
-import { DropAnalysisTable } from "@/components/metrics/DropAnalysisTable";
 import { FunnelSankey } from "@/components/metrics/FunnelSankey";
+import { DropBreakdownPanel } from "@/components/metrics/DropBreakdownPanel";
 import {
   OverviewFilters,
   type OverviewFilterValue,
