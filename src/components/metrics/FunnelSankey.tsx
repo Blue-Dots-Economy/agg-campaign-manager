@@ -38,10 +38,14 @@ export function FunnelSankey({
   m,
   rows,
   hideRegion,
+  selectedReason,
+  onSelectReason,
 }: {
   m: KkbMetrics;
   rows: DropRow[];
   hideRegion?: "GZB" | "KA";
+  selectedReason?: string | null;
+  onSelectReason?: (reason: string | null) => void;
 }) {
   const containerRef = useRef<HTMLDivElement>(null);
   const [width, setWidth] = useState(900);
@@ -49,7 +53,7 @@ export function FunnelSankey({
     if (!containerRef.current) return;
     const ro = new ResizeObserver((entries) => {
       const w = entries[0].contentRect.width;
-      if (w > 0) setWidth(Math.max(480, w));
+      if (w > 0) setWidth(Math.max(360, w));
     });
     ro.observe(containerRef.current);
     return () => ro.disconnect();
@@ -59,7 +63,6 @@ export function FunnelSankey({
     const valueOf = (r: DropRow) =>
       hideRegion === "KA" ? r.gzb : hideRegion === "GZB" ? r.ka : r.total;
 
-    // Trunk values
     const calls = m.totalCalls;
     const picked = m.answeredCalls;
     const engaged = m.engagedCalls;
@@ -79,12 +82,10 @@ export function FunnelSankey({
       ll.push({ source: s, target: t, value: v, color, kind });
     };
 
-    // Trunk nodes
     ["Calls made", "Picked up", "Engaged", "Jobs shown", "High-intent", "Applied", "Submitted"].forEach((n) =>
       addNode(n, "trunk", TRUNK),
     );
 
-    // Trunk links
     addLink("Calls made", "Picked up", picked, TRUNK, "trunk");
     addLink("Picked up", "Engaged", engaged, TRUNK, "trunk");
     addLink("Engaged", "Jobs shown", jobs, TRUNK, "trunk");
@@ -92,34 +93,29 @@ export function FunnelSankey({
     addLink("High-intent", "Applied", applied, TRUNK, "trunk");
     addLink("Applied", "Submitted", submitted, TRUNK_END, "trunk");
 
-    // No pickup sink
     const noPickup = Math.max(0, calls - picked);
     if (noPickup > 0) {
       addNode("No pickup", "sink", SINK_GREY);
       addLink("Calls made", "No pickup", noPickup, SINK_GREY, "leak");
     }
 
-    // Drop reasons grouped by stage
     for (const r of rows) {
       const v = valueOf(r);
       if (v <= 0) continue;
       const source = STAGE_SOURCE[r.stage];
       if (!source) continue;
       const color = REASON_COLORS[r.reason] ?? REASON_COLORS.Other;
-      // Sink node name suffixed with stage to disambiguate same reason at different stages
       const sinkName = r.reason;
       addNode(sinkName, "sink", color);
       addLink(source, sinkName, v, color, "leak");
     }
 
-    // Did not apply (high-intent that didn't apply, separate from Apply step reasons)
     const didNotApply = Math.max(0, intent - applied);
     if (didNotApply > 0) {
       addNode("Did not apply", "sink", SINK_GREY);
       addLink("High-intent", "Did not apply", didNotApply, SINK_GREY, "leak");
     }
 
-    // Apply failure sink (= blocked)
     if (blocked > 0) {
       addNode("Apply failure", "sink", REASON_COLORS["Apply failure (API)"]);
       addLink("Applied", "Apply failure", blocked, REASON_COLORS["Apply failure (API)"], "leak");
@@ -135,7 +131,6 @@ export function FunnelSankey({
       }))
       .filter((l) => l.source !== undefined && l.target !== undefined);
 
-    // Compute height: enough room for sinks. Pack at ~22px per node minimum.
     const sinkCount = nodeArr.filter((n) => n.kind === "sink").length;
     const h = Math.max(420, sinkCount * 36 + 80);
 
@@ -156,6 +151,8 @@ export function FunnelSankey({
     return { nodes: graph.nodes, links: graph.links, height: h };
   }, [m, rows, hideRegion, width]);
 
+  const isSelectable = (name: string) => name !== "No pickup" && name !== "Did not apply";
+
   return (
     <div ref={containerRef} className="w-full">
       <svg
@@ -166,25 +163,30 @@ export function FunnelSankey({
       >
         <defs>
           <style>
-            {`.sk-link{transition:opacity .15s} .sk-link:hover{opacity:.95 !important}`}
+            {`.sk-link{transition:opacity .15s} .sk-link:hover{opacity:.95 !important} .sk-clickable{cursor:pointer}`}
           </style>
         </defs>
         <g>
           {links.map((l: any, i: number) => {
             const d = sankeyLinkHorizontal()(l) ?? "";
-            const opacity = l.kind === "trunk" ? 0.45 : 0.65;
+            const targetName = (l.target as any).name as string;
+            const sourceName = (l.source as any).name as string;
+            const baseOp = l.kind === "trunk" ? 0.45 : 0.65;
+            const dim = selectedReason && targetName !== selectedReason ? 0.08 : baseOp;
+            const clickable = l.kind === "leak" && isSelectable(targetName);
             return (
               <path
                 key={i}
-                className="sk-link"
+                className={`sk-link ${clickable ? "sk-clickable" : ""}`}
                 d={d}
                 fill="none"
                 stroke={l.color}
-                strokeOpacity={opacity}
+                strokeOpacity={dim}
                 strokeWidth={Math.max(1, l.width ?? 1)}
+                onClick={clickable ? () => onSelectReason?.(targetName === selectedReason ? null : targetName) : undefined}
               >
                 <title>
-                  {`${(l.source as any).name} → ${(l.target as any).name}: ${fmt(l.value)}`}
+                  {`${sourceName} → ${targetName}: ${fmt(l.value)}${clickable ? " (click to filter)" : ""}`}
                 </title>
               </path>
             );
@@ -200,8 +202,15 @@ export function FunnelSankey({
             const labelX = isRight ? x - 6 : x + w + 6;
             const anchor = isRight ? "end" : "start";
             const labelY = y + h / 2;
+            const clickable = n.kind === "sink" && isSelectable(n.name);
+            const dim = selectedReason && n.kind === "sink" && n.name !== selectedReason ? 0.25 : 1;
             return (
-              <g key={i}>
+              <g
+                key={i}
+                opacity={dim}
+                className={clickable ? "sk-clickable" : undefined}
+                onClick={clickable ? () => onSelectReason?.(n.name === selectedReason ? null : n.name) : undefined}
+              >
                 <rect x={x} y={y} width={w} height={h} fill={n.color} rx={2} />
                 <text
                   x={labelX}
@@ -209,7 +218,7 @@ export function FunnelSankey({
                   dy="0.32em"
                   textAnchor={anchor}
                   fontSize={11}
-                  fontWeight={500}
+                  fontWeight={n.name === selectedReason ? 700 : 500}
                   fill="hsl(var(--foreground))"
                   style={{ fill: "currentColor" }}
                   className="text-foreground"
@@ -232,3 +241,5 @@ export function FunnelSankey({
     </div>
   );
 }
+
+export { REASON_COLORS as FUNNEL_REASON_COLORS };
