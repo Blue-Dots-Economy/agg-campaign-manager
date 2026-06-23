@@ -1,11 +1,11 @@
 import {
   MetricSection,
-  ConversionFunnel,
   RateDial,
   StatTile,
   SplitBar,
   SegmentedBar,
 } from "@/components/metrics/primitives";
+import { VerticalFunnel, type VerticalFunnelStage } from "@/components/metrics/VerticalFunnel";
 
 export interface KkbMetrics {
   totalCalls: number;
@@ -13,6 +13,14 @@ export interface KkbMetrics {
   unansweredCalls: number;
   productiveCalls: number;
   avgDuration: number;
+  engagedCalls: number;
+  jobsShownCalls: number;
+  highIntentCalls: number;
+  applicationsSubmitted: number;
+  applicationsBlocked: number;
+  applicationsTotal: number;
+  hasInterviewData: boolean;
+  interviewCount: number;
   seekers: number;
   answeredSeekers: number;
   triedSeekers: number;
@@ -42,41 +50,93 @@ export interface DkbMetrics {
 
 export function KkbOverviewMetrics({ m }: { m: KkbMetrics }) {
   const appRate = m.answeredSeekers > 0 ? (m.appliedSeekers / m.answeredSeekers) * 100 : 0;
-  const failedOfTried = m.triedSeekers > 0 ? (m.failedSeekers / m.triedSeekers) * 100 : 0;
   const productivePct = m.totalCalls > 0 ? (m.productiveCalls / m.totalCalls) * 100 : 0;
+
+  const pct = (n: number, d: number) => (d > 0 ? (n / d) * 100 : 0);
+  const dropPct = (n: number, d: number) => (d > 0 ? (1 - n / d) * 100 : 0);
+
+  const stages: VerticalFunnelStage[] = [
+    {
+      key: "calls",
+      label: "Calls made",
+      description: "All dialled attempts",
+      value: m.totalCalls,
+      color: "blue",
+      sub: "100.0%",
+      nextAnnotation: `-${dropPct(m.answeredCalls, m.totalCalls).toFixed(1)}% no pickup`,
+    },
+    {
+      key: "picked",
+      label: "Picked up",
+      description: "Seeker answered",
+      value: m.answeredCalls,
+      color: "green",
+      nextAnnotation: `-${dropPct(m.engagedCalls, m.answeredCalls).toFixed(1)}% drop after pickup`,
+    },
+    {
+      key: "engaged",
+      label: "Engaged",
+      description: "3+ real conversation turns",
+      value: m.engagedCalls,
+      color: "green",
+      nextAnnotation: `-${dropPct(m.jobsShownCalls, m.engagedCalls).toFixed(1)}% don't reach jobs`,
+    },
+    {
+      key: "jobs",
+      label: "Jobs shown",
+      description: "Bot presented openings",
+      value: m.jobsShownCalls,
+      color: "amber",
+      nextAnnotation: "High-intent subset",
+    },
+    {
+      key: "intent",
+      label: "High-Intent (≥5)",
+      description: "Intent score ≥ 5",
+      value: m.highIntentCalls,
+      color: "coral",
+      nextAnnotation: `-${dropPct(m.applicationsTotal, m.highIntentCalls).toFixed(1)}% never apply`,
+    },
+    {
+      key: "apps",
+      label: "Applications",
+      description: `${m.applicationsSubmitted.toLocaleString()} submitted + ${m.applicationsBlocked.toLocaleString()} blocked`,
+      value: m.applicationsTotal,
+      color: "coral",
+      nextAnnotation: m.hasInterviewData
+        ? `${pct(m.interviewCount, m.applicationsTotal).toFixed(1)}% → interview`
+        : undefined,
+    },
+  ];
+  if (m.hasInterviewData) {
+    stages.push({
+      key: "interview",
+      label: "Interview",
+      description: "Ghaziabad only",
+      value: m.interviewCount,
+      color: "purple",
+    });
+  }
+
   return (
     <div className="space-y-8">
       <MetricSection
         title="Outcome metrics"
-        subtitle="Per unique job seeker (deduped by phone)"
+        subtitle="Funnel from calls made to applications"
       >
         <div className="grid gap-4 lg:grid-cols-5">
           <div className="lg:col-span-3">
-            <ConversionFunnel
-              stages={[
-                { label: "Seekers called", value: m.seekers, color: "blue" },
-                { label: "Answered", value: m.answeredSeekers, color: "blue" },
-                { label: "Tried (applied + failed)", value: m.triedSeekers, color: "amber" },
-                { label: "Applied", value: m.appliedSeekers, color: "green" },
-              ]}
-            />
+            <VerticalFunnel stages={stages} />
           </div>
           <div className="grid gap-3 lg:col-span-2 lg:grid-cols-1">
             <RateDial value={appRate} label="Application rate" sub="Applied / answered seekers" accent="green" />
-            <div className="grid gap-3 sm:grid-cols-3 lg:grid-cols-1">
+            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-1">
               <StatTile
                 icon="IconFileCheck"
                 label="Total applications"
                 value={m.totalApplications}
                 sub="Across all calls"
                 accent="blue"
-              />
-              <StatTile
-                icon="IconAlertTriangle"
-                label="Failed attempts"
-                value={m.failedSeekers}
-                sub={`${failedOfTried.toFixed(1)}% of those who tried`}
-                accent="amber"
               />
               <StatTile
                 icon="IconUserOff"
