@@ -27,6 +27,7 @@ import {
 import { Panel } from "@/components/Panel";
 import { NoDataState, LoadingState } from "@/components/EmptyState";
 import { DropAnalysisTable } from "@/components/metrics/DropAnalysisTable";
+import { DropStackedBars } from "@/components/metrics/DropStackedBars";
 import {
   OverviewFilters,
   type OverviewFilterValue,
