@@ -439,7 +439,7 @@ function Stepper({ step }: { step: number }) {
 }
 
 function UploadStep({
-  file, parsed, report, validating, region, setRegion, proceedInvalid, setProceedInvalid, onFile,
+  file, parsed, report, validating, region, setRegion, proceedInvalid, setProceedInvalid, onFile, onReset,
 }: {
   file: File | null;
   parsed: ParsedCsv | null;
@@ -450,6 +450,7 @@ function UploadStep({
   proceedInvalid: boolean;
   setProceedInvalid: (v: boolean) => void;
   onFile: (f: File) => void;
+  onReset: () => void;
 }) {
   const [drag, setDrag] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
