@@ -219,9 +219,11 @@ export function KkbOverviewMetrics({
 export function DkbOverviewMetrics({
   m,
   previous,
+  perDay,
 }: {
   m: DkbMetrics;
   previous?: DkbMetrics;
+  perDay?: DailyPoint[];
 }) {
   const productiveDenom = m.answeredCalls;
   const productivePct = productiveDenom > 0 ? (m.productiveCalls / productiveDenom) * 100 : 0;
