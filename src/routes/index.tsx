@@ -14,7 +14,7 @@ import {
   Bar,
   Legend,
 } from "recharts";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { useProgram } from "@/programs/context";
 import { useProgramAggregates } from "@/programs/useProgramAggregates";
 import { KpiCard } from "@/components/KpiCard";
