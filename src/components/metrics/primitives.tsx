@@ -208,6 +208,15 @@ export function SplitBar({
 }) {
   const total = answered + unanswered;
   const pickup = total > 0 ? (answered / total) * 100 : 0;
+
+  // Donut chart geometry
+  const size = 140;
+  const stroke = 18;
+  const radius = (size - stroke) / 2;
+  const circ = 2 * Math.PI * radius;
+  const answeredOffset = circ * (1 - answered / (total || 1));
+  const unansweredOffset = circ * (1 - unanswered / (total || 1));
+
   return (
     <div className="rounded-xl border bg-card p-5">
       <div className="flex items-baseline justify-between gap-3">
@@ -234,6 +243,55 @@ export function SplitBar({
           <span className="font-medium tabular-nums text-rose-600 dark:text-rose-400">{fmtNum(unanswered)}</span>
         </li>
       </ul>
+
+      {/* Donut chart */}
+      <div className="mt-5 flex items-center justify-center">
+        <div className="relative" style={{ width: size, height: size }}>
+          <svg width={size} height={size} className="-rotate-90">
+            {/* Background ring */}
+            <circle
+              cx={size / 2}
+              cy={size / 2}
+              r={radius}
+              className="fill-none stroke-muted"
+              strokeWidth={stroke}
+            />
+            {/* Answered segment (emerald) */}
+            <circle
+              cx={size / 2}
+              cy={size / 2}
+              r={radius}
+              className="fill-none stroke-emerald-500"
+              strokeWidth={stroke}
+              strokeLinecap="round"
+              strokeDasharray={circ}
+              strokeDashoffset={answeredOffset}
+              style={{ transition: "stroke-dashoffset 700ms ease" }}
+            />
+            {/* Unanswered segment (rose) — starts after answered */}
+            <circle
+              cx={size / 2}
+              cy={size / 2}
+              r={radius}
+              className="fill-none stroke-rose-500"
+              strokeWidth={stroke}
+              strokeLinecap="round"
+              strokeDasharray={circ}
+              strokeDashoffset={unansweredOffset}
+              style={{
+                transition: "stroke-dashoffset 700ms ease",
+                strokeDashoffset: unansweredOffset,
+              }}
+              transform={`rotate(${(answered / (total || 1)) * 360} ${size / 2} ${size / 2})`}
+            />
+          </svg>
+          {/* Center label */}
+          <div className="absolute inset-0 flex flex-col items-center justify-center">
+            <span className="text-[11px] text-muted-foreground">Total</span>
+            <span className="text-sm font-semibold text-foreground">{fmtNum(total)}</span>
+          </div>
+        </div>
+      </div>
     </div>
   );
 }
