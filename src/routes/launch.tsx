@@ -363,8 +363,33 @@ function LaunchWizard() {
               Raya rate limit: <strong>1 call per 20 seconds</strong> by default. Keep concurrency low or launches will be throttled (HTTP 429).
             </div>
           </div>
+          <div className={cn(
+            "mb-4 max-w-2xl rounded-md border px-3 py-2 text-sm flex items-start gap-2",
+            available === 0
+              ? "border-red-200 bg-red-50 text-red-700"
+              : available <= 5
+                ? "border-amber-200 bg-amber-50 text-amber-800"
+                : "border-brand/20 bg-brand-soft text-brand",
+          )}>
+            <Gauge className="h-4 w-4 mt-0.5 shrink-0" />
+            <div>
+              <strong>{usage.isLoading ? "…" : available}</strong> of {cap} concurrency available right now (account-wide, shared by KKB + DKB).
+              {usage.data?.batches?.length ? (
+                <span className="ml-1 opacity-80">In use by {usage.data.batches.length} batch{usage.data.batches.length === 1 ? "" : "es"}.</span>
+              ) : null}
+              {concurrency > (available as number) && Number.isFinite(available) && (
+                <div className="mt-1 font-medium">Reduce concurrency to {available} or stop a running batch to proceed.</div>
+              )}
+            </div>
+          </div>
           <div className="grid gap-4 sm:grid-cols-3 max-w-2xl">
-            <NumberField label="Concurrency" value={concurrency} onChange={setConcurrency} min={1} max={100} />
+            <NumberField
+              label="Concurrency"
+              value={concurrency}
+              onChange={setConcurrency}
+              min={1}
+              max={Math.max(1, Math.min(100, Number.isFinite(available) ? (available as number) : 100))}
+            />
             <NumberField label="Max retries" value={maxRetries} onChange={setMaxRetries} min={0} max={10} />
             <NumberField label="Retry after (hrs)" value={retryAfterHrs} onChange={setRetryAfterHrs} min={1} max={168} />
           </div>
