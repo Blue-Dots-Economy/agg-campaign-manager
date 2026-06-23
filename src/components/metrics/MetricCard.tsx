@@ -1,5 +1,4 @@
 import * as React from "react";
-import { IconArrowUpRight, IconArrowDownRight } from "@tabler/icons-react";
 
 export interface MetricCardProps {
   label: string;
