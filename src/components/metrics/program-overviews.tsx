@@ -215,6 +215,8 @@ export function DkbOverviewMetrics({
     previous && previous.totalCalls > 0
       ? (previous.productiveCalls / previous.totalCalls) * 100
       : null;
+  const highIntentTotal = (perDay ?? []).reduce((sum, p) => sum + (p.high_intent ?? 0), 0);
+  const prevHighIntent: number | null = null;
 
   const funnelData = m.providerFunnel ?? [];
   const calledProviders = funnelData[0]?.providers ?? 0;
@@ -259,26 +261,30 @@ export function DkbOverviewMetrics({
             )}
           </div>
           <div className="grid gap-3 lg:col-span-2 lg:grid-cols-1">
-            <MetricCard
-              label="New openings captured"
-              value={m.newOpenings}
-              sub={previous ? undefined : "Vacancies from new jobs posted"}
-              previous={prev(previous, "newOpenings")}
-              trend={series(perDay, (p) => p.new_jobs)}
-            />
-            <MetricCard
-              label="New jobs discussed"
-              value={m.newJobsDiscussed}
-              sub={previous ? undefined : "Providers that mentioned a new role"}
-              previous={prev(previous, "newJobsDiscussed")}
-              trend={series(perDay, (p) => p.new_jobs)}
-            />
-            <MetricCard
-              label="Active openings"
-              value={m.activeOpenings}
-              sub={previous ? undefined : "Currently hiring (post-campaign)"}
-              previous={prev(previous, "activeOpenings")}
-            />
+            <SplitBar answered={m.answeredCalls} unanswered={m.unansweredCalls} />
+            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-1">
+              <MetricCard
+                label="Productive conversations"
+                value={productivePct}
+                format="percent"
+                sub={previous ? undefined : `${m.productiveCalls.toLocaleString()} calls — answered + > 30s`}
+                previous={prevProductivePct}
+                trend={series(perDay, (p) => safeDiv(p.engaged, p.rows) * 100)}
+              />
+              <MetricCard
+                label="High intent providers"
+                value={highIntentTotal}
+                sub={previous ? undefined : "Intent score ≥ 5"}
+                previous={prevHighIntent}
+                trend={series(perDay, (p) => p.high_intent)}
+              />
+              <MetricCard
+                label="Active openings"
+                value={m.activeOpenings}
+                sub={previous ? undefined : "Currently hiring (post-campaign)"}
+                previous={prev(previous, "activeOpenings")}
+              />
+            </div>
           </div>
         </div>
       </MetricSection>
