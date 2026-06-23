@@ -27,7 +27,7 @@ import {
 import { Panel } from "@/components/Panel";
 import { NoDataState, LoadingState } from "@/components/EmptyState";
 import { DropAnalysisTable } from "@/components/metrics/DropAnalysisTable";
-import { DropStackedBars } from "@/components/metrics/DropStackedBars";
+import { FunnelSankey } from "@/components/metrics/FunnelSankey";
 import {
   OverviewFilters,
   type OverviewFilterValue,
@@ -254,11 +254,11 @@ function Overview() {
 
             <div className="space-y-4">
               <div className="rounded-xl border bg-card p-5">
-                <div className="mb-1 text-sm font-semibold text-foreground">Drops by stage</div>
+                <div className="mb-1 text-sm font-semibold text-foreground">Funnel flow & drop reasons</div>
                 <p className="mb-4 text-xs text-muted-foreground">
-                  Stacked by reason. Bars sorted by total drops; widths share one scale.
+                  Sankey: trunk = survivors through the funnel (teal); ribbons peeling off = drops, colored by reason. Hover a ribbon for source → target counts.
                 </p>
-                <DropStackedBars rows={dropAnalysis} hideRegion={hideRegion} />
+                <FunnelSankey m={metrics as unknown as KkbMetrics} rows={dropAnalysis} hideRegion={hideRegion} />
               </div>
               <Panel
                 title="Drop analysis — detail"
