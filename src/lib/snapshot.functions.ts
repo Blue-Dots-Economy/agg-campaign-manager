@@ -130,6 +130,7 @@ async function performSync(program: ProgramId): Promise<SyncResult> {
     call_answered: boolean;
     call_engaged: boolean;
     applied_to_job: boolean;
+    tried_to_apply: boolean;
     call_status: string;
     job_status: string;
     new_job_posted: string;
@@ -141,6 +142,9 @@ async function performSync(program: ProgramId): Promise<SyncResult> {
     campaign_date: string;
     campaign_type: string;
     language: string;
+    phone: string;
+    call_duration_seconds: number | null;
+    applications_count: number | null;
     data: CallRow;
   }> = [];
 
@@ -164,6 +168,7 @@ async function performSync(program: ProgramId): Promise<SyncResult> {
             call_answered: mapped.call_answered,
             call_engaged: mapped.call_engaged,
             applied_to_job: mapped.applied_to_job,
+            tried_to_apply: mapped.tried_to_apply,
             call_status: mapped.raw?.call_status ?? "",
             job_status: mapped.raw?.job_status ?? "",
             new_job_posted: mapped.raw?.new_job_posted ?? "",
@@ -175,6 +180,9 @@ async function performSync(program: ProgramId): Promise<SyncResult> {
             campaign_date: mapped.campaign_date || mapped.raw?.campaign_date || "",
             campaign_type: mapped.campaign_type || mapped.raw?.campaign_type || "",
             language: mapped.language || mapped.raw?.language || "",
+            phone: mapped.phone || "",
+            call_duration_seconds: Number.isFinite(mapped.call_duration_seconds) ? mapped.call_duration_seconds : null,
+            applications_count: Number.isFinite(mapped.applications_count) ? mapped.applications_count : null,
             data: mapped,
           });
         }
@@ -293,6 +301,23 @@ function normalizeAggregates(value: unknown): ProgramAggregates {
   };
 }
 
+export type MetricAccent = "green" | "amber" | "red" | "blue";
+
+export interface MetricCardDef {
+  key: string;
+  label: string;
+  value: string;
+  sub: string;
+  accent: MetricAccent;
+}
+
+export interface MetricGroup {
+  key: string;
+  title: string;
+  subtitle?: string;
+  cards: MetricCardDef[];
+}
+
 export interface AggregatePayload {
   source: "snapshot" | "empty";
   hasSnapshot: boolean;
@@ -301,6 +326,7 @@ export interface AggregatePayload {
   lastSyncedAt: string | null;
   syncStatus: string;
   aggregates: ProgramAggregates;
+  metricGroups: MetricGroup[];
   /** Lightweight per-day index for the Campaigns table (no row payload). */
   campaigns: ProgramAggregates["perDay"];
   error?: string;
@@ -319,6 +345,7 @@ function emptyPayload(
     lastSyncedAt: state?.last_synced_at ?? null,
     syncStatus: state?.status ?? "idle",
     aggregates: emptyAggregates(),
+    metricGroups: [],
     campaigns: [],
     error,
   };
@@ -330,6 +357,36 @@ interface AggregateRpcPayload {
   syncStatus?: string;
   stateRowCount?: number;
   aggregates?: unknown;
+  metricGroups?: unknown;
+}
+
+function normalizeMetricGroups(value: unknown): MetricGroup[] {
+  if (!Array.isArray(value)) return [];
+  const allowed: MetricAccent[] = ["green", "amber", "red", "blue"];
+  return value.flatMap((g): MetricGroup[] => {
+    if (!g || typeof g !== "object") return [];
+    const o = g as Record<string, unknown>;
+    const cards = Array.isArray(o.cards)
+      ? o.cards.flatMap((c): MetricCardDef[] => {
+          if (!c || typeof c !== "object") return [];
+          const x = c as Record<string, unknown>;
+          const accent = allowed.includes(x.accent as MetricAccent) ? (x.accent as MetricAccent) : "blue";
+          return [{
+            key: String(x.key ?? ""),
+            label: String(x.label ?? ""),
+            value: String(x.value ?? ""),
+            sub: String(x.sub ?? ""),
+            accent,
+          }];
+        })
+      : [];
+    return [{
+      key: String(o.key ?? ""),
+      title: String(o.title ?? ""),
+      subtitle: o.subtitle ? String(o.subtitle) : undefined,
+      cards,
+    }];
+  });
 }
 
 export const fetchProgramAggregates = createServerFn({ method: "GET" })
@@ -350,6 +407,7 @@ export const fetchProgramAggregates = createServerFn({ method: "GET" })
       }
       if (!payload.stateRowCount) return emptyPayload(payload.connectionCount ?? 0, null);
       const aggregates = normalizeAggregates(payload.aggregates);
+      const metricGroups = normalizeMetricGroups(payload.metricGroups);
       const totalRows = Number(aggregates.kpis.total_calls ?? payload.stateRowCount ?? 0);
       if (totalRows === 0) return emptyPayload(payload.connectionCount ?? 0, null);
       return {
@@ -360,12 +418,14 @@ export const fetchProgramAggregates = createServerFn({ method: "GET" })
         lastSyncedAt: payload.lastSyncedAt ?? null,
         syncStatus: payload.syncStatus ?? "idle",
         aggregates,
+        metricGroups,
         campaigns: aggregates.perDay,
       };
     } catch (e) {
       return emptyPayload(0, null, e instanceof Error ? e.message : String(e));
     }
   });
+
 
 export const fetchCampaignDayRowsFn = createServerFn({ method: "GET" })
   .inputValidator((d: { program: ProgramId; day: string }) => d)
