@@ -57,7 +57,7 @@ function Overview() {
   if (query.isLoading && !data) return <LoadingState />;
   if (!data || data.source === "empty" || data.totalRows === 0) return <NoDataState />;
 
-  const { kpis, perDay, drops, intents, regions, phases, jobStatus, outcomes, dkbIntents } =
+  const { kpis, perDay, drops, intents, regions, phases, jobStatus, outcomes, dkbIntents, dropAnalysis } =
     data.aggregates;
   const metrics = data.metrics ?? {};
   const hasMetrics = Object.keys(metrics).length > 0;
