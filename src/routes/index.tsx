@@ -65,6 +65,24 @@ function Overview() {
   const query = useProgramAggregates(config, filters);
   const data = query.data;
 
+  // Previous-period query: only when both dateFrom & dateTo are set.
+  const prevFilters = (() => {
+    if (!filters.dateFrom || !filters.dateTo) return null;
+    const from = new Date(filters.dateFrom);
+    const to = new Date(filters.dateTo);
+    const dayMs = 24 * 60 * 60 * 1000;
+    const len = Math.max(1, Math.round((to.getTime() - from.getTime()) / dayMs) + 1);
+    const prevTo = new Date(from.getTime() - dayMs);
+    const prevFrom = new Date(prevTo.getTime() - (len - 1) * dayMs);
+    const iso = (d: Date) => d.toISOString().slice(0, 10);
+    return { state: filters.state, dateFrom: iso(prevFrom), dateTo: iso(prevTo) };
+  })();
+  const prevQuery = useProgramAggregates(
+    config,
+    prevFilters ?? { state: filters.state, dateFrom: null, dateTo: null },
+  );
+  const prevMetrics = prevFilters ? prevQuery.data?.metrics : undefined;
+
   if (query.isLoading && !data) return <LoadingState />;
 
   const filterBar = (
@@ -91,23 +109,36 @@ function Overview() {
   const hasMetrics = Object.keys(metrics).length > 0;
   const hideRegion: "GZB" | "KA" | undefined =
     filters.state === "GZB" ? "KA" : filters.state === "KA" ? "GZB" : undefined;
+  const prevKpis = prevFilters ? prevQuery.data?.aggregates?.kpis : undefined;
 
   return (
     <div className="space-y-6">
       {filterBar}
       {hasMetrics ? (
         isDkb ? (
-          <DkbOverviewMetrics m={metrics as unknown as DkbMetrics} />
+          <DkbOverviewMetrics
+            m={metrics as unknown as DkbMetrics}
+            previous={prevMetrics as unknown as DkbMetrics | undefined}
+          />
         ) : (
-          <KkbOverviewMetrics m={metrics as unknown as KkbMetrics} />
+          <KkbOverviewMetrics
+            m={metrics as unknown as KkbMetrics}
+            previous={prevMetrics as unknown as KkbMetrics | undefined}
+          />
         )
       ) : (
         <div className={`grid gap-4 grid-cols-2 ${isDkb ? "lg:grid-cols-6" : "lg:grid-cols-5"}`}>
           {config.kpis.map((def) => (
-            <KpiCard key={def.key} def={def} value={kpis[def.key] ?? 0} />
+            <KpiCard
+              key={def.key}
+              def={def}
+              value={kpis[def.key] ?? 0}
+              previous={prevKpis ? prevKpis[def.key] ?? null : null}
+            />
           ))}
         </div>
       )}
+
 
 
       {isDkb ? (

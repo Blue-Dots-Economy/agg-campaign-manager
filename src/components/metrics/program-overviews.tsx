@@ -1,10 +1,5 @@
-import {
-  MetricSection,
-  RateDial,
-  StatTile,
-  SplitBar,
-  SegmentedBar,
-} from "@/components/metrics/primitives";
+import { MetricSection, SplitBar, SegmentedBar } from "@/components/metrics/primitives";
+import { MetricCard } from "@/components/metrics/MetricCard";
 import { VerticalFunnel, type VerticalFunnelStage, type FunnelColor } from "@/components/metrics/VerticalFunnel";
 
 export interface KkbMetrics {
@@ -56,9 +51,30 @@ export interface DkbMetrics {
   providerFunnel?: DkbProviderFunnelStage[];
 }
 
-export function KkbOverviewMetrics({ m }: { m: KkbMetrics }) {
+// Helper: pull a numeric metric from a previous-period metrics object (may be undefined).
+function prev<T extends object>(prev: T | undefined, key: keyof T): number | null {
+  if (!prev) return null;
+  const v = prev[key];
+  return typeof v === "number" && Number.isFinite(v) ? v : null;
+}
+
+export function KkbOverviewMetrics({
+  m,
+  previous,
+}: {
+  m: KkbMetrics;
+  previous?: KkbMetrics;
+}) {
   const appRate = m.answeredSeekers > 0 ? (m.appliedSeekers / m.answeredSeekers) * 100 : 0;
   const productivePct = m.totalCalls > 0 ? (m.productiveCalls / m.totalCalls) * 100 : 0;
+  const prevAppRate =
+    previous && previous.answeredSeekers > 0
+      ? (previous.appliedSeekers / previous.answeredSeekers) * 100
+      : null;
+  const prevProductivePct =
+    previous && previous.totalCalls > 0
+      ? (previous.productiveCalls / previous.totalCalls) * 100
+      : null;
 
   const pct = (n: number, d: number) => (d > 0 ? (n / d) * 100 : 0);
   const dropPct = (n: number, d: number) => (d > 0 ? Math.max(0, (1 - n / d) * 100) : 0);
@@ -128,36 +144,30 @@ export function KkbOverviewMetrics({ m }: { m: KkbMetrics }) {
 
   return (
     <div className="space-y-8">
-      <MetricSection
-        title="Outcome metrics"
-        subtitle="Funnel from calls made to applications"
-      >
+      <MetricSection title="Outcome metrics" subtitle="Funnel from calls made to applications">
         <div className="grid gap-4 lg:grid-cols-5">
           <div className="lg:col-span-3">
             <VerticalFunnel stages={stages} />
           </div>
           <div className="grid gap-3 lg:col-span-2 lg:grid-cols-1">
-            <StatTile
-              icon="IconClock"
+            <MetricCard
               label="Avg call duration"
               value={`${m.avgDuration.toFixed(1)} sec`}
               sub="Answered calls only"
-              accent="blue"
+              previous={prev(previous, "avgDuration")}
             />
             <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-1">
-              <StatTile
-                icon="IconFileCheck"
+              <MetricCard
                 label="Total applications"
                 value={m.totalApplications}
-                sub="Across all calls"
-                accent="blue"
+                sub={previous ? undefined : "Across all calls"}
+                previous={prev(previous, "totalApplications")}
               />
-              <StatTile
-                icon="IconUserOff"
+              <MetricCard
                 label="Did not apply"
                 value={m.didNotApply}
-                sub="Answered but did not apply"
-                accent="red"
+                sub={previous ? undefined : "Answered but did not apply"}
+                previous={prev(previous, "didNotApply")}
               />
             </div>
           </div>
@@ -167,22 +177,39 @@ export function KkbOverviewMetrics({ m }: { m: KkbMetrics }) {
       <MetricSection title="Call metrics" subtitle="Per call (raw rows)">
         <div className="grid gap-4 lg:grid-cols-3">
           <SplitBar answered={m.answeredCalls} unanswered={m.unansweredCalls} />
-          <RateDial
-            value={productivePct}
+          <MetricCard
             label="Productive conversations"
-            sub={`${m.productiveCalls.toLocaleString()} calls — answered + > 30s`}
-            accent="amber"
+            value={productivePct}
+            format="percent"
+            sub={previous ? undefined : `${m.productiveCalls.toLocaleString()} calls — answered + > 30s`}
+            previous={prevProductivePct}
           />
-          <RateDial value={appRate} label="Application rate" sub="Applied / answered seekers" accent="green" />
+          <MetricCard
+            label="Application rate"
+            value={appRate}
+            format="percent"
+            sub={previous ? undefined : "Applied / answered seekers"}
+            previous={prevAppRate}
+          />
         </div>
       </MetricSection>
     </div>
   );
 }
 
-export function DkbOverviewMetrics({ m }: { m: DkbMetrics }) {
+export function DkbOverviewMetrics({
+  m,
+  previous,
+}: {
+  m: DkbMetrics;
+  previous?: DkbMetrics;
+}) {
   const productiveDenom = m.answeredCalls;
   const productivePct = productiveDenom > 0 ? (m.productiveCalls / productiveDenom) * 100 : 0;
+  const prevProductivePct =
+    previous && previous.answeredCalls > 0
+      ? (previous.productiveCalls / previous.answeredCalls) * 100
+      : null;
 
   const funnelData = m.providerFunnel ?? [];
   const calledProviders = funnelData[0]?.providers ?? 0;
@@ -191,9 +218,9 @@ export function DkbOverviewMetrics({ m }: { m: DkbMetrics }) {
   const drop = (n: number, d: number) => (d > 0 ? Math.max(0, (1 - n / d) * 100) : 0);
 
   const funnelStages: VerticalFunnelStage[] = funnelData.map((s, i) => {
-    const prev = i > 0 ? funnelData[i - 1] : undefined;
+    const prevStage = i > 0 ? funnelData[i - 1] : undefined;
     const ofCalled = pct(s.providers, calledProviders);
-    const step = i === 0 ? 0 : drop(s.providers, prev?.providers ?? 0);
+    const step = i === 0 ? 0 : drop(s.providers, prevStage?.providers ?? 0);
     return {
       key: s.key,
       label: s.label,
@@ -228,12 +255,11 @@ export function DkbOverviewMetrics({ m }: { m: DkbMetrics }) {
               ]}
             />
           </div>
-          <StatTile
-            icon="IconSparkles"
+          <MetricCard
             label="New openings captured"
             value={m.newOpenings}
-            sub="From new jobs posted"
-            accent="blue"
+            sub={previous ? undefined : "From new jobs posted"}
+            previous={prev(previous, "newOpenings")}
           />
         </div>
       </MetricSection>
@@ -253,40 +279,37 @@ export function DkbOverviewMetrics({ m }: { m: DkbMetrics }) {
             )}
           </div>
           <div className="grid gap-3 lg:col-span-2 lg:grid-cols-1">
-            <StatTile
-              icon="IconBriefcase"
+            <MetricCard
               label="New jobs discussed"
               value={m.newJobsDiscussed}
-              sub="Providers that mentioned a new role"
-              accent="blue"
+              sub={previous ? undefined : "Providers that mentioned a new role"}
+              previous={prev(previous, "newJobsDiscussed")}
             />
-            <StatTile
-              icon="IconSparkles"
+            <MetricCard
               label="New openings captured"
               value={m.newOpenings}
-              sub="Vacancies from new jobs posted"
-              accent="green"
+              sub={previous ? undefined : "Vacancies from new jobs posted"}
+              previous={prev(previous, "newOpenings")}
             />
           </div>
         </div>
       </MetricSection>
 
-
       <MetricSection title="Call metrics" subtitle="Per call (raw rows)">
         <div className="grid gap-4 lg:grid-cols-3">
           <SplitBar answered={m.answeredCalls} unanswered={m.unansweredCalls} />
-          <RateDial
-            value={productivePct}
+          <MetricCard
             label="Productive conversations"
-            sub={`${m.productiveCalls.toLocaleString()} calls — answered + > 30s`}
-            accent="amber"
+            value={productivePct}
+            format="percent"
+            sub={previous ? undefined : `${m.productiveCalls.toLocaleString()} calls — answered + > 30s`}
+            previous={prevProductivePct}
           />
-          <StatTile
-            icon="IconClock"
+          <MetricCard
             label="Avg call duration"
             value={`${m.avgDuration.toFixed(1)} sec`}
-            sub="Answered calls only"
-            accent="blue"
+            sub={previous ? undefined : "Answered calls only"}
+            previous={prev(previous, "avgDuration")}
           />
         </div>
       </MetricSection>
