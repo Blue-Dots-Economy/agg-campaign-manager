@@ -57,19 +57,44 @@ const tooltipStyle = {
 function Overview() {
   const { config } = useProgram();
   const isDkb = config.id === "dkb";
-  const query = useProgramAggregates(config);
+  const [filters, setFilters] = useState<OverviewFilterValue>({
+    state: "all",
+    dateFrom: null,
+    dateTo: null,
+  });
+  const query = useProgramAggregates(config, filters);
   const data = query.data;
 
   if (query.isLoading && !data) return <LoadingState />;
-  if (!data || data.source === "empty" || data.totalRows === 0) return <NoDataState />;
+
+  const filterBar = (
+    <div className="flex items-center justify-between gap-3 flex-wrap">
+      <OverviewFilters value={filters} onChange={setFilters} />
+      {query.isFetching && (
+        <span className="text-xs text-muted-foreground">Updating…</span>
+      )}
+    </div>
+  );
+
+  if (!data || data.source === "empty" || data.totalRows === 0) {
+    return (
+      <div className="space-y-6">
+        {filterBar}
+        <NoDataState />
+      </div>
+    );
+  }
 
   const { kpis, perDay, intents, regions, phases, jobStatus, outcomes, dkbIntents, dropAnalysis } =
     data.aggregates;
   const metrics = data.metrics ?? {};
   const hasMetrics = Object.keys(metrics).length > 0;
+  const hideRegion: "GZB" | "KA" | undefined =
+    filters.state === "GZB" ? "KA" : filters.state === "KA" ? "GZB" : undefined;
 
   return (
     <div className="space-y-6">
+      {filterBar}
       {hasMetrics ? (
         isDkb ? (
           <DkbOverviewMetrics m={metrics as unknown as DkbMetrics} />
