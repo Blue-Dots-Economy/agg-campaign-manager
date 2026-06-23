@@ -17,7 +17,12 @@ import {
 import { useProgram } from "@/programs/context";
 import { useProgramAggregates } from "@/programs/useProgramAggregates";
 import { KpiCard } from "@/components/KpiCard";
-import { MetricGroupSection } from "@/components/MetricCard";
+import {
+  KkbOverviewMetrics,
+  DkbOverviewMetrics,
+  type KkbMetrics,
+  type DkbMetrics,
+} from "@/components/metrics/program-overviews";
 import { Panel } from "@/components/Panel";
 import { NoDataState, LoadingState } from "@/components/EmptyState";
 
