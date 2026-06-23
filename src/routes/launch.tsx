@@ -314,6 +314,7 @@ function LaunchWizard() {
           proceedInvalid={proceedInvalid}
           setProceedInvalid={setProceedInvalid}
           onFile={onFile}
+          onReset={() => { setFile(null); setParsed(null); setReport(null); setProceedInvalid(false); }}
         />
       )}
 
