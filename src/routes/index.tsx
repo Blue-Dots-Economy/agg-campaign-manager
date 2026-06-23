@@ -273,23 +273,12 @@ function Overview() {
               </div>
             </Panel>
 
-            <div className="space-y-4">
-              <div className="rounded-xl border bg-card p-5">
-                <div className="mb-1 text-sm font-semibold text-foreground">Funnel flow & drop reasons</div>
-                <p className="mb-4 text-xs text-muted-foreground">
-                  Sankey: trunk = survivors through the funnel (teal); ribbons peeling off = drops, colored by reason. Hover a ribbon for source → target counts.
-                </p>
-                <FunnelSankey m={metrics as unknown as KkbMetrics} rows={dropAnalysis} hideRegion={hideRegion} />
-              </div>
-              <Panel
-                title="Drop analysis — detail"
-                description="Exact counts per stage × reason (region split: GZB vs KA). Heuristic classifier over free-text drop_reason — structured buckets map exactly; the long tail is keyword-bucketed (fallback = Other)."
-              >
-                <div className="max-h-80 overflow-y-auto">
-                  <DropAnalysisTable rows={dropAnalysis} hideRegion={hideRegion} />
-                </div>
-              </Panel>
-            </div>
+            <FunnelDropCard
+              metrics={metrics as unknown as KkbMetrics}
+              rows={dropAnalysis}
+              hideRegion={hideRegion}
+            />
+          </div>
           </div>
 
 
