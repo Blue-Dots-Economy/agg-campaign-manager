@@ -14,7 +14,7 @@ import {
   Bar,
   Legend,
 } from "recharts";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { useProgram } from "@/programs/context";
 import { useProgramAggregates } from "@/programs/useProgramAggregates";
 import { KpiCard } from "@/components/KpiCard";
@@ -106,6 +106,16 @@ function Overview() {
 
   const { kpis, perDay, intents, regions, phases, jobStatus, outcomes, dkbIntents, dropAnalysis } =
     data.aggregates;
+  const perDayRollup = useMemo(() => {
+    const m = new Map<string, { day: string; date: string; rows: number; answered: number; engaged: number; converted: number; new_jobs: number; high_intent: number; sort: number }>();
+    for (const p of perDay) {
+      const cur = m.get(p.day) ?? { day: p.day, date: p.date, rows: 0, answered: 0, engaged: 0, converted: 0, new_jobs: 0, high_intent: 0, sort: parseInt(p.day.replace(/\D/g, ""), 10) || 0 };
+      cur.rows += p.rows; cur.answered += p.answered; cur.engaged += p.engaged;
+      cur.converted += p.converted; cur.new_jobs += p.new_jobs; cur.high_intent += p.high_intent;
+      m.set(p.day, cur);
+    }
+    return [...m.values()].sort((a, b) => a.sort - b.sort);
+  }, [perDay]);
   const metrics = data.metrics ?? {};
   const hasMetrics = Object.keys(metrics).length > 0;
   const hideRegion: "GZB" | "KA" | undefined =
@@ -120,13 +130,13 @@ function Overview() {
           <DkbOverviewMetrics
             m={metrics as unknown as DkbMetrics}
             previous={prevMetrics as unknown as DkbMetrics | undefined}
-            perDay={perDay}
+            perDay={perDayRollup}
           />
         ) : (
           <KkbOverviewMetrics
             m={metrics as unknown as KkbMetrics}
             previous={prevMetrics as unknown as KkbMetrics | undefined}
-            perDay={perDay}
+            perDay={perDayRollup}
           />
         )
       ) : (
@@ -154,7 +164,7 @@ function Overview() {
             >
               <div className="h-72">
                 <ResponsiveContainer>
-                  <LineChart data={perDay} margin={{ top: 10, right: 16, left: -10, bottom: 0 }}>
+                  <LineChart data={perDayRollup} margin={{ top: 10, right: 16, left: -10, bottom: 0 }}>
                     <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border)" vertical={false} />
                     <XAxis dataKey="day" tick={{ fontSize: 11 }} stroke="var(--color-muted-foreground)" />
                     <YAxis tick={{ fontSize: 11 }} stroke="var(--color-muted-foreground)" />
@@ -239,7 +249,7 @@ function Overview() {
               <div className="h-72">
                 <ResponsiveContainer>
                   <LineChart
-                    data={perDay.map((d) => ({
+                    data={perDayRollup.map((d) => ({
                       day: d.day,
                       answered: d.rows > 0 ? Math.round((d.answered / d.rows) * 1000) / 10 : 0,
                       engaged: d.rows > 0 ? Math.round((d.engaged / d.rows) * 1000) / 10 : 0,

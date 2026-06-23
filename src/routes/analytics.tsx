@@ -1,4 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { useMemo } from "react";
 import {
   AreaChart,
   Area,
@@ -40,6 +41,17 @@ function Analytics() {
 
   const { perDay, drops, intents, phases, jobStatus, outcomes, dkbIntents } = data.aggregates;
 
+  const dayRollup = useMemo(() => {
+    const m = new Map<string, { day: string; rows: number; answered: number; engaged: number; converted: number; new_jobs: number; high_intent: number; sort: number }>();
+    for (const p of perDay) {
+      const cur = m.get(p.day) ?? { day: p.day, rows: 0, answered: 0, engaged: 0, converted: 0, new_jobs: 0, high_intent: 0, sort: parseInt(p.day.replace(/\D/g, ""), 10) || 0 };
+      cur.rows += p.rows; cur.answered += p.answered; cur.engaged += p.engaged;
+      cur.converted += p.converted; cur.new_jobs += p.new_jobs; cur.high_intent += p.high_intent;
+      m.set(p.day, cur);
+    }
+    return [...m.values()].sort((a, b) => a.sort - b.sort);
+  }, [perDay]);
+
   return (
     <div className="space-y-6">
       <Panel
@@ -48,7 +60,7 @@ function Analytics() {
       >
         <div className="h-72">
           <ResponsiveContainer>
-            <AreaChart data={perDay} margin={{ top: 10, right: 16, left: -10, bottom: 0 }}>
+            <AreaChart data={dayRollup} margin={{ top: 10, right: 16, left: -10, bottom: 0 }}>
               <defs>
                 <linearGradient id="a1" x1="0" y1="0" x2="0" y2="1">
                   <stop offset="5%" stopColor="var(--color-chart-1)" stopOpacity={0.4} />
@@ -183,7 +195,7 @@ function Analytics() {
       >
         <div className="h-72">
           <ResponsiveContainer>
-            <BarChart data={perDay} margin={{ top: 10, right: 16, left: -10, bottom: 0 }}>
+            <BarChart data={dayRollup} margin={{ top: 10, right: 16, left: -10, bottom: 0 }}>
               <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border)" vertical={false} />
               <XAxis dataKey="day" tick={{ fontSize: 11 }} stroke="var(--color-muted-foreground)" />
               <YAxis tick={{ fontSize: 11 }} stroke="var(--color-muted-foreground)" />
