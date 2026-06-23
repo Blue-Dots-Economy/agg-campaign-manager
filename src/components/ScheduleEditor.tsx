@@ -32,10 +32,13 @@ export function makeDefaultSchedule(): ScheduleState {
   const day = weekdayMap[get("weekday")] ?? 1;
   const hh = get("hour");
   const mm = get("minute");
+  const startMin = parseInt(hh, 10) * 60 + parseInt(mm, 10);
+  const endMin = Math.min(startMin + 10, 23 * 60 + 59);
+  const pad = (n: number) => String(n).padStart(2, "0");
   return {
     timezone: tz,
     startTime: `${hh}:${mm}`,
-    endTime: "18:00",
+    endTime: `${pad(Math.floor(endMin / 60))}:${pad(endMin % 60)}`,
     days: [day],
   };
 }
