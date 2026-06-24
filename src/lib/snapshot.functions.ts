@@ -552,23 +552,39 @@ export const fetchProgramAggregates = createServerFn({ method: "GET" })
       } catch (e) {
         return emptyPayload(0, null, e instanceof Error ? e.message : String(e));
       }
-      if (!payload.stateRowCount) return emptyPayload(payload.connectionCount ?? 0, null);
+      const connectionCount = payload.connectionCount ?? 0;
+      const snapshotRowCount = Number(payload.stateRowCount ?? 0);
+      const stateMeta = {
+        last_synced_at: payload.lastSyncedAt ?? null,
+        status: payload.syncStatus ?? "idle",
+      };
+      if (!snapshotRowCount) {
+        return emptyPayload(
+          connectionCount,
+          stateMeta,
+          undefined,
+          connectionCount === 0 ? "no_connections" : "no_snapshot",
+        );
+      }
       const aggregates = normalizeAggregates(payload.aggregates);
       const metricGroups = normalizeMetricGroups(payload.metricGroups);
       const metrics = normalizeMetricsRaw(payload.metrics);
-      const totalRows = Number(aggregates.kpis.total_calls ?? payload.stateRowCount ?? 0);
-      if (totalRows === 0) return emptyPayload(payload.connectionCount ?? 0, null);
+      // Filtered count — use the reconciled KPI (mirrors total_rows/total_calls).
+      // Do NOT fall back to the unfiltered snapshot size; that masks filter results.
+      const totalRows = Number(aggregates.kpis.total_calls ?? 0);
       return {
         source: "snapshot",
         hasSnapshot: true,
         totalRows,
-        connectionCount: payload.connectionCount ?? 0,
-        lastSyncedAt: payload.lastSyncedAt ?? null,
-        syncStatus: payload.syncStatus ?? "idle",
+        snapshotRowCount,
+        connectionCount,
+        lastSyncedAt: stateMeta.last_synced_at,
+        syncStatus: stateMeta.status,
         aggregates,
         metricGroups,
         metrics,
         campaigns: aggregates.perDay,
+        emptyReason: totalRows === 0 ? "no_results" : undefined,
       };
     } catch (e) {
       return emptyPayload(0, null, e instanceof Error ? e.message : String(e));
