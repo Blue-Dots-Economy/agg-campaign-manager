@@ -67,7 +67,7 @@ const RW_SCOPE = "https://www.googleapis.com/auth/spreadsheets";
 export async function readStagingCallIds(
   sheetId: string,
   tab: string,
-): Promise<{ existing: Set<string>; hasHeaders: boolean }> {
+): Promise<{ existing: Set<string>; hasHeaders: boolean; headers: string[] }> {
   const token = await getAccessToken(RW_SCOPE);
 
   // Ensure the tab exists; create if missing.
@@ -90,7 +90,7 @@ export async function readStagingCallIds(
       const text = await addRes.text();
       throw new Error(`Failed to create tab '${tab}' (${addRes.status}): ${text.slice(0, 300)}`);
     }
-    return { existing: new Set(), hasHeaders: false };
+    return { existing: new Set(), hasHeaders: false, headers: [] };
   }
 
   const tabPrefix = quoteTab(tab);
@@ -99,10 +99,10 @@ export async function readStagingCallIds(
   if (!headerRes.ok) throw new Error(`Sheets header read failed (${headerRes.status})`);
   const headerJson = (await headerRes.json()) as { values?: string[][] };
   const headers = (headerJson.values?.[0] ?? []).map((h) => String(h ?? "").trim());
-  if (headers.length === 0) return { existing: new Set(), hasHeaders: false };
+  if (headers.length === 0) return { existing: new Set(), hasHeaders: false, headers: [] };
   const norm = headers.map(normalizeHeader);
   const callIdCol = norm.indexOf("call_id");
-  if (callIdCol < 0) return { existing: new Set(), hasHeaders: true };
+  if (callIdCol < 0) return { existing: new Set(), hasHeaders: true, headers };
   const letter = colLetter(callIdCol);
   const colUrl = `https://sheets.googleapis.com/v4/spreadsheets/${sheetId}/values/${tabPrefix}${letter}2:${letter}200000`;
   const colRes = await fetch(colUrl, { headers: { authorization: `Bearer ${token}` } });
@@ -113,7 +113,7 @@ export async function readStagingCallIds(
     const v = (r ?? [])[0];
     if (v != null && String(v).trim()) existing.add(String(v).trim());
   }
-  return { existing, hasHeaders: true };
+  return { existing, hasHeaders: true, headers };
 }
 
 /** Write the header row to a tab (used when staging tab is empty). */
@@ -125,6 +125,19 @@ export async function writeStagingHeaders(
   const token = await getAccessToken(RW_SCOPE);
   const tabPrefix = quoteTab(tab);
   const endCol = colLetter(headers.length - 1);
+  const clearUrl = `https://sheets.googleapis.com/v4/spreadsheets/${sheetId}/values/${tabPrefix}A1:ZZ1:clear`;
+  const clearRes = await fetch(clearUrl, {
+    method: "POST",
+    headers: {
+      authorization: `Bearer ${token}`,
+      "content-type": "application/json",
+    },
+    body: JSON.stringify({}),
+  });
+  if (!clearRes.ok) {
+    const text = await clearRes.text();
+    throw new Error(`Sheets header clear failed (${clearRes.status}): ${text.slice(0, 300)}`);
+  }
   const url =
     `https://sheets.googleapis.com/v4/spreadsheets/${sheetId}/values/${tabPrefix}A1:${endCol}1` +
     `?valueInputOption=RAW`;

@@ -59,8 +59,8 @@ const KKB_COLUMNS = [
   "jobs_recommended",
   "jobs_applied",
   "jobs_failed_to_apply",
-  "Intent Score",
-  "Intent Score Reasoning",
+  "intent_score",
+  "intent_score_reasoning",
 ];
 
 const DKB_COLUMNS = [
