@@ -2,14 +2,25 @@ import { Upload, Rocket, RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useProgram } from "@/programs/context";
 import { Link } from "@tanstack/react-router";
-import { useSyncProgram, useProgramAggregates } from "@/programs/useProgramAggregates";
+import {
+  useSyncProgram,
+  useProgramAggregates,
+  useAutoFreshness,
+} from "@/programs/useProgramAggregates";
 import { ConcurrencyChip } from "@/components/ConcurrencyChip";
 
 export function TopBar() {
   const { config } = useProgram();
   const sync = useSyncProgram(config.id);
   const query = useProgramAggregates(config);
-  const lastSynced = query.data?.lastSyncedAt;
+  const lastSynced = query.data?.lastSyncedAt ?? null;
+
+  // On-load freshness: kick off a silent background sync if the snapshot is stale.
+  const autoSync = useAutoFreshness(config.id, lastSynced);
+  const isSyncing = sync.isPending || autoSync.isPending;
+
+  const ageMs = lastSynced ? Date.now() - new Date(lastSynced).getTime() : null;
+  const stale = ageMs !== null && ageMs > 60 * 60_000; // > 1 hour
   const ago = lastSynced ? timeAgo(lastSynced) : "never";
 
   return (
@@ -26,16 +37,28 @@ export function TopBar() {
           <span className="h-1.5 w-1.5 rounded-full bg-brand" />
           {config.label} program
         </span>
+        <span
+          className={`text-xs ${
+            isSyncing
+              ? "text-muted-foreground"
+              : stale
+                ? "text-amber-600 dark:text-amber-400"
+                : "text-muted-foreground"
+          }`}
+          title={lastSynced ?? "Never synced"}
+        >
+          {isSyncing ? "Updating…" : `Updated ${ago}`}
+        </span>
         <Button
           variant="outline"
           size="sm"
           className="gap-1.5"
-          onClick={() => sync.mutate()}
-          disabled={sync.isPending}
+          onClick={() => sync.mutate({ force: true })}
+          disabled={isSyncing}
           title={`Last synced ${ago}`}
         >
-          <RefreshCw className={`h-4 w-4 ${sync.isPending ? "animate-spin" : ""}`} />
-          {sync.isPending ? "Syncing…" : "Refresh"}
+          <RefreshCw className={`h-4 w-4 ${isSyncing ? "animate-spin" : ""}`} />
+          {isSyncing ? "Syncing…" : "Refresh"}
         </Button>
         <Link to="/launch">
           <Button variant="outline" size="sm" className="gap-1.5">

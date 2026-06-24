@@ -18,6 +18,7 @@ import { Route as CampaignsRouteImport } from './routes/campaigns'
 import { Route as AnalyticsRouteImport } from './routes/analytics'
 import { Route as AgentsRouteImport } from './routes/agents'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as ApiPublicHooksSyncSnapshotsRouteImport } from './routes/api/public/hooks/sync-snapshots'
 
 const SettingsRoute = SettingsRouteImport.update({
   id: '/settings',
@@ -64,6 +65,12 @@ const IndexRoute = IndexRouteImport.update({
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiPublicHooksSyncSnapshotsRoute =
+  ApiPublicHooksSyncSnapshotsRouteImport.update({
+    id: '/api/public/hooks/sync-snapshots',
+    path: '/api/public/hooks/sync-snapshots',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -75,6 +82,7 @@ export interface FileRoutesByFullPath {
   '/launch': typeof LaunchRoute
   '/schedule': typeof ScheduleRoute
   '/settings': typeof SettingsRoute
+  '/api/public/hooks/sync-snapshots': typeof ApiPublicHooksSyncSnapshotsRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -86,6 +94,7 @@ export interface FileRoutesByTo {
   '/launch': typeof LaunchRoute
   '/schedule': typeof ScheduleRoute
   '/settings': typeof SettingsRoute
+  '/api/public/hooks/sync-snapshots': typeof ApiPublicHooksSyncSnapshotsRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -98,6 +107,7 @@ export interface FileRoutesById {
   '/launch': typeof LaunchRoute
   '/schedule': typeof ScheduleRoute
   '/settings': typeof SettingsRoute
+  '/api/public/hooks/sync-snapshots': typeof ApiPublicHooksSyncSnapshotsRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -111,6 +121,7 @@ export interface FileRouteTypes {
     | '/launch'
     | '/schedule'
     | '/settings'
+    | '/api/public/hooks/sync-snapshots'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -122,6 +133,7 @@ export interface FileRouteTypes {
     | '/launch'
     | '/schedule'
     | '/settings'
+    | '/api/public/hooks/sync-snapshots'
   id:
     | '__root__'
     | '/'
@@ -133,6 +145,7 @@ export interface FileRouteTypes {
     | '/launch'
     | '/schedule'
     | '/settings'
+    | '/api/public/hooks/sync-snapshots'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -145,6 +158,7 @@ export interface RootRouteChildren {
   LaunchRoute: typeof LaunchRoute
   ScheduleRoute: typeof ScheduleRoute
   SettingsRoute: typeof SettingsRoute
+  ApiPublicHooksSyncSnapshotsRoute: typeof ApiPublicHooksSyncSnapshotsRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -212,6 +226,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/hooks/sync-snapshots': {
+      id: '/api/public/hooks/sync-snapshots'
+      path: '/api/public/hooks/sync-snapshots'
+      fullPath: '/api/public/hooks/sync-snapshots'
+      preLoaderRoute: typeof ApiPublicHooksSyncSnapshotsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -225,6 +246,7 @@ const rootRouteChildren: RootRouteChildren = {
   LaunchRoute: LaunchRoute,
   ScheduleRoute: ScheduleRoute,
   SettingsRoute: SettingsRoute,
+  ApiPublicHooksSyncSnapshotsRoute: ApiPublicHooksSyncSnapshotsRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
