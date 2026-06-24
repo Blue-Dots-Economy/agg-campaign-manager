@@ -155,7 +155,7 @@ function datePart(s: string): string {
 }
 
 function pickLastCall(contact: any): any | null {
-  const arr = contact?.calls ?? contact?.executions ?? contact?.call_history ?? null;
+  const arr = contact?.calls ?? null;
   if (!Array.isArray(arr) || arr.length === 0) return null;
   const completed = arr.filter(isCompletedCall);
   if (completed.length === 0) return null;
@@ -234,6 +234,14 @@ function fmtDateTimeIst(v: any): string {
   return d.toISOString().slice(0, 19).replace("T", " ");
 }
 
+function fmtDateOnly(v: any): string {
+  const raw = stripIst(String(v ?? "")).replace(/T/, " ");
+  const m = raw.match(/^(\d{4}-\d{2}-\d{2})/);
+  if (m) return m[1];
+  const d = new Date(raw);
+  return Number.isFinite(d.getTime()) ? d.toISOString().slice(0, 10) : "";
+}
+
 function yesNo(v: any, fallback = false): string {
   if (typeof v === "boolean") return v ? "Yes" : "No";
   if (typeof v === "number") return v > 0 ? "Yes" : "No";
@@ -310,17 +318,16 @@ function buildRow(contact: any, lastCall: any, ctx: BuildCtx): string[] | null {
   if (!lastCall) return null;
 
   const lm = ctx.launchMeta;
-  const region = lm.region || lm.language
-    ? {
-        region: String(lm.region ?? ""),
-        language: String(lm.language ?? ""),
-        city: String(lm.cityCampaign ?? ""),
-      }
-    : detectRegionForContact(contact, {
-        batchName: ctx.batchName,
-        agentName: ctx.agentName,
-        program: ctx.program,
-      });
+  const detectedRegion = detectRegionForContact(contact, {
+    batchName: ctx.batchName,
+    agentName: ctx.agentName,
+    program: ctx.program,
+  });
+  const region = {
+    region: String(lm.region ?? detectedRegion.region),
+    language: String(lm.language ?? detectedRegion.language),
+    city: String(lm.cityCampaign ?? detectedRegion.city),
+  };
 
   // call-level extraction
   const callId = asStr(lastCall?.uuid ?? lastCall?.id ?? lastCall?.execution_id ?? "");
@@ -329,12 +336,11 @@ function buildRow(contact: any, lastCall: any, ctx: BuildCtx): string[] | null {
   );
   const callDateIst = stripIst(asStr(lastCall?.call_start_time_ist ?? lastCall?.call_time ?? ""));
   const callRecording = asStr(lastCall?.call_recording_url ?? lastCall?.recording_url ?? "");
-  const callTranscript = asStr(lastCall?.call_transcript ?? lastCall?.transcript ?? "");
   const finalSummary = asStr(
-    lastCall?.final_summary ?? lastCall?.summary ?? contact?.final_summary ?? "",
+    contact?.final_summary ?? contact?.summary ?? "",
   );
   const dropReason = asStr(
-    lastCall?.drop_reason ?? contact?.drop_reason ?? "",
+    contact?.drop_reason ?? "",
   );
 
   if (!callId) return null;
@@ -387,7 +393,7 @@ function buildRow(contact: any, lastCall: any, ctx: BuildCtx): string[] | null {
   });
 
   // campaign metadata — prefer the launch-time stamped values, fall back to derived.
-  const campaignDate = (lm.campaignDate && String(lm.campaignDate)) || datePart(callDateIst) || new Date().toISOString().slice(0, 10);
+  const campaignDate = fmtDateOnly(lm.campaignDate) || datePart(callDateIst) || new Date().toISOString().slice(0, 10);
   const campaignType = (lm.campaignType && String(lm.campaignType)) || ctx.batchName || `${ctx.program}_${region.language || ""}`.replace(/_$/, "");
   const campaignDay = (lm.campaignDay && String(lm.campaignDay)) || "";
 
