@@ -320,10 +320,10 @@ function buildRow(contact: any, lastCall: any, ctx: BuildCtx): string[] | null {
     userIntent,
   });
 
-  // campaign metadata stamped from batch + region
-  const campaignDate = datePart(callDateIst) || new Date().toISOString().slice(0, 10);
-  const campaignType = ctx.batchName || `${ctx.program}_${region.language || ""}`.replace(/_$/, "");
-  const campaignDay = "";
+  // campaign metadata — prefer the launch-time stamped values, fall back to derived.
+  const campaignDate = (lm.campaignDate && String(lm.campaignDate)) || datePart(callDateIst) || new Date().toISOString().slice(0, 10);
+  const campaignType = (lm.campaignType && String(lm.campaignType)) || ctx.batchName || `${ctx.program}_${region.language || ""}`.replace(/_$/, "");
+  const campaignDay = (lm.campaignDay && String(lm.campaignDay)) || "";
 
   const byCol: Record<string, string> = {
     // KKB-aligned columns
