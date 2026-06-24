@@ -459,6 +459,14 @@ function LaunchWizard() {
                 <Check className="h-4 w-4" /> Batch created · <span className="font-mono">{batchId}</span>
               </div>
             )}
+            {startPending && batchId && !launching && (
+              <Button
+                onClick={() => startCreatedBatch(batchId)}
+                className="bg-brand text-brand-foreground hover:bg-brand/90 gap-1.5"
+              >
+                <Rocket className="h-4 w-4" /> Retry start
+              </Button>
+            )}
             {startStatus && (
               <div className="rounded-md bg-brand-soft text-brand px-3 py-2 text-sm flex items-center gap-2">
                 <Check className="h-4 w-4" /> Status: {startStatus}
@@ -483,7 +491,7 @@ function LaunchWizard() {
             Next <ChevronRight className="ml-1 h-4 w-4" />
           </Button>
         ) : (
-          <Button variant="outline" onClick={() => { setStep(0); setBatchId(null); setStartStatus(null); setFile(null); setParsed(null); setReport(null); }}>
+          <Button variant="outline" onClick={() => { setStep(0); setBatchId(null); setStartStatus(null); setStartPending(false); setFile(null); setParsed(null); setReport(null); }}>
             Start over
           </Button>
         )}
