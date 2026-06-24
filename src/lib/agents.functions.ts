@@ -1,6 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { createClient } from "@supabase/supabase-js";
 import { type ProgramId } from "@/programs/registry";
+import { rayaFetch, RayaApiError } from "./raya-api";
 
 export interface ProgramAgent {
   id: string;
@@ -20,33 +21,14 @@ function sb() {
   );
 }
 
-const RAYA_BASE = "https://v1.getraya.app/api";
-
 async function rayaGetAgent(agentId: string): Promise<{ ok: true; name: string; raw: any } | { ok: false; error: string }> {
-  const apiKey = process.env.RAYA_API_KEY;
-  if (!apiKey) return { ok: false, error: "RAYA_API_KEY is not set. Add it in Project Settings → Secrets." };
   try {
-    const res = await fetch(`${RAYA_BASE}/agent/${encodeURIComponent(agentId)}`, {
-      method: "GET",
-      headers: { "X-API-Key": apiKey, Accept: "application/json" },
-    });
-    const text = await res.text();
-    let parsed: any = text;
-    try { parsed = text ? JSON.parse(text) : null; } catch { /* keep text */ }
-    if (!res.ok) {
-      let msg = `Raya API ${res.status}`;
-      if (res.status === 401) msg = "Raya rejected the API key (401). Check RAYA_API_KEY.";
-      else if (res.status === 404) msg = `Agent not found (404): ${agentId}`;
-      else if (parsed && typeof parsed === "object") {
-        const m = parsed.message || parsed.error || parsed.detail;
-        if (typeof m === "string") msg = `Raya API ${res.status}: ${m}`;
-      }
-      return { ok: false, error: msg };
-    }
+    const parsed = await rayaFetch(`/agent/${encodeURIComponent(agentId)}`, { method: "GET" });
     const a = (parsed?.agent ?? parsed?.data ?? parsed) as any;
     const name = String(a?.name ?? a?.agent_name ?? a?.title ?? "Unnamed agent");
     return { ok: true, name, raw: a };
   } catch (e) {
+    if (e instanceof RayaApiError && e.status === 404) return { ok: false, error: `Agent not found (404): ${agentId}` };
     return { ok: false, error: e instanceof Error ? e.message : String(e) };
   }
 }
