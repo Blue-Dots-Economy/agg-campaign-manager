@@ -38,6 +38,26 @@ function normKey(h: string): string {
   return String(h ?? "").trim().toLowerCase().replace(/[\s\-]+/g, "_");
 }
 
+// Defensive normalization: date cells may arrive as Excel serials ("46196"),
+// ISO strings ("2026-06-23..."), or arbitrary display strings. Always store
+// YYYY-MM-DD when we can recognize the shape; otherwise pass through.
+function normalizeCampaignDate(v: string | undefined | null): string {
+  const s = String(v ?? "").trim();
+  if (!s) return "";
+  if (/^[0-9]{4,6}$/.test(s)) {
+    const serial = Number(s);
+    // Excel epoch (with 1900 leap-year bug compat): 1899-12-30 + serial days.
+    const ms = Date.UTC(1899, 11, 30) + serial * 86400000;
+    const d = new Date(ms);
+    const y = d.getUTCFullYear();
+    const m = String(d.getUTCMonth() + 1).padStart(2, "0");
+    const day = String(d.getUTCDate()).padStart(2, "0");
+    return `${y}-${m}-${day}`;
+  }
+  if (/^\d{4}-\d{2}-\d{2}/.test(s)) return s.slice(0, 10);
+  return s;
+}
+
 function mapRow(headers: string[], values: string[]): CallRow {
   const idx: Record<string, number> = {};
   const raw: Record<string, string> = {};
@@ -214,7 +234,7 @@ export async function performSync(program: ProgramId, opts?: { force?: boolean }
               drop_reason: mapped.drop_reason || mapped.raw?.drop_reason || "",
               call_outcome: mapped.raw?.call_outcome || mapped.call_outcome || "",
               city_campaign: mapped.raw?.city_campaign || mapped.city_campaign || "",
-              campaign_date: mapped.campaign_date || mapped.raw?.campaign_date || "",
+              campaign_date: normalizeCampaignDate(mapped.campaign_date || mapped.raw?.campaign_date),
               campaign_type: mapped.campaign_type || mapped.raw?.campaign_type || "",
               language: mapped.language || mapped.raw?.language || "",
               phone: mapped.phone || "",
