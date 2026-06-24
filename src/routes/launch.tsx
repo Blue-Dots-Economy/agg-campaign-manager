@@ -510,6 +510,11 @@ function LaunchWizard() {
             <Field label="Batch name" value={batchName} />
             <Field label="File" value={file?.name ?? "—"} />
             <Field label="Region" value={region} />
+            <Field label="Language" value={regionInfo.language || "—"} />
+            <Field label="City campaign" value={regionInfo.city || "—"} />
+            <Field label="Campaign day" value={campaignDay} />
+            <Field label="Campaign date" value={campaignDate} />
+            <Field label="Campaign type" value={campaignType} />
             <Field label="Valid contacts" value={`${report?.valid ?? 0} of ${report?.total ?? 0}`} />
             <Field label="Will skip" value={String(report?.invalid ?? 0)} />
             <Field label="Days" value={dayLabels(schedule.days)} />
@@ -521,9 +526,19 @@ function LaunchWizard() {
             <Field label="Statuses to call" value={selectedStatuses.join(", ")} />
 
           </div>
-          <div className="mt-6">
-            <Label htmlFor="bn" className="text-xs">Edit batch name</Label>
-            <Input id="bn" value={batchName} onChange={(e) => setBatchName(e.target.value)} className="mt-1 max-w-md" />
+          <div className="mt-6 grid gap-4 sm:grid-cols-3 max-w-3xl">
+            <div>
+              <Label htmlFor="bn" className="text-xs">Edit batch name</Label>
+              <Input id="bn" value={batchName} onChange={(e) => setBatchName(e.target.value)} className="mt-1" />
+            </div>
+            <div>
+              <Label htmlFor="cday" className="text-xs">Campaign day</Label>
+              <Input id="cday" value={campaignDay} onChange={(e) => setCampaignDay(e.target.value)} placeholder="Day 1" className="mt-1" />
+            </div>
+            <div>
+              <Label htmlFor="cdate" className="text-xs">Campaign date</Label>
+              <Input id="cdate" type="date" value={campaignDate} onChange={(e) => setCampaignDate(e.target.value)} className="mt-1" />
+            </div>
           </div>
         </Panel>
       )}
