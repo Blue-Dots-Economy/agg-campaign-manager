@@ -466,6 +466,8 @@ function LaunchWizard() {
             <Field label="Concurrency" value={String(concurrency)} />
             <Field label="Max retries" value={String(maxRetries)} />
             <Field label="Retry after" value={`${retryAfterHrs} hrs`} />
+            <Field label="Statuses to call" value={selectedStatuses.join(", ")} />
+
           </div>
           <div className="mt-6">
             <Label htmlFor="bn" className="text-xs">Edit batch name</Label>
