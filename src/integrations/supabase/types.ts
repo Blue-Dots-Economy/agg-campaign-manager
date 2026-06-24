@@ -131,6 +131,45 @@ export type Database = {
         }
         Relationships: []
       }
+      program_export_targets: {
+        Row: {
+          created_at: string
+          enabled: boolean
+          id: string
+          label: string | null
+          last_error: string | null
+          last_exported_at: string | null
+          program: string
+          sheet_id: string
+          tab_name: string | null
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          enabled?: boolean
+          id?: string
+          label?: string | null
+          last_error?: string | null
+          last_exported_at?: string | null
+          program: string
+          sheet_id?: string
+          tab_name?: string | null
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          enabled?: boolean
+          id?: string
+          label?: string | null
+          last_error?: string | null
+          last_exported_at?: string | null
+          program?: string
+          sheet_id?: string
+          tab_name?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
       program_sync_state: {
         Row: {
           last_error: string | null

@@ -15,6 +15,9 @@ import {
   type LiveBatch,
 } from "@/lib/raya-live.functions";
 import { rayaStopBatch } from "@/lib/raya.functions";
+import { exportBatchToStaging } from "@/lib/raya-export.functions";
+import { ExternalLink, ShieldAlert } from "lucide-react";
+
 import {
   Table,
   TableBody,
@@ -303,8 +306,10 @@ function Campaigns() {
 
       <LiveBatchDetailDialog
         batch={openLiveBatch}
+        program={config.id}
         onClose={() => setOpenLiveBatch(null)}
       />
+
     </div>
   );
 }
@@ -471,19 +476,40 @@ function LiveBatchCard({ batch, onOpen }: { batch: LiveBatch; onOpen: () => void
 
 function LiveBatchDetailDialog({
   batch,
+  program,
   onClose,
 }: {
   batch: LiveBatch | null;
+  program: "kkb" | "dkb";
   onClose: () => void;
 }) {
   const detailFn = useServerFn(getBatchLiveDetail);
   const stopFn = useServerFn(rayaStopBatch);
+  const exportFn = useServerFn(exportBatchToStaging);
   const qc = useQueryClient();
   const visible = useTabVisible();
   const open = !!batch;
   const [confirmStop, setConfirmStop] = useState(false);
   const [updatedAt, setUpdatedAt] = useState<number>(Date.now());
   const [now, setNow] = useState<number>(Date.now());
+
+  const exportMut = useMutation({
+    mutationFn: () => exportFn({ data: { program, batchId: batch!.batchId } }),
+    onSuccess: (r) => {
+      toast.success(
+        `Appended ${r.appended} row${r.appended === 1 ? "" : "s"} to staging${r.skippedDup ? ` · ${r.skippedDup} dedup'd` : ""}.`,
+        {
+          action: {
+            label: "Open sheet",
+            onClick: () => window.open(r.sheetUrl, "_blank"),
+          },
+        },
+      );
+    },
+    onError: (e) => toast.error(e instanceof Error ? e.message : "Export failed."),
+  });
+
+
 
   const query = useQuery({
     enabled: open,
@@ -609,6 +635,35 @@ function LiveBatchDetailDialog({
           </div>
         )}
 
+        {batch && (
+          <div className="mt-3 flex flex-wrap items-start justify-between gap-2 rounded-md border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-[11px] text-amber-700 dark:text-amber-300">
+            <span className="inline-flex items-center gap-1.5">
+              <ShieldAlert className="h-3.5 w-3.5 shrink-0" />
+              Writing to staging sheet for QC — master sheets are not modified.
+            </span>
+            <div className="flex items-center gap-2">
+              {exportMut.data?.sheetUrl && (
+                <a
+                  href={exportMut.data.sheetUrl}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="inline-flex items-center gap-1 text-brand underline"
+                >
+                  open staging <ExternalLink className="h-3 w-3" />
+                </a>
+              )}
+              <Button
+                size="sm"
+                variant="outline"
+                disabled={exportMut.isPending}
+                onClick={() => exportMut.mutate()}
+              >
+                {exportMut.isPending ? "Exporting…" : "Export results to staging"}
+              </Button>
+            </div>
+          </div>
+        )}
+
         <DialogFooter className="mt-4 flex items-center justify-between gap-2 sm:justify-between">
           <p className="text-[11px] text-muted-foreground">Auto-refresh every 12s while tab is visible.</p>
           {isRunning && (
@@ -632,6 +687,7 @@ function LiveBatchDetailDialog({
             )
           )}
         </DialogFooter>
+
       </DialogContent>
     </Dialog>
   );

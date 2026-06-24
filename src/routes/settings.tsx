@@ -1,21 +1,24 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useProgram } from "@/programs/context";
 import { getOverrides, setOverrides, useProgramOverrides } from "@/lib/program-overrides";
 import { rayaKeyStatus } from "@/lib/raya.functions";
+import { getExportTarget, setExportTarget } from "@/lib/raya-export.functions";
 import { Panel } from "@/components/Panel";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
-import { CheckCircle2, AlertCircle, Gauge } from "lucide-react";
+import { CheckCircle2, AlertCircle, Gauge, ExternalLink, ShieldAlert } from "lucide-react";
 import { getConcurrencyCap, setConcurrencyCap, CONCURRENCY_CAP_DEFAULT } from "@/lib/concurrency-cap";
 
 export const Route = createFileRoute("/settings")({
   component: Settings,
 });
+
 
 function Settings() {
   const { config, programId } = useProgram();
@@ -96,6 +99,10 @@ function Settings() {
         </p>
       </Panel>
 
+      <ExportStagingPanel program={programId} />
+
+
+
 
       <Panel title={`${config.label} settings`} description="Per-program configuration (saved locally for this session)">
         <div className="grid gap-4 sm:grid-cols-2">
@@ -173,3 +180,132 @@ function Settings() {
     </div>
   );
 }
+
+function ExportStagingPanel({ program }: { program: "kkb" | "dkb" }) {
+  const getFn = useServerFn(getExportTarget);
+  const setFn = useServerFn(setExportTarget);
+  const qc = useQueryClient();
+  const query = useQuery({
+    queryKey: ["export-target", program],
+    queryFn: () => getFn({ data: { program } }),
+    staleTime: 30_000,
+  });
+  const target = query.data;
+
+  const [sheetUrl, setSheetUrl] = useState("");
+  const [tabName, setTabName] = useState("Staging");
+  const [label, setLabel] = useState("");
+
+  useEffect(() => {
+    if (target) {
+      setSheetUrl(target.sheet_id ? `https://docs.google.com/spreadsheets/d/${target.sheet_id}/edit` : "");
+      setTabName(target.tab_name ?? "Staging");
+      setLabel(target.label ?? "");
+    } else {
+      setSheetUrl("");
+      setTabName("Staging");
+      setLabel("");
+    }
+  }, [target]);
+
+  const save = useMutation({
+    mutationFn: () =>
+      setFn({
+        data: {
+          program,
+          sheetUrlOrId: sheetUrl,
+          tabName,
+          label,
+        },
+      }),
+    onSuccess: () => {
+      toast.success("Staging sheet saved");
+      qc.invalidateQueries({ queryKey: ["export-target", program] });
+    },
+    onError: (e) =>
+      toast.error(e instanceof Error ? e.message : "Failed to save staging target"),
+  });
+
+  return (
+    <Panel
+      title="Results export sheet (staging)"
+      description="QC staging only — not the master. Master sheets in Connections are never written to."
+    >
+      <div className="mb-3 flex items-start gap-2 rounded-md border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-xs text-amber-700 dark:text-amber-300">
+        <ShieldAlert className="mt-0.5 h-4 w-4 shrink-0" />
+        <p>
+          Create a fresh Google Sheet for QC. Share it with{" "}
+          <span className="font-mono">blue-dots-admin@blue-dots-project.iam.gserviceaccount.com</span>{" "}
+          as <strong>Editor</strong>. Exports append to this sheet only — masters in Connections are protected.
+        </p>
+      </div>
+
+      <div className="grid gap-3 sm:grid-cols-2">
+        <div className="sm:col-span-2">
+          <Label htmlFor="staging-sheet" className="text-xs">Staging sheet URL or ID</Label>
+          <Input
+            id="staging-sheet"
+            value={sheetUrl}
+            onChange={(e) => setSheetUrl(e.target.value)}
+            placeholder="https://docs.google.com/spreadsheets/d/…/edit"
+            className="mt-1 font-mono text-xs"
+          />
+        </div>
+        <div>
+          <Label htmlFor="staging-tab" className="text-xs">Tab name</Label>
+          <Input
+            id="staging-tab"
+            value={tabName}
+            onChange={(e) => setTabName(e.target.value)}
+            placeholder="Staging"
+            className="mt-1"
+          />
+          <p className="mt-1 text-[11px] text-muted-foreground">Created automatically if it doesn't exist.</p>
+        </div>
+        <div>
+          <Label htmlFor="staging-label" className="text-xs">Label (optional)</Label>
+          <Input
+            id="staging-label"
+            value={label}
+            onChange={(e) => setLabel(e.target.value)}
+            placeholder="e.g. KKB QC June 2026"
+            className="mt-1"
+          />
+        </div>
+        <div className="sm:col-span-2 flex flex-wrap items-center justify-between gap-2 border-t pt-3">
+          <div className="text-[11px] text-muted-foreground">
+            {target?.sheet_id ? (
+              <span className="inline-flex items-center gap-2">
+                Current target: <span className="font-mono">{target.sheet_id}</span>
+                <a
+                  href={`https://docs.google.com/spreadsheets/d/${target.sheet_id}/edit`}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="inline-flex items-center gap-1 text-brand underline"
+                >
+                  open <ExternalLink className="h-3 w-3" />
+                </a>
+                {target.last_exported_at && (
+                  <span>· last export {new Date(target.last_exported_at).toLocaleString()}</span>
+                )}
+              </span>
+            ) : (
+              <span>No staging sheet configured — exports are blocked until you save one.</span>
+            )}
+            {target?.last_error && (
+              <p className="mt-1 text-destructive">Last error: {target.last_error}</p>
+            )}
+          </div>
+          <Button
+            className="bg-brand text-brand-foreground hover:bg-brand/90"
+            onClick={() => save.mutate()}
+            disabled={save.isPending || !sheetUrl.trim()}
+          >
+            {save.isPending ? "Saving…" : "Save staging sheet"}
+          </Button>
+        </div>
+      </div>
+    </Panel>
+  );
+}
+
