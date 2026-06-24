@@ -1,9 +1,11 @@
 import { Gauge } from "lucide-react";
+import { useRouterState } from "@tanstack/react-router";
 import { useConcurrencyUsage } from "@/hooks/useConcurrencyUsage";
 import { cn } from "@/lib/utils";
 
 export function ConcurrencyChip() {
-  const { data, isLoading } = useConcurrencyUsage();
+  const pathname = useRouterState({ select: (state) => state.location.pathname });
+  const { data, isLoading } = useConcurrencyUsage({ enabled: pathname !== "/launch" });
   const cap = data?.cap ?? 20;
   const used = data?.used ?? 0;
   const available = data?.available ?? cap;
