@@ -121,6 +121,7 @@ export const rayaStartBatch = createServerFn({ method: "POST" })
     },
   )
   .handler(async ({ data }) => {
+    await delay(1_500);
     const body: Record<string, any> = {};
     if (data.schedule) body.schedule = data.schedule;
     if (typeof data.maxRetries === "number") body.max_retries = data.maxRetries;
