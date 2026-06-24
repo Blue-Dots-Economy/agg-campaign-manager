@@ -137,12 +137,17 @@ export function OverviewFilters({
               numberOfMonths={2}
               selected={range}
               onSelect={(r) => {
+                const from = r?.from ? fmt(r.from) : null;
+                // Single-day click: react-day-picker leaves `to` undefined until the second click.
+                // Treat the first click as a single-day selection so the filter applies immediately.
+                const to = r?.to ? fmt(r.to) : from;
                 onChange({
                   ...value,
-                  dateFrom: r?.from ? fmt(r.from) : null,
-                  dateTo: r?.to ? fmt(r.to) : null,
+                  dateFrom: from,
+                  dateTo: to,
                 });
               }}
+
               initialFocus
               className={cn("p-3 pointer-events-auto")}
             />
