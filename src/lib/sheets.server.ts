@@ -24,17 +24,18 @@ function parseServiceAccount(): ServiceAccountJson {
   return json;
 }
 
-let cached: { token: string; expiresAt: number } | null = null;
+const tokenCache = new Map<string, { token: string; expiresAt: number }>();
 
-async function getAccessToken(): Promise<string> {
+async function getAccessToken(
+  scope: string = "https://www.googleapis.com/auth/spreadsheets.readonly",
+): Promise<string> {
   const now = Math.floor(Date.now() / 1000);
+  const cached = tokenCache.get(scope);
   if (cached && cached.expiresAt > now + 60) return cached.token;
 
   const sa = parseServiceAccount();
   const pk = await importPKCS8(sa.private_key.replace(/\\n/g, "\n"), "RS256");
-  const jwt = await new SignJWT({
-    scope: "https://www.googleapis.com/auth/spreadsheets.readonly",
-  })
+  const jwt = await new SignJWT({ scope })
     .setProtectedHeader({ alg: "RS256", typ: "JWT" })
     .setIssuer(sa.client_email)
     .setSubject(sa.client_email)
@@ -56,9 +57,119 @@ async function getAccessToken(): Promise<string> {
     throw new Error(`Google token exchange failed (${res.status}): ${text.slice(0, 300)}`);
   }
   const data = (await res.json()) as { access_token: string; expires_in: number };
-  cached = { token: data.access_token, expiresAt: now + data.expires_in };
+  tokenCache.set(scope, { token: data.access_token, expiresAt: now + data.expires_in });
   return data.access_token;
 }
+
+const RW_SCOPE = "https://www.googleapis.com/auth/spreadsheets";
+
+/** Read the call_id column of a staging tab (creates tab on demand). Returns the existing call_ids set + whether headers exist. */
+export async function readStagingCallIds(
+  sheetId: string,
+  tab: string,
+): Promise<{ existing: Set<string>; hasHeaders: boolean }> {
+  const token = await getAccessToken(RW_SCOPE);
+
+  // Ensure the tab exists; create if missing.
+  const tabs = await listSheetTabs(sheetId);
+  if (!tabs.includes(tab)) {
+    const addRes = await fetch(
+      `https://sheets.googleapis.com/v4/spreadsheets/${sheetId}:batchUpdate`,
+      {
+        method: "POST",
+        headers: {
+          authorization: `Bearer ${token}`,
+          "content-type": "application/json",
+        },
+        body: JSON.stringify({
+          requests: [{ addSheet: { properties: { title: tab } } }],
+        }),
+      },
+    );
+    if (!addRes.ok) {
+      const text = await addRes.text();
+      throw new Error(`Failed to create tab '${tab}' (${addRes.status}): ${text.slice(0, 300)}`);
+    }
+    return { existing: new Set(), hasHeaders: false };
+  }
+
+  const tabPrefix = quoteTab(tab);
+  const headerUrl = `https://sheets.googleapis.com/v4/spreadsheets/${sheetId}/values/${tabPrefix}A1:ZZ1`;
+  const headerRes = await fetch(headerUrl, { headers: { authorization: `Bearer ${token}` } });
+  if (!headerRes.ok) throw new Error(`Sheets header read failed (${headerRes.status})`);
+  const headerJson = (await headerRes.json()) as { values?: string[][] };
+  const headers = (headerJson.values?.[0] ?? []).map((h) => String(h ?? "").trim());
+  if (headers.length === 0) return { existing: new Set(), hasHeaders: false };
+  const norm = headers.map(normalizeHeader);
+  const callIdCol = norm.indexOf("call_id");
+  if (callIdCol < 0) return { existing: new Set(), hasHeaders: true };
+  const letter = colLetter(callIdCol);
+  const colUrl = `https://sheets.googleapis.com/v4/spreadsheets/${sheetId}/values/${tabPrefix}${letter}2:${letter}200000`;
+  const colRes = await fetch(colUrl, { headers: { authorization: `Bearer ${token}` } });
+  if (!colRes.ok) throw new Error(`Sheets call_id read failed (${colRes.status})`);
+  const colJson = (await colRes.json()) as { values?: unknown[][] };
+  const existing = new Set<string>();
+  for (const r of colJson.values ?? []) {
+    const v = (r ?? [])[0];
+    if (v != null && String(v).trim()) existing.add(String(v).trim());
+  }
+  return { existing, hasHeaders: true };
+}
+
+/** Write the header row to a tab (used when staging tab is empty). */
+export async function writeStagingHeaders(
+  sheetId: string,
+  tab: string,
+  headers: string[],
+): Promise<void> {
+  const token = await getAccessToken(RW_SCOPE);
+  const tabPrefix = quoteTab(tab);
+  const endCol = colLetter(headers.length - 1);
+  const url =
+    `https://sheets.googleapis.com/v4/spreadsheets/${sheetId}/values/${tabPrefix}A1:${endCol}1` +
+    `?valueInputOption=RAW`;
+  const res = await fetch(url, {
+    method: "PUT",
+    headers: {
+      authorization: `Bearer ${token}`,
+      "content-type": "application/json",
+    },
+    body: JSON.stringify({ values: [headers] }),
+  });
+  if (!res.ok) {
+    const text = await res.text();
+    throw new Error(`Sheets header write failed (${res.status}): ${text.slice(0, 300)}`);
+  }
+}
+
+/** Append rows to a staging tab. */
+export async function appendStagingRows(
+  sheetId: string,
+  tab: string,
+  rows: string[][],
+): Promise<number> {
+  if (rows.length === 0) return 0;
+  const token = await getAccessToken(RW_SCOPE);
+  const tabPrefix = quoteTab(tab);
+  // append to A1 — the API finds the next empty row in the table.
+  const url =
+    `https://sheets.googleapis.com/v4/spreadsheets/${sheetId}/values/${tabPrefix}A1:append` +
+    `?valueInputOption=RAW&insertDataOption=INSERT_ROWS`;
+  const res = await fetch(url, {
+    method: "POST",
+    headers: {
+      authorization: `Bearer ${token}`,
+      "content-type": "application/json",
+    },
+    body: JSON.stringify({ values: rows }),
+  });
+  if (!res.ok) {
+    const text = await res.text();
+    throw new Error(`Sheets append failed (${res.status}): ${text.slice(0, 300)}`);
+  }
+  return rows.length;
+}
+
 
 export interface SheetReadResult {
   headers: string[];
