@@ -476,19 +476,40 @@ function LiveBatchCard({ batch, onOpen }: { batch: LiveBatch; onOpen: () => void
 
 function LiveBatchDetailDialog({
   batch,
+  program,
   onClose,
 }: {
   batch: LiveBatch | null;
+  program: "kkb" | "dkb";
   onClose: () => void;
 }) {
   const detailFn = useServerFn(getBatchLiveDetail);
   const stopFn = useServerFn(rayaStopBatch);
+  const exportFn = useServerFn(exportBatchToStaging);
   const qc = useQueryClient();
   const visible = useTabVisible();
   const open = !!batch;
   const [confirmStop, setConfirmStop] = useState(false);
   const [updatedAt, setUpdatedAt] = useState<number>(Date.now());
   const [now, setNow] = useState<number>(Date.now());
+
+  const exportMut = useMutation({
+    mutationFn: () => exportFn({ data: { program, batchId: batch!.batchId } }),
+    onSuccess: (r) => {
+      toast.success(
+        `Appended ${r.appended} row${r.appended === 1 ? "" : "s"} to staging${r.skippedDup ? ` · ${r.skippedDup} dedup'd` : ""}.`,
+        {
+          action: {
+            label: "Open sheet",
+            onClick: () => window.open(r.sheetUrl, "_blank"),
+          },
+        },
+      );
+    },
+    onError: (e) => toast.error(e instanceof Error ? e.message : "Export failed."),
+  });
+
+
 
   const query = useQuery({
     enabled: open,
