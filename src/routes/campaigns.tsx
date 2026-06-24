@@ -306,8 +306,10 @@ function Campaigns() {
 
       <LiveBatchDetailDialog
         batch={openLiveBatch}
+        program={config.id}
         onClose={() => setOpenLiveBatch(null)}
       />
+
     </div>
   );
 }
