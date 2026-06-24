@@ -187,19 +187,41 @@ function detectRegionForContact(
   return { region: "", language: "", city: "" };
 }
 
-// ---------- computed fields ----------
-function computeCallOutcome(opts: {
-  contactStatus: string;
-  durationSec: number;
-  applied: boolean;
-  jobsShown: boolean;
-  engaged: boolean;
-}): string {
-  const s = normalize(opts.contactStatus);
+// ---------- format helpers (master-sheet-exact) ----------
+function fmtPhone(v: any): string {
+  const digits = String(v ?? "").replace(/\D+/g, "");
+  if (digits.length >= 10) return digits.slice(-10);
+  return digits;
+}
+
+function fmtInt(v: any): string {
+  const n = Number(v);
+  if (!Number.isFinite(n)) return "0";
+  return String(Math.trunc(n));
+}
+
+function fmtDateTimeIst(v: any): string {
+  // "YYYY-MM-DD HH:MM:SS" — Raya gives "YYYY-MM-DD HH:MM:SS IST" or ISO; strip IST + ms.
+  const raw = stripIst(String(v ?? "")).replace(/T/, " ");
+  const m = raw.match(/^(\d{4}-\d{2}-\d{2})[ T]?(\d{2}:\d{2}:\d{2})?/);
+  if (m) return m[2] ? `${m[1]} ${m[2]}` : m[1];
+  const d = new Date(raw);
+  if (!Number.isFinite(d.getTime())) return raw;
+  return d.toISOString().slice(0, 19).replace("T", " ");
+}
+
+// Raya's per-call outcome string is the source of truth — pass through, only
+// normalize obvious aliases. Falls back to derived bucket if Raya omitted it.
+function rayaOutcomeOrDerive(
+  rayaOutcome: string,
+  fallback: { contactStatus: string; durationSec: number; applied: boolean; jobsShown: boolean; engaged: boolean },
+): string {
+  const t = String(rayaOutcome ?? "").trim();
+  if (t) return t;
+  const s = normalize(fallback.contactStatus);
   if (s === "pending") return "Pending";
-  const answered = opts.durationSec > 0;
-  if (!answered) return "No Answer";
-  if (opts.applied || opts.jobsShown || opts.engaged) return "Completed";
+  if (fallback.durationSec <= 0) return "No Answer";
+  if (fallback.applied || fallback.jobsShown || fallback.engaged) return "Completed";
   return "Early Disconnect";
 }
 
@@ -210,24 +232,22 @@ function computeIntent(opts: {
   jobsShown: boolean;
   userIntent: string;
 }): { score: number; reasoning: string } {
-  // duration 0-4
   const d = opts.durationSec;
   let dur = 0;
   if (d >= 180) dur = 4;
   else if (d >= 120) dur = 3;
   else if (d >= 60) dur = 2;
   else if (d >= 30) dur = 1;
-  // application 0-4
   let app = 0;
   if (opts.applied) app = 4;
   else if (opts.triedToApply) app = 2;
-  // engagement 0-2
   let eng = 0;
   if (opts.jobsShown) eng += 1;
   if (nonEmpty(opts.userIntent)) eng += 1;
   const score = dur + app + eng;
+  // Master format: "Duration {s}s (+{d}) | Application (+{a}) | Engagement (+{e}) → {total}/10"
   const reasoning =
-    `Duration ${dur}/4 (${d}s), Application ${app}/4 (${opts.applied ? "applied" : opts.triedToApply ? "tried" : "none"}), Engagement ${eng}/2`;
+    `Duration ${d}s (+${dur}) | Application (+${app}) | Engagement (+${eng}) → ${score}/10`;
   return { score, reasoning };
 }
 
@@ -299,13 +319,21 @@ function buildRow(contact: any, lastCall: any, ctx: BuildCtx): string[] | null {
   const applied = jobsApplied.length > 0;
   const triedToApply = applied || jobsFailed.length > 0;
   const engaged = nonEmpty(get("primary_topic")) || nonEmpty(get("user_intent"));
-  const userIntent = asStr(get("user_intent"));
-  const seekerName = asStr(get("seeker_name") || contact?.contact_name);
-  const phone = asStr(contact?.contact_phone ?? contact?.phone ?? get("phone"));
+  // seeker_name + user_intent are intentionally left blank to match master.
+  const _seekerName = asStr(get("seeker_name") || contact?.contact_name); // captured but not exported
+  void _seekerName;
+  const userIntentRaw = asStr(get("user_intent"));
+  void userIntentRaw;
+  const phoneRaw = asStr(contact?.contact_phone ?? contact?.phone ?? get("phone"));
+  const phone = fmtPhone(phoneRaw);
   const primaryTopic = asStr(get("primary_topic"));
   const contactStatus = asStr(contact?.status ?? contact?.contact_status ?? "");
 
-  const outcome = computeCallOutcome({
+  // Pass through Raya's own outcome string; only derive if Raya didn't send one.
+  const rayaOutcome = asStr(
+    lastCall?.call_outcome ?? lastCall?.outcome ?? contact?.call_outcome ?? "",
+  );
+  const outcome = rayaOutcomeOrDerive(rayaOutcome, {
     contactStatus,
     durationSec: callDur,
     applied,
@@ -317,7 +345,7 @@ function buildRow(contact: any, lastCall: any, ctx: BuildCtx): string[] | null {
     applied,
     triedToApply,
     jobsShown,
-    userIntent,
+    userIntent: userIntentRaw,
   });
 
   // campaign metadata — prefer the launch-time stamped values, fall back to derived.
@@ -326,7 +354,6 @@ function buildRow(contact: any, lastCall: any, ctx: BuildCtx): string[] | null {
   const campaignDay = (lm.campaignDay && String(lm.campaignDay)) || "";
 
   const byCol: Record<string, string> = {
-    // KKB-aligned columns
     campaign_day: campaignDay,
     campaign_date: campaignDate,
     campaign_type: campaignType,
@@ -334,13 +361,13 @@ function buildRow(contact: any, lastCall: any, ctx: BuildCtx): string[] | null {
     call_id: callId,
     phone,
     contact_phone: phone,
-    call_duration_seconds: callDur ? String(callDur) : "0",
-    call_datetime_ist: callDateIst,
+    call_duration_seconds: fmtInt(callDur),
+    call_datetime_ist: fmtDateTimeIst(callDateIst),
     call_outcome: outcome,
     call_answered: callDur > 0 ? "Yes" : "No",
     call_engaged: engaged ? "Yes" : "No",
     applied_to_job: applied ? "Yes" : "No",
-    applications_count: String(jobsApplied.length),
+    applications_count: fmtInt(jobsApplied.length),
     jobs_shown: jobsShown ? "Yes" : "No",
     primary_topic: primaryTopic,
     call_language: region.language,
@@ -350,14 +377,15 @@ function buildRow(contact: any, lastCall: any, ctx: BuildCtx): string[] | null {
     tried_to_apply: triedToApply ? "Yes" : "No",
     drop_reason: dropReason,
     city_campaign: region.city,
-    seeker_name: seekerName,
-    user_intent: userIntent,
-    jobs_recommended: JSON.stringify(jobsRecommended),
-    jobs_applied: JSON.stringify(jobsApplied),
-    jobs_failed_to_apply: JSON.stringify(jobsFailed),
-    "intent score": String(intent.score),
+    // Master leaves these blank — keep consistent.
+    seeker_name: "",
+    user_intent: "",
+    jobs_recommended: JSON.stringify(jobsRecommended ?? []),
+    jobs_applied: JSON.stringify(jobsApplied ?? []),
+    jobs_failed_to_apply: JSON.stringify(jobsFailed ?? []),
+    "intent score": fmtInt(intent.score),
     "intent score reasoning": intent.reasoning,
-    intent_score: String(intent.score),
+    intent_score: fmtInt(intent.score),
     intent_score_reasoning: intent.reasoning,
     // DKB extras (best-effort passthrough)
     job_id: asStr(get("job_id")),
