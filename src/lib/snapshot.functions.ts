@@ -376,8 +376,14 @@ function emptyAggregates(): ProgramAggregates {
 function normalizeAggregates(value: unknown): ProgramAggregates {
   if (!value || typeof value !== "object") return emptyAggregates();
   const raw = value as Partial<ProgramAggregates>;
+  const kpis: Record<string, number> =
+    raw.kpis && typeof raw.kpis === "object" ? { ...(raw.kpis as Record<string, number>) } : {};
+  // RPC historically emits `total_rows`; frontend registry uses `total_calls`.
+  // Mirror both so either consumer reads the same filtered count.
+  if (kpis.total_calls == null && kpis.total_rows != null) kpis.total_calls = kpis.total_rows;
+  if (kpis.total_rows == null && kpis.total_calls != null) kpis.total_rows = kpis.total_calls;
   return {
-    kpis: raw.kpis && typeof raw.kpis === "object" ? raw.kpis : {},
+    kpis,
     perDay: Array.isArray(raw.perDay) ? raw.perDay : [],
     drops: Array.isArray(raw.drops) ? raw.drops : [],
     intents: Array.isArray(raw.intents) ? raw.intents : [],
