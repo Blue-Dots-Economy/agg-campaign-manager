@@ -113,6 +113,7 @@ function LaunchWizard() {
   const [concurrency, setConcurrency] = useState(5);
   const [maxRetries, setMaxRetries] = useState(2);
   const [retryAfterHrs, setRetryAfterHrs] = useState(24);
+  const [recallUnanswered, setRecallUnanswered] = useState(false);
 
   const [batchName, setBatchName] = useState("");
   const [launching, setLaunching] = useState(false);
