@@ -84,7 +84,7 @@ export const setExportTarget = createServerFn({ method: "POST" })
     const payload = {
       program: data.program,
       sheet_id: sheetId,
-      tab_name: data.tabName?.trim() || null,
+      tab_name: "Sheet1",
       label: data.label?.trim() || null,
       enabled: true,
       last_error: null,

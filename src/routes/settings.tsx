@@ -193,17 +193,17 @@ function ExportStagingPanel({ program }: { program: "kkb" | "dkb" }) {
   const target = query.data;
 
   const [sheetUrl, setSheetUrl] = useState("");
-  const [tabName, setTabName] = useState("Staging");
+  const [tabName, setTabName] = useState("Sheet1");
   const [label, setLabel] = useState("");
 
   useEffect(() => {
     if (target) {
       setSheetUrl(target.sheet_id ? `https://docs.google.com/spreadsheets/d/${target.sheet_id}/edit` : "");
-      setTabName(target.tab_name ?? "Staging");
+      setTabName("Sheet1");
       setLabel(target.label ?? "");
     } else {
       setSheetUrl("");
-      setTabName("Staging");
+      setTabName("Sheet1");
       setLabel("");
     }
   }, [target]);
@@ -256,11 +256,11 @@ function ExportStagingPanel({ program }: { program: "kkb" | "dkb" }) {
           <Input
             id="staging-tab"
             value={tabName}
-            onChange={(e) => setTabName(e.target.value)}
-            placeholder="Staging"
+            readOnly
+            placeholder="Sheet1"
             className="mt-1"
           />
-          <p className="mt-1 text-[11px] text-muted-foreground">Created automatically if it doesn't exist.</p>
+          <p className="mt-1 text-[11px] text-muted-foreground">Fixed staging tab for exports; no Staging tab is used.</p>
         </div>
         <div>
           <Label htmlFor="staging-label" className="text-xs">Label (optional)</Label>
