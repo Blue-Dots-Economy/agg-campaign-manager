@@ -115,6 +115,11 @@ export function VerticalFunnel({
                       <p className="mt-0.5 text-[11px] text-muted-foreground tabular-nums">
                         {s.sub ?? `${fmtPct(pct)} of ${stages[0].label.toLowerCase()}`}
                       </p>
+                      {pickedUpIdx >= 0 && i > pickedUpIdx && pickedUpValue > 0 ? (
+                        <p className="mt-0.5 text-[11px] font-medium tabular-nums text-brand">
+                          {fmtPct((s.value / pickedUpValue) * 100)} of {pickedUpLabel}
+                        </p>
+                      ) : null}
                     </div>
                   </div>
                 </div>
