@@ -300,9 +300,15 @@ function Campaigns() {
         onClose={() => setOpenCall(null)}
         program={config.id}
       />
+
+      <LiveBatchDetailDialog
+        batch={openLiveBatch}
+        onClose={() => setOpenLiveBatch(null)}
+      />
     </div>
   );
 }
+
 
 function CallDetailDialog({
   call,
