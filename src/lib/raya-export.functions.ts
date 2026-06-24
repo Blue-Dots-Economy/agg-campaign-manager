@@ -319,13 +319,21 @@ function buildRow(contact: any, lastCall: any, ctx: BuildCtx): string[] | null {
   const applied = jobsApplied.length > 0;
   const triedToApply = applied || jobsFailed.length > 0;
   const engaged = nonEmpty(get("primary_topic")) || nonEmpty(get("user_intent"));
-  const userIntent = asStr(get("user_intent"));
-  const seekerName = asStr(get("seeker_name") || contact?.contact_name);
-  const phone = asStr(contact?.contact_phone ?? contact?.phone ?? get("phone"));
+  // seeker_name + user_intent are intentionally left blank to match master.
+  const _seekerName = asStr(get("seeker_name") || contact?.contact_name); // captured but not exported
+  void _seekerName;
+  const userIntentRaw = asStr(get("user_intent"));
+  void userIntentRaw;
+  const phoneRaw = asStr(contact?.contact_phone ?? contact?.phone ?? get("phone"));
+  const phone = fmtPhone(phoneRaw);
   const primaryTopic = asStr(get("primary_topic"));
   const contactStatus = asStr(contact?.status ?? contact?.contact_status ?? "");
 
-  const outcome = computeCallOutcome({
+  // Pass through Raya's own outcome string; only derive if Raya didn't send one.
+  const rayaOutcome = asStr(
+    lastCall?.call_outcome ?? lastCall?.outcome ?? contact?.call_outcome ?? "",
+  );
+  const outcome = rayaOutcomeOrDerive(rayaOutcome, {
     contactStatus,
     durationSec: callDur,
     applied,
@@ -337,7 +345,7 @@ function buildRow(contact: any, lastCall: any, ctx: BuildCtx): string[] | null {
     applied,
     triedToApply,
     jobsShown,
-    userIntent,
+    userIntent: userIntentRaw,
   });
 
   // campaign metadata — prefer the launch-time stamped values, fall back to derived.
@@ -346,7 +354,6 @@ function buildRow(contact: any, lastCall: any, ctx: BuildCtx): string[] | null {
   const campaignDay = (lm.campaignDay && String(lm.campaignDay)) || "";
 
   const byCol: Record<string, string> = {
-    // KKB-aligned columns
     campaign_day: campaignDay,
     campaign_date: campaignDate,
     campaign_type: campaignType,
@@ -354,13 +361,13 @@ function buildRow(contact: any, lastCall: any, ctx: BuildCtx): string[] | null {
     call_id: callId,
     phone,
     contact_phone: phone,
-    call_duration_seconds: callDur ? String(callDur) : "0",
-    call_datetime_ist: callDateIst,
+    call_duration_seconds: fmtInt(callDur),
+    call_datetime_ist: fmtDateTimeIst(callDateIst),
     call_outcome: outcome,
     call_answered: callDur > 0 ? "Yes" : "No",
     call_engaged: engaged ? "Yes" : "No",
     applied_to_job: applied ? "Yes" : "No",
-    applications_count: String(jobsApplied.length),
+    applications_count: fmtInt(jobsApplied.length),
     jobs_shown: jobsShown ? "Yes" : "No",
     primary_topic: primaryTopic,
     call_language: region.language,
@@ -370,12 +377,13 @@ function buildRow(contact: any, lastCall: any, ctx: BuildCtx): string[] | null {
     tried_to_apply: triedToApply ? "Yes" : "No",
     drop_reason: dropReason,
     city_campaign: region.city,
-    seeker_name: seekerName,
-    user_intent: userIntent,
-    jobs_recommended: JSON.stringify(jobsRecommended),
-    jobs_applied: JSON.stringify(jobsApplied),
-    jobs_failed_to_apply: JSON.stringify(jobsFailed),
-    "intent score": String(intent.score),
+    // Master leaves these blank — keep consistent.
+    seeker_name: "",
+    user_intent: "",
+    jobs_recommended: JSON.stringify(jobsRecommended ?? []),
+    jobs_applied: JSON.stringify(jobsApplied ?? []),
+    jobs_failed_to_apply: JSON.stringify(jobsFailed ?? []),
+    "intent score": fmtInt(intent.score),
     "intent score reasoning": intent.reasoning,
     intent_score: String(intent.score),
     intent_score_reasoning: intent.reasoning,
