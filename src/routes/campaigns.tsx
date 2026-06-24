@@ -197,6 +197,9 @@ function Campaigns() {
           </Table>
         </div>
       </Panel>
+      )}
+
+
 
 
       <Dialog open={!!openDay} onOpenChange={(o) => !o && setOpenDay(null)}>
