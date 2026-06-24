@@ -23,6 +23,12 @@ const STATE_OPTIONS: { value: StateValue; label: string }[] = [
 
 const fmt = (d: Date) => format(d, "yyyy-MM-dd");
 
+// Parse a YYYY-MM-DD string as a LOCAL date (avoid UTC shift from new Date("YYYY-MM-DD")).
+const parseLocal = (s: string): Date => {
+  const [y, m, d] = s.split("-").map(Number);
+  return new Date(y, (m ?? 1) - 1, d ?? 1);
+};
+
 export function OverviewFilters({
   value,
   onChange,
@@ -35,17 +41,21 @@ export function OverviewFilters({
   const range: DateRange | undefined = useMemo(() => {
     if (!value.dateFrom && !value.dateTo) return undefined;
     return {
-      from: value.dateFrom ? new Date(value.dateFrom) : undefined,
-      to: value.dateTo ? new Date(value.dateTo) : undefined,
+      from: value.dateFrom ? parseLocal(value.dateFrom) : undefined,
+      to: value.dateTo ? parseLocal(value.dateTo) : undefined,
     };
   }, [value.dateFrom, value.dateTo]);
 
   const dateLabel = useMemo(() => {
     if (!value.dateFrom && !value.dateTo) return "All time";
-    const f = value.dateFrom ? format(new Date(value.dateFrom), "MMM d, yyyy") : "…";
-    const t = value.dateTo ? format(new Date(value.dateTo), "MMM d, yyyy") : "…";
+    if (value.dateFrom && value.dateTo && value.dateFrom === value.dateTo) {
+      return format(parseLocal(value.dateFrom), "MMM d, yyyy");
+    }
+    const f = value.dateFrom ? format(parseLocal(value.dateFrom), "MMM d, yyyy") : "…";
+    const t = value.dateTo ? format(parseLocal(value.dateTo), "MMM d, yyyy") : "…";
     return `${f} → ${t}`;
   }, [value.dateFrom, value.dateTo]);
+
 
   const setPreset = (days: number | null) => {
     if (days === null) {
