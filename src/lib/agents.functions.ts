@@ -23,7 +23,7 @@ function sb() {
 
 async function rayaGetAgent(agentId: string): Promise<{ ok: true; name: string; raw: any } | { ok: false; error: string }> {
   try {
-    const parsed = await rayaFetch(`/agent/${encodeURIComponent(agentId)}`, { method: "GET" });
+    const parsed = await rayaFetch(`/agent/${encodeURIComponent(agentId)}`, { method: "GET" }) as any;
     const a = (parsed?.agent ?? parsed?.data ?? parsed) as any;
     const name = String(a?.name ?? a?.agent_name ?? a?.title ?? "Unnamed agent");
     return { ok: true, name, raw: a };
