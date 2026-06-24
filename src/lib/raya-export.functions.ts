@@ -279,9 +279,9 @@ function computeIntent(opts: {
   if (opts.jobsShown) eng += 1;
   if (nonEmpty(opts.userIntent)) eng += 1;
   const score = dur + app + eng;
-  // Master format: "Duration {s}s (+{d}) | Application (+{a}) | Engagement (+{e}) → {total}/10"
+  // Master format: "Duration {s}s (+{d})|Application (+{a})|Engagement (+{e}) → {total}/10"
   const reasoning =
-    `Duration ${d}s (+${dur}) | Application (+${app}) | Engagement (+${eng}) → ${score}/10`;
+    `Duration ${d}s (+${dur})|Application (+${app})|Engagement (+${eng}) → ${score}/10`;
   return { score, reasoning };
 }
 
@@ -542,6 +542,7 @@ export const exportBatchToStaging = createServerFn({ method: "POST" })
       if (r.hasHeaders && r.headers.join("\u001f") !== columns.join("\u001f")) {
         await writeStagingHeaders(sheetId, tab, columns);
       }
+      try { await deleteSheetTab(sheetId, "Staging"); } catch { /* ignore */ }
     } catch (e) {
       const msg = e instanceof Error ? e.message : String(e);
       await c.from("program_export_targets")
