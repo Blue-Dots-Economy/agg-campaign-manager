@@ -116,7 +116,7 @@ export function VerticalFunnel({
                         {s.sub ?? `${fmtPct(pct)} of ${stages[0].label.toLowerCase()}`}
                       </p>
                       {pickedUpIdx >= 0 && i > pickedUpIdx && pickedUpValue > 0 ? (
-                        <p className="mt-0.5 text-[11px] font-medium tabular-nums text-brand">
+                        <p className="mt-0.5 text-[11px] font-medium tabular-nums text-sky-600 dark:text-sky-400">
                           {fmtPct((s.value / pickedUpValue) * 100)} of {pickedUpLabel}
                         </p>
                       ) : null}
