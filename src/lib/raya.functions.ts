@@ -51,7 +51,18 @@ async function rayaFetch(
     body = JSON.stringify(init.json);
   }
 
-  const res = await fetch(`${BASE_URL}${path}`, { ...init, headers, body });
+  const maxRetries = 5;
+  let res!: Response;
+  for (let attempt = 0; attempt <= maxRetries; attempt++) {
+    res = await fetch(`${BASE_URL}${path}`, { ...init, headers, body });
+    if (res.status !== 429 || attempt === maxRetries) break;
+    const retryAfter = Number(res.headers.get("retry-after"));
+    const waitMs = Number.isFinite(retryAfter) && retryAfter > 0
+      ? retryAfter * 1000
+      : Math.min(20000, 1000 * 2 ** attempt) + Math.floor(Math.random() * 500);
+    console.warn(`[raya] 429 on ${path}, retrying in ${waitMs}ms (attempt ${attempt + 1}/${maxRetries})`);
+    await new Promise((r) => setTimeout(r, waitMs));
+  }
   const text = await res.text();
   let parsed: unknown = text;
   try {
