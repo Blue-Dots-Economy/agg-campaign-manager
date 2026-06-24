@@ -139,10 +139,12 @@ async function readSheetForTab(
   }
   const ranges = groups.map(([s, e]) => `${tabPrefix}${colLetter(s)}2:${colLetter(e)}200000`);
 
+  // FORMATTED_VALUE + FORMATTED_STRING so date cells come back as their
+  // displayed strings ("2026-06-23") instead of Excel serials ("46196").
   const url =
     `https://sheets.googleapis.com/v4/spreadsheets/${sheetId}/values:batchGet?` +
     ranges.map((r) => `ranges=${encodeURIComponent(r)}`).join("&") +
-    `&majorDimension=ROWS&valueRenderOption=UNFORMATTED_VALUE`;
+    `&majorDimension=ROWS&valueRenderOption=FORMATTED_VALUE&dateTimeRenderOption=FORMATTED_STRING`;
   const res = await fetch(url, { headers: { authorization: `Bearer ${token}` } });
   if (!res.ok) {
     const text = await res.text();
