@@ -93,157 +93,223 @@ function mapRow(headers: string[], values: string[]): CallRow {
   };
 }
 
-interface SyncResult {
+export interface SyncResult {
   ok: boolean;
   program: ProgramId;
   rowCount: number;
   connectionCount: number;
   errors: { id: string; name: string; message: string }[];
   lastSyncedAt: string;
+  skipped?: boolean;
 }
 
-async function performSync(program: ProgramId): Promise<SyncResult> {
-  const client = sb();
-  await client
-    .from("program_sync_state")
-    .upsert({ program, status: "syncing", updated_at: new Date().toISOString() });
+// In-process lock as a fast-path guard. The DB status check below guards across
+// processes / serverless invocations.
+const inflight = new Map<ProgramId, Promise<SyncResult>>();
 
-  const { data: conns } = await client
-    .from("sheet_connections")
-    .select("*")
-    .eq("program", program)
-    .eq("enabled", true);
-  const list = (conns ?? []) as Array<{
-    id: string;
-    name: string;
-    sheet_id: string;
-    tab_name: string | null;
-  }>;
+export async function performSync(program: ProgramId, opts?: { force?: boolean }): Promise<SyncResult> {
+  const existing = inflight.get(program);
+  if (existing && !opts?.force) return existing;
+  const p = (async (): Promise<SyncResult> => {
+    const client = sb();
 
-  const errors: SyncResult["errors"] = [];
-  const allRows: Array<{
-    program: ProgramId;
-    connection_id: string;
-    call_id: string;
-    campaign_day: string;
-    intent_score: number | null;
-    call_answered: boolean;
-    call_engaged: boolean;
-    applied_to_job: boolean;
-    tried_to_apply: boolean;
-    call_status: string;
-    job_status: string;
-    new_job_posted: string;
-    talent_insights_shown: string;
-    phases_reached: string;
-    drop_reason: string;
-    call_outcome: string;
-    city_campaign: string;
-    campaign_date: string;
-    campaign_type: string;
-    language: string;
-    phone: string;
-    call_duration_seconds: number | null;
-    applications_count: number | null;
-    data: CallRow;
-  }> = [];
-
-  if (process.env.GOOGLE_SERVICE_ACCOUNT_JSON && list.length > 0) {
-    const { readSheet } = await import("./sheets.server");
-    const seen = new Set<string>();
-    for (const c of list) {
-      try {
-        const { headers, rows, effectiveTab } = await readSheet(c.sheet_id, c.tab_name ?? undefined);
-        for (let i = 0; i < rows.length; i++) {
-          const mapped = mapRow(headers, rows[i]);
-          const key = mapped.call_id || `${c.id}:${i}`;
-          if (seen.has(key)) continue;
-          seen.add(key);
-          allRows.push({
+    // Concurrent-run guard: if another sync started < 10 min ago and is still
+    // marked "syncing", skip rather than stack.
+    if (!opts?.force) {
+      const { data: state } = await client
+        .from("program_sync_state")
+        .select("status, updated_at, last_synced_at, row_count")
+        .eq("program", program)
+        .maybeSingle();
+      if (state && state.status === "syncing") {
+        const startedAgoMs = Date.now() - new Date(state.updated_at as string).getTime();
+        if (startedAgoMs < 10 * 60_000) {
+          return {
+            ok: true,
             program,
-            connection_id: c.id,
-            call_id: mapped.call_id || "",
-            campaign_day: mapped.campaign_day || "",
-            intent_score: Number.isFinite(mapped["Intent Score"]) ? mapped["Intent Score"] : null,
-            call_answered: mapped.call_answered,
-            call_engaged: mapped.call_engaged,
-            applied_to_job: mapped.applied_to_job,
-            tried_to_apply: mapped.tried_to_apply,
-            call_status: mapped.raw?.call_status ?? "",
-            job_status: mapped.raw?.job_status ?? "",
-            new_job_posted: mapped.raw?.new_job_posted ?? "",
-            talent_insights_shown: mapped.raw?.talent_insights_shown ?? "",
-            phases_reached: mapped.raw?.phases_reached ?? "",
-            drop_reason: mapped.drop_reason || mapped.raw?.drop_reason || "",
-            call_outcome: mapped.raw?.call_outcome || mapped.call_outcome || "",
-            city_campaign: mapped.raw?.city_campaign || mapped.city_campaign || "",
-            campaign_date: mapped.campaign_date || mapped.raw?.campaign_date || "",
-            campaign_type: mapped.campaign_type || mapped.raw?.campaign_type || "",
-            language: mapped.language || mapped.raw?.language || "",
-            phone: mapped.phone || "",
-            call_duration_seconds: Number.isFinite(mapped.call_duration_seconds) ? mapped.call_duration_seconds : null,
-            applications_count: Number.isFinite(mapped.applications_count) ? mapped.applications_count : null,
-            data: mapped,
-          });
+            rowCount: Number(state.row_count ?? 0),
+            connectionCount: 0,
+            errors: [],
+            lastSyncedAt: (state.last_synced_at as string) ?? new Date().toISOString(),
+            skipped: true,
+          };
         }
-        const patch: Record<string, unknown> = {
-          status: "connected",
-          row_count: rows.length,
-          last_error: null,
-          last_synced_at: new Date().toISOString(),
-        };
-        if (effectiveTab && effectiveTab !== (c.tab_name ?? "")) patch.tab_name = effectiveTab;
-        await client.from("sheet_connections").update(patch).eq("id", c.id);
-      } catch (err) {
-        const msg = err instanceof Error ? err.message : String(err);
-        errors.push({ id: c.id, name: c.name, message: msg });
-        await client
-          .from("sheet_connections")
-          .update({
-            status: "error",
-            last_error: msg,
-            last_synced_at: new Date().toISOString(),
-          })
-          .eq("id", c.id);
       }
     }
-  }
 
-  // Replace snapshot for this program.
-  await client.from("call_rows").delete().eq("program", program);
-  const BATCH = 500;
-  for (let i = 0; i < allRows.length; i += BATCH) {
-    const slice = allRows.slice(i, i + BATCH);
-    const { error } = await client.from("call_rows").insert(slice);
-    if (error) {
-      errors.push({ id: "_insert", name: "snapshot", message: error.message });
-      break;
+    const runStart = new Date().toISOString();
+    await client
+      .from("program_sync_state")
+      .upsert({ program, status: "syncing", updated_at: runStart });
+
+    const { data: conns } = await client
+      .from("sheet_connections")
+      .select("*")
+      .eq("program", program)
+      .eq("enabled", true);
+    const list = (conns ?? []) as Array<{
+      id: string;
+      name: string;
+      sheet_id: string;
+      tab_name: string | null;
+    }>;
+
+    const errors: SyncResult["errors"] = [];
+    const allRows: Array<{
+      program: ProgramId;
+      connection_id: string;
+      call_id: string;
+      campaign_day: string;
+      intent_score: number | null;
+      call_answered: boolean;
+      call_engaged: boolean;
+      applied_to_job: boolean;
+      tried_to_apply: boolean;
+      call_status: string;
+      job_status: string;
+      new_job_posted: string;
+      talent_insights_shown: string;
+      phases_reached: string;
+      drop_reason: string;
+      call_outcome: string;
+      city_campaign: string;
+      campaign_date: string;
+      campaign_type: string;
+      language: string;
+      phone: string;
+      call_duration_seconds: number | null;
+      applications_count: number | null;
+      data: CallRow;
+      synced_at: string;
+    }> = [];
+
+    if (process.env.GOOGLE_SERVICE_ACCOUNT_JSON && list.length > 0) {
+      const { readSheet } = await import("./sheets.server");
+      const seen = new Set<string>();
+      for (const c of list) {
+        try {
+          const { headers, rows, effectiveTab } = await readSheet(c.sheet_id, c.tab_name ?? undefined);
+          for (let i = 0; i < rows.length; i++) {
+            const mapped = mapRow(headers, rows[i]);
+            // call_id must be unique per program for upsert. Fall back to a
+            // stable connection+row-index key when the sheet row has none.
+            const callId = mapped.call_id?.trim() || `${c.id}:${i}`;
+            if (seen.has(callId)) continue;
+            seen.add(callId);
+            allRows.push({
+              program,
+              connection_id: c.id,
+              call_id: callId,
+              campaign_day: mapped.campaign_day || "",
+              intent_score: Number.isFinite(mapped["Intent Score"]) ? mapped["Intent Score"] : null,
+              call_answered: mapped.call_answered,
+              call_engaged: mapped.call_engaged,
+              applied_to_job: mapped.applied_to_job,
+              tried_to_apply: mapped.tried_to_apply,
+              call_status: mapped.raw?.call_status ?? "",
+              job_status: mapped.raw?.job_status ?? "",
+              new_job_posted: mapped.raw?.new_job_posted ?? "",
+              talent_insights_shown: mapped.raw?.talent_insights_shown ?? "",
+              phases_reached: mapped.raw?.phases_reached ?? "",
+              drop_reason: mapped.drop_reason || mapped.raw?.drop_reason || "",
+              call_outcome: mapped.raw?.call_outcome || mapped.call_outcome || "",
+              city_campaign: mapped.raw?.city_campaign || mapped.city_campaign || "",
+              campaign_date: mapped.campaign_date || mapped.raw?.campaign_date || "",
+              campaign_type: mapped.campaign_type || mapped.raw?.campaign_type || "",
+              language: mapped.language || mapped.raw?.language || "",
+              phone: mapped.phone || "",
+              call_duration_seconds: Number.isFinite(mapped.call_duration_seconds) ? mapped.call_duration_seconds : null,
+              applications_count: Number.isFinite(mapped.applications_count) ? mapped.applications_count : null,
+              data: mapped,
+              synced_at: new Date().toISOString(),
+            });
+          }
+          const patch: Record<string, unknown> = {
+            status: "connected",
+            row_count: rows.length,
+            last_error: null,
+            last_synced_at: new Date().toISOString(),
+          };
+          if (effectiveTab && effectiveTab !== (c.tab_name ?? "")) patch.tab_name = effectiveTab;
+          await client.from("sheet_connections").update(patch).eq("id", c.id);
+        } catch (err) {
+          const msg = err instanceof Error ? err.message : String(err);
+          errors.push({ id: c.id, name: c.name, message: msg });
+          await client
+            .from("sheet_connections")
+            .update({
+              status: "error",
+              last_error: msg,
+              last_synced_at: new Date().toISOString(),
+            })
+            .eq("id", c.id);
+        }
+      }
     }
+
+    // Incremental upsert keyed on (program, call_id) — new rows are added,
+    // existing rows are updated in place. synced_at is refreshed for every
+    // row that appeared in the sheet on this run, which is what we use to
+    // reconcile deletions below.
+    const BATCH = 500;
+    for (let i = 0; i < allRows.length; i += BATCH) {
+      const slice = allRows.slice(i, i + BATCH);
+      const { error } = await client
+        .from("call_rows")
+        .upsert(slice, { onConflict: "program,call_id" });
+      if (error) {
+        errors.push({ id: "_upsert", name: "snapshot", message: error.message });
+        break;
+      }
+    }
+
+    // Reconcile deletions: rows that weren't touched in this run are no longer
+    // in the sheet. Only do this when the run actually fetched data without
+    // upsert errors, so a transient sheet failure can't wipe the snapshot.
+    if (errors.length === 0 && allRows.length > 0) {
+      await client
+        .from("call_rows")
+        .delete()
+        .eq("program", program)
+        .lt("synced_at", runStart);
+    }
+
+    // Final row count from the table itself (covers both upsert and delete).
+    const { count } = await client
+      .from("call_rows")
+      .select("id", { head: true, count: "exact" })
+      .eq("program", program);
+
+    const lastSyncedAt = new Date().toISOString();
+    await client.from("program_sync_state").upsert({
+      program,
+      last_synced_at: lastSyncedAt,
+      row_count: count ?? allRows.length,
+      status: errors.length > 0 ? "partial" : "ok",
+      last_error: errors.length > 0 ? errors[0].message : null,
+      updated_at: lastSyncedAt,
+    });
+
+    return {
+      ok: errors.length === 0,
+      program,
+      rowCount: count ?? allRows.length,
+      connectionCount: list.length,
+      errors,
+      lastSyncedAt,
+    };
+  })();
+  inflight.set(program, p);
+  try {
+    return await p;
+  } finally {
+    inflight.delete(program);
   }
-
-  const lastSyncedAt = new Date().toISOString();
-  await client.from("program_sync_state").upsert({
-    program,
-    last_synced_at: lastSyncedAt,
-    row_count: allRows.length,
-    status: errors.length > 0 ? "partial" : "ok",
-    last_error: errors.length > 0 ? errors[0].message : null,
-    updated_at: lastSyncedAt,
-  });
-
-  return {
-    ok: errors.length === 0,
-    program,
-    rowCount: allRows.length,
-    connectionCount: list.length,
-    errors,
-    lastSyncedAt,
-  };
 }
 
 export const syncProgramSnapshot = createServerFn({ method: "POST" })
-  .inputValidator((d: { program: ProgramId }) => d)
-  .handler(async ({ data }) => performSync(data.program));
+  .inputValidator((d: { program: ProgramId; force?: boolean }) => d)
+  .handler(async ({ data }) => performSync(data.program, { force: data.force }));
 
 export interface CampaignRollup {
   day: string;
