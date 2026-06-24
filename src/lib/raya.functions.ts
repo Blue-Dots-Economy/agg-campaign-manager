@@ -127,8 +127,11 @@ export const rayaStartBatch = createServerFn({ method: "POST" })
     if (typeof data.maxRetries === "number") body.max_retries = data.maxRetries;
     if (typeof data.retryAfterHrs === "number") body.retry_after_hrs = data.retryAfterHrs;
     if (typeof data.concurrency === "number") body.concurrency = data.concurrency;
-    if (data.selectedStatuses && data.selectedStatuses.length)
-      body.selected_statuses = data.selectedStatuses;
+    // Raya requires selected_statuses on /batch/:id/start. Default to ["Pending"]
+    // which dials freshly-uploaded contacts. Including "Unanswered"/"Failed"
+    // immediately re-calls those contacts (resume mode).
+    body.selected_statuses =
+      data.selectedStatuses && data.selectedStatuses.length ? data.selectedStatuses : ["Pending"];
     return (await rayaFetch(`/batch/${encodeURIComponent(data.batchId)}/start`, {
       method: "POST",
       json: body,
