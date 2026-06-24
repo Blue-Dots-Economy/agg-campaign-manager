@@ -187,19 +187,41 @@ function detectRegionForContact(
   return { region: "", language: "", city: "" };
 }
 
-// ---------- computed fields ----------
-function computeCallOutcome(opts: {
-  contactStatus: string;
-  durationSec: number;
-  applied: boolean;
-  jobsShown: boolean;
-  engaged: boolean;
-}): string {
-  const s = normalize(opts.contactStatus);
+// ---------- format helpers (master-sheet-exact) ----------
+function fmtPhone(v: any): string {
+  const digits = String(v ?? "").replace(/\D+/g, "");
+  if (digits.length >= 10) return digits.slice(-10);
+  return digits;
+}
+
+function fmtInt(v: any): string {
+  const n = Number(v);
+  if (!Number.isFinite(n)) return "0";
+  return String(Math.trunc(n));
+}
+
+function fmtDateTimeIst(v: any): string {
+  // "YYYY-MM-DD HH:MM:SS" — Raya gives "YYYY-MM-DD HH:MM:SS IST" or ISO; strip IST + ms.
+  const raw = stripIst(String(v ?? "")).replace(/T/, " ");
+  const m = raw.match(/^(\d{4}-\d{2}-\d{2})[ T]?(\d{2}:\d{2}:\d{2})?/);
+  if (m) return m[2] ? `${m[1]} ${m[2]}` : m[1];
+  const d = new Date(raw);
+  if (!Number.isFinite(d.getTime())) return raw;
+  return d.toISOString().slice(0, 19).replace("T", " ");
+}
+
+// Raya's per-call outcome string is the source of truth — pass through, only
+// normalize obvious aliases. Falls back to derived bucket if Raya omitted it.
+function rayaOutcomeOrDerive(
+  rayaOutcome: string,
+  fallback: { contactStatus: string; durationSec: number; applied: boolean; jobsShown: boolean; engaged: boolean },
+): string {
+  const t = String(rayaOutcome ?? "").trim();
+  if (t) return t;
+  const s = normalize(fallback.contactStatus);
   if (s === "pending") return "Pending";
-  const answered = opts.durationSec > 0;
-  if (!answered) return "No Answer";
-  if (opts.applied || opts.jobsShown || opts.engaged) return "Completed";
+  if (fallback.durationSec <= 0) return "No Answer";
+  if (fallback.applied || fallback.jobsShown || fallback.engaged) return "Completed";
   return "Early Disconnect";
 }
 
@@ -210,24 +232,22 @@ function computeIntent(opts: {
   jobsShown: boolean;
   userIntent: string;
 }): { score: number; reasoning: string } {
-  // duration 0-4
   const d = opts.durationSec;
   let dur = 0;
   if (d >= 180) dur = 4;
   else if (d >= 120) dur = 3;
   else if (d >= 60) dur = 2;
   else if (d >= 30) dur = 1;
-  // application 0-4
   let app = 0;
   if (opts.applied) app = 4;
   else if (opts.triedToApply) app = 2;
-  // engagement 0-2
   let eng = 0;
   if (opts.jobsShown) eng += 1;
   if (nonEmpty(opts.userIntent)) eng += 1;
   const score = dur + app + eng;
+  // Master format: "Duration {s}s (+{d}) | Application (+{a}) | Engagement (+{e}) → {total}/10"
   const reasoning =
-    `Duration ${dur}/4 (${d}s), Application ${app}/4 (${opts.applied ? "applied" : opts.triedToApply ? "tried" : "none"}), Engagement ${eng}/2`;
+    `Duration ${d}s (+${dur}) | Application (+${app}) | Engagement (+${eng}) → ${score}/10`;
   return { score, reasoning };
 }
 
