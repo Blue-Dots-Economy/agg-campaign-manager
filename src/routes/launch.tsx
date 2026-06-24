@@ -113,6 +113,7 @@ function LaunchWizard() {
   const [concurrency, setConcurrency] = useState(5);
   const [maxRetries, setMaxRetries] = useState(2);
   const [retryAfterHrs, setRetryAfterHrs] = useState(24);
+  const [recallUnanswered, setRecallUnanswered] = useState(false);
 
   const [batchName, setBatchName] = useState("");
   const [launching, setLaunching] = useState(false);
@@ -206,6 +207,9 @@ function LaunchWizard() {
           maxRetries,
           retryAfterHrs,
           concurrency,
+          selectedStatuses: recallUnanswered
+            ? ["Pending", "Unanswered", "Failed"]
+            : ["Pending"],
         },
       });
       const status = started?.status ?? started?.batch?.status ?? "started";
@@ -411,6 +415,21 @@ function LaunchWizard() {
             <NumberField label="Max retries" value={maxRetries} onChange={setMaxRetries} min={0} max={10} />
             <NumberField label="Retry after (hrs)" value={retryAfterHrs} onChange={setRetryAfterHrs} min={1} max={168} />
           </div>
+          <label className="mt-4 flex items-start gap-2 text-sm max-w-2xl cursor-pointer">
+            <input
+              type="checkbox"
+              checked={recallUnanswered}
+              onChange={(e) => setRecallUnanswered(e.target.checked)}
+              className="mt-0.5"
+            />
+            <span>
+              Also re-call previously unanswered / failed contacts
+              <span className="block text-xs text-muted-foreground">
+                Default dials only fresh (Pending) contacts. Check this to immediately re-call
+                Unanswered & Failed contacts in this batch too.
+              </span>
+            </span>
+          </label>
         </Panel>
       )}
 
