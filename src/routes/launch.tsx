@@ -113,7 +113,7 @@ function LaunchWizard() {
   const [concurrency, setConcurrency] = useState(5);
   const [maxRetries, setMaxRetries] = useState(2);
   const [retryAfterHrs, setRetryAfterHrs] = useState(24);
-  const [recallUnanswered, setRecallUnanswered] = useState(false);
+  const [selectedStatuses, setSelectedStatuses] = useState<string[]>(["Pending"]);
 
   const [batchName, setBatchName] = useState("");
   const [launching, setLaunching] = useState(false);
@@ -207,9 +207,7 @@ function LaunchWizard() {
           maxRetries,
           retryAfterHrs,
           concurrency,
-          selectedStatuses: recallUnanswered
-            ? ["Pending", "Unanswered", "Failed"]
-            : ["Pending"],
+          selectedStatuses: selectedStatuses.length ? selectedStatuses : ["Pending"],
         },
       });
       const status = started?.status ?? started?.batch?.status ?? "started";
@@ -415,21 +413,39 @@ function LaunchWizard() {
             <NumberField label="Max retries" value={maxRetries} onChange={setMaxRetries} min={0} max={10} />
             <NumberField label="Retry after (hrs)" value={retryAfterHrs} onChange={setRetryAfterHrs} min={1} max={168} />
           </div>
-          <label className="mt-4 flex items-start gap-2 text-sm max-w-2xl cursor-pointer">
-            <input
-              type="checkbox"
-              checked={recallUnanswered}
-              onChange={(e) => setRecallUnanswered(e.target.checked)}
-              className="mt-0.5"
-            />
-            <span>
-              Also re-call previously unanswered / failed contacts
-              <span className="block text-xs text-muted-foreground">
-                Default dials only fresh (Pending) contacts. Check this to immediately re-call
-                Unanswered & Failed contacts in this batch too.
-              </span>
-            </span>
-          </label>
+          <div className="mt-4 max-w-2xl">
+            <Label className="text-xs">Contacts to call (status)</Label>
+            <div className="mt-1.5 flex flex-wrap gap-2">
+              {(["Pending", "Unanswered", "Failed"] as const).map((s) => {
+                const active = selectedStatuses.includes(s);
+                return (
+                  <button
+                    key={s}
+                    type="button"
+                    onClick={() => {
+                      setSelectedStatuses((prev) => {
+                        const next = prev.includes(s) ? prev.filter((x) => x !== s) : [...prev, s];
+                        return next.length === 0 ? ["Pending"] : next;
+                      });
+                    }}
+                    className={cn(
+                      "rounded-full border px-3 py-1 text-xs font-medium transition-colors flex items-center gap-1.5",
+                      active
+                        ? "border-brand bg-brand text-brand-foreground hover:bg-brand/90"
+                        : "border-border bg-card text-muted-foreground hover:bg-muted/40",
+                    )}
+                  >
+                    {active && <Check className="h-3 w-3" />}
+                    {s}
+                  </button>
+                );
+              })}
+            </div>
+            <p className="mt-1.5 text-xs text-muted-foreground">
+              Pending = new / not-yet-called contacts. Add Unanswered or Failed to also re-call those from a previous run.
+            </p>
+          </div>
+
         </Panel>
       )}
 
@@ -450,6 +466,8 @@ function LaunchWizard() {
             <Field label="Concurrency" value={String(concurrency)} />
             <Field label="Max retries" value={String(maxRetries)} />
             <Field label="Retry after" value={`${retryAfterHrs} hrs`} />
+            <Field label="Statuses to call" value={selectedStatuses.join(", ")} />
+
           </div>
           <div className="mt-6">
             <Label htmlFor="bn" className="text-xs">Edit batch name</Label>
