@@ -131,14 +131,31 @@ function Campaigns() {
       ? "Applied"
       : "Interviews";
 
-  if (query.isLoading && !data) return <LoadingState />;
-  if (!data || data.source === "empty" || data.totalRows === 0) return <NoDataState />;
+  const [openLiveBatch, setOpenLiveBatch] = useState<LiveBatch | null>(null);
 
-  const campaigns = data.campaigns;
+  const campaigns = data?.campaigns ?? [];
+  const hasHistoric = data && data.source !== "empty" && data.totalRows > 0;
 
   return (
     <div className="space-y-6">
-      <Panel title="Campaigns" description={`${campaigns.length} campaign days · ${data.totalRows} calls in snapshot`}>
+      <p className="text-xs text-muted-foreground">
+        Live data comes from Raya in real time. Past campaigns come from the synced sheet.
+      </p>
+
+      <LiveBatchesSection
+        program={config.id}
+        onOpen={(b) => setOpenLiveBatch(b)}
+      />
+
+      {query.isLoading && !data ? (
+        <LoadingState />
+      ) : !hasHistoric ? (
+        <Panel title="Past campaigns" description="No historical campaign days yet.">
+          <NoDataState />
+        </Panel>
+      ) : (
+      <Panel title="Past campaigns" description={`${campaigns.length} campaign days · ${data!.totalRows} calls in snapshot`}>
+
         <div className="overflow-x-auto">
           <Table>
             <TableHeader>
