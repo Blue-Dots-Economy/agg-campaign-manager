@@ -635,6 +635,35 @@ function LiveBatchDetailDialog({
           </div>
         )}
 
+        {batch && (
+          <div className="mt-3 flex flex-wrap items-start justify-between gap-2 rounded-md border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-[11px] text-amber-700 dark:text-amber-300">
+            <span className="inline-flex items-center gap-1.5">
+              <ShieldAlert className="h-3.5 w-3.5 shrink-0" />
+              Writing to staging sheet for QC — master sheets are not modified.
+            </span>
+            <div className="flex items-center gap-2">
+              {exportMut.data?.sheetUrl && (
+                <a
+                  href={exportMut.data.sheetUrl}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="inline-flex items-center gap-1 text-brand underline"
+                >
+                  open staging <ExternalLink className="h-3 w-3" />
+                </a>
+              )}
+              <Button
+                size="sm"
+                variant="outline"
+                disabled={exportMut.isPending}
+                onClick={() => exportMut.mutate()}
+              >
+                {exportMut.isPending ? "Exporting…" : "Export results to staging"}
+              </Button>
+            </div>
+          </div>
+        )}
+
         <DialogFooter className="mt-4 flex items-center justify-between gap-2 sm:justify-between">
           <p className="text-[11px] text-muted-foreground">Auto-refresh every 12s while tab is visible.</p>
           {isRunning && (
@@ -658,6 +687,7 @@ function LiveBatchDetailDialog({
             )
           )}
         </DialogFooter>
+
       </DialogContent>
     </Dialog>
   );
