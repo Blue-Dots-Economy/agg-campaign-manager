@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useMemo, useState } from "react";
-import { useQuery, keepPreviousData } from "@tanstack/react-query";
+import { useEffect, useMemo, useState } from "react";
+import { useQuery, keepPreviousData, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { useProgram } from "@/programs/context";
 import { type CallRow } from "@/programs/data";
@@ -9,6 +9,12 @@ import { Panel } from "@/components/Panel";
 import { NoDataState, LoadingState } from "@/components/EmptyState";
 import { getCallDetailFn } from "@/lib/connections.functions";
 import { fetchCampaignDayRowsFn } from "@/lib/snapshot.functions";
+import {
+  listProgramLiveBatches,
+  getBatchLiveDetail,
+  type LiveBatch,
+} from "@/lib/raya-live.functions";
+import { rayaStopBatch } from "@/lib/raya.functions";
 import {
   Table,
   TableBody,
@@ -22,13 +28,58 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
+  DialogFooter,
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Progress } from "@/components/ui/progress";
+import { toast } from "sonner";
 
 export const Route = createFileRoute("/campaigns")({
   component: Campaigns,
 });
+
+const RUNNING_STATUSES = new Set([
+  "running", "in_progress", "in progress", "processing", "active", "live", "started",
+]);
+
+function statusBadgeClass(status: string): string {
+  if (RUNNING_STATUSES.has(status)) return "bg-emerald-500/15 text-emerald-700 dark:text-emerald-400 border-emerald-500/30";
+  if (status === "scheduled" || status === "queued" || status === "pending") return "bg-amber-500/15 text-amber-700 dark:text-amber-400 border-amber-500/30";
+  if (status === "stopping" || status === "paused") return "bg-orange-500/15 text-orange-700 dark:text-orange-400 border-orange-500/30";
+  if (status === "completed" || status === "finished") return "bg-brand-soft text-brand border-brand/30";
+  if (status === "stopped" || status === "failed") return "bg-rose-500/15 text-rose-700 dark:text-rose-400 border-rose-500/30";
+  return "bg-muted text-muted-foreground border-border";
+}
+
+function maskPhone(p: string): string {
+  if (!p) return "—";
+  if (p.length <= 4) return p;
+  return p.slice(0, p.length - 6).replace(/\d/g, "•") + p.slice(-4).padStart(6, "•");
+}
+
+function formatSchedule(s: any): string {
+  if (!s) return "—";
+  const days = Array.isArray(s.days) ? s.days : [];
+  const dayNames = ["", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
+  const dayStr = days.map((d: number) => dayNames[d] ?? d).join(", ");
+  return `${dayStr || "—"} · ${s.start_time ?? "?"}–${s.end_time ?? "?"} ${s.timezone ?? ""}`.trim();
+}
+
+function useTabVisible() {
+  const [visible, setVisible] = useState(
+    typeof document !== "undefined" ? !document.hidden : true,
+  );
+  useEffect(() => {
+    const h = () => setVisible(!document.hidden);
+    document.addEventListener("visibilitychange", h);
+    return () => document.removeEventListener("visibilitychange", h);
+  }, []);
+  return visible;
+}
+
+
 
 function Campaigns() {
   const { config } = useProgram();
