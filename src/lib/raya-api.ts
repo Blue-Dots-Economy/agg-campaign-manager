@@ -54,7 +54,7 @@ function errorMessage(status: number, parsed: unknown): string {
 export async function rayaFetch(
   path: string,
   init: RequestInit & { json?: unknown } = {},
-  options: { maxRetries?: number; baseDelayMs?: number } = {},
+  options: { maxAttempts?: number; baseDelayMs?: number } = {},
 ): Promise<unknown> {
   const apiKey = process.env.RAYA_API_KEY;
   if (!apiKey) {
@@ -72,17 +72,17 @@ export async function rayaFetch(
     body = JSON.stringify(init.json);
   }
 
-  const maxRetries = options.maxRetries ?? 4;
+  const maxAttempts = options.maxAttempts ?? 4;
   const baseDelayMs = options.baseDelayMs ?? 2_000;
   let res!: Response;
 
-  for (let attempt = 0; attempt <= maxRetries; attempt += 1) {
+  for (let attempt = 0; attempt < maxAttempts; attempt += 1) {
     res = await fetch(`${BASE_URL}${path}`, { ...init, headers, body });
-    if (res.status !== 429 || attempt === maxRetries) break;
+    if (res.status !== 429 || attempt === maxAttempts - 1) break;
 
     const waitMs = retryAfterMs(res.headers.get("retry-after"))
       ?? Math.min(12_000, baseDelayMs * 2 ** attempt) + Math.floor(Math.random() * 250);
-    console.warn(`[raya] 429 on ${path}, retrying in ${waitMs}ms (attempt ${attempt + 1}/${maxRetries})`);
+    console.warn(`[raya] 429 on ${path}, retrying in ${waitMs}ms (attempt ${attempt + 1}/${maxAttempts})`);
     await delay(waitMs);
   }
 
