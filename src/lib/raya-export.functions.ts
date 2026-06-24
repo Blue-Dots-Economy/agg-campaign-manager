@@ -232,11 +232,22 @@ function computeIntent(opts: {
 }
 
 // ---------- per-contact row builder ----------
+interface LaunchMeta {
+  campaignDay?: string | null;
+  campaignDate?: string | null;
+  campaignType?: string | null;
+  language?: string | null;
+  cityCampaign?: string | null;
+  region?: string | null;
+  batchName?: string | null;
+  agentName?: string | null;
+}
 interface BuildCtx {
   columns: string[];
   program: ProgramId;
   batchName: string;
   agentName: string;
+  launchMeta: LaunchMeta;
 }
 
 function buildRow(contact: any, lastCall: any, ctx: BuildCtx): string[] | null {
@@ -244,11 +255,18 @@ function buildRow(contact: any, lastCall: any, ctx: BuildCtx): string[] | null {
   // lastCall presence is required.
   if (!lastCall) return null;
 
-  const region = detectRegionForContact(contact, {
-    batchName: ctx.batchName,
-    agentName: ctx.agentName,
-    program: ctx.program,
-  });
+  const lm = ctx.launchMeta;
+  const region = lm.region || lm.language
+    ? {
+        region: String(lm.region ?? ""),
+        language: String(lm.language ?? ""),
+        city: String(lm.cityCampaign ?? ""),
+      }
+    : detectRegionForContact(contact, {
+        batchName: ctx.batchName,
+        agentName: ctx.agentName,
+        program: ctx.program,
+      });
 
   // call-level extraction
   const callId = asStr(lastCall?.uuid ?? lastCall?.id ?? lastCall?.execution_id ?? "");
