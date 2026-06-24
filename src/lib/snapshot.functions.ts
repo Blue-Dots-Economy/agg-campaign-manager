@@ -429,6 +429,8 @@ export interface AggregatePayload {
   source: "snapshot" | "empty";
   hasSnapshot: boolean;
   totalRows: number;
+  /** Total rows in the unfiltered snapshot (for distinguishing "no snapshot" vs "filter excludes everything"). */
+  snapshotRowCount: number;
   connectionCount: number;
   lastSyncedAt: string | null;
   syncStatus: string;
@@ -437,6 +439,8 @@ export interface AggregatePayload {
   metrics: ProgramMetricsRaw;
   /** Lightweight per-day index for the Campaigns table (no row payload). */
   campaigns: ProgramAggregates["perDay"];
+  /** Why a payload is empty — UI uses this to pick the right empty-state copy. */
+  emptyReason?: "no_connections" | "no_snapshot" | "no_results";
   error?: string;
 }
 
@@ -444,11 +448,13 @@ function emptyPayload(
   connectionCount: number,
   state: { last_synced_at: string | null; status: string } | null,
   error?: string,
+  emptyReason: AggregatePayload["emptyReason"] = connectionCount === 0 ? "no_connections" : "no_snapshot",
 ): AggregatePayload {
   return {
     source: "empty",
     hasSnapshot: false,
     totalRows: 0,
+    snapshotRowCount: 0,
     connectionCount,
     lastSyncedAt: state?.last_synced_at ?? null,
     syncStatus: state?.status ?? "idle",
@@ -456,6 +462,7 @@ function emptyPayload(
     metricGroups: [],
     metrics: {},
     campaigns: [],
+    emptyReason,
     error,
   };
 }
