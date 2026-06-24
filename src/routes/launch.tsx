@@ -297,6 +297,27 @@ function LaunchWizard() {
 
       const id = created.batchId;
       setBatchId(id);
+      // Persist campaign metadata for the staging export to join on later.
+      try {
+        await recordBatchFn({
+          data: {
+            batchId: id,
+            program,
+            agentId,
+            agentName,
+            batchName,
+            campaignDay,
+            campaignDate,
+            campaignType,
+            language: regionInfo.language,
+            cityCampaign: regionInfo.city,
+            region,
+          },
+        });
+      } catch (e) {
+        // non-fatal: log and continue
+        console.error("recordLaunchedBatch failed", e);
+      }
       await startCreatedBatch(id, contacts.length);
     } catch (e) {
       const msg = e instanceof Error ? e.message : "Launch failed";
