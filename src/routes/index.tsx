@@ -108,11 +108,23 @@ function Overview() {
     </div>
   );
 
-  if (!data || data.source === "empty" || data.totalRows === 0) {
+  const hasActiveFilters =
+    filters.state !== "all" || Boolean(filters.dateFrom) || Boolean(filters.dateTo);
+  const isEmpty = !data || data.source === "empty" || data.totalRows === 0;
+  if (isEmpty) {
+    const reason =
+      data?.emptyReason ?? (hasActiveFilters ? "no_results" : "no_connections");
     return (
       <div className="space-y-6">
         {filterBar}
-        <NoDataState />
+        <NoDataState
+          reason={reason}
+          onClearFilters={
+            hasActiveFilters
+              ? () => setFilters({ state: "all", dateFrom: null, dateTo: null })
+              : undefined
+          }
+        />
       </div>
     );
   }

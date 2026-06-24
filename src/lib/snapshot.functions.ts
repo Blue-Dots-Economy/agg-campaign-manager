@@ -376,8 +376,14 @@ function emptyAggregates(): ProgramAggregates {
 function normalizeAggregates(value: unknown): ProgramAggregates {
   if (!value || typeof value !== "object") return emptyAggregates();
   const raw = value as Partial<ProgramAggregates>;
+  const kpis: Record<string, number> =
+    raw.kpis && typeof raw.kpis === "object" ? { ...(raw.kpis as Record<string, number>) } : {};
+  // RPC historically emits `total_rows`; frontend registry uses `total_calls`.
+  // Mirror both so either consumer reads the same filtered count.
+  if (kpis.total_calls == null && kpis.total_rows != null) kpis.total_calls = kpis.total_rows;
+  if (kpis.total_rows == null && kpis.total_calls != null) kpis.total_rows = kpis.total_calls;
   return {
-    kpis: raw.kpis && typeof raw.kpis === "object" ? raw.kpis : {},
+    kpis,
     perDay: Array.isArray(raw.perDay) ? raw.perDay : [],
     drops: Array.isArray(raw.drops) ? raw.drops : [],
     intents: Array.isArray(raw.intents) ? raw.intents : [],
@@ -423,6 +429,8 @@ export interface AggregatePayload {
   source: "snapshot" | "empty";
   hasSnapshot: boolean;
   totalRows: number;
+  /** Total rows in the unfiltered snapshot (for distinguishing "no snapshot" vs "filter excludes everything"). */
+  snapshotRowCount: number;
   connectionCount: number;
   lastSyncedAt: string | null;
   syncStatus: string;
@@ -431,6 +439,8 @@ export interface AggregatePayload {
   metrics: ProgramMetricsRaw;
   /** Lightweight per-day index for the Campaigns table (no row payload). */
   campaigns: ProgramAggregates["perDay"];
+  /** Why a payload is empty — UI uses this to pick the right empty-state copy. */
+  emptyReason?: "no_connections" | "no_snapshot" | "no_results";
   error?: string;
 }
 
@@ -438,11 +448,13 @@ function emptyPayload(
   connectionCount: number,
   state: { last_synced_at: string | null; status: string } | null,
   error?: string,
+  emptyReason: AggregatePayload["emptyReason"] = connectionCount === 0 ? "no_connections" : "no_snapshot",
 ): AggregatePayload {
   return {
     source: "empty",
     hasSnapshot: false,
     totalRows: 0,
+    snapshotRowCount: 0,
     connectionCount,
     lastSyncedAt: state?.last_synced_at ?? null,
     syncStatus: state?.status ?? "idle",
@@ -450,6 +462,7 @@ function emptyPayload(
     metricGroups: [],
     metrics: {},
     campaigns: [],
+    emptyReason,
     error,
   };
 }
@@ -539,23 +552,39 @@ export const fetchProgramAggregates = createServerFn({ method: "GET" })
       } catch (e) {
         return emptyPayload(0, null, e instanceof Error ? e.message : String(e));
       }
-      if (!payload.stateRowCount) return emptyPayload(payload.connectionCount ?? 0, null);
+      const connectionCount = payload.connectionCount ?? 0;
+      const snapshotRowCount = Number(payload.stateRowCount ?? 0);
+      const stateMeta = {
+        last_synced_at: payload.lastSyncedAt ?? null,
+        status: payload.syncStatus ?? "idle",
+      };
+      if (!snapshotRowCount) {
+        return emptyPayload(
+          connectionCount,
+          stateMeta,
+          undefined,
+          connectionCount === 0 ? "no_connections" : "no_snapshot",
+        );
+      }
       const aggregates = normalizeAggregates(payload.aggregates);
       const metricGroups = normalizeMetricGroups(payload.metricGroups);
       const metrics = normalizeMetricsRaw(payload.metrics);
-      const totalRows = Number(aggregates.kpis.total_calls ?? payload.stateRowCount ?? 0);
-      if (totalRows === 0) return emptyPayload(payload.connectionCount ?? 0, null);
+      // Filtered count — use the reconciled KPI (mirrors total_rows/total_calls).
+      // Do NOT fall back to the unfiltered snapshot size; that masks filter results.
+      const totalRows = Number(aggregates.kpis.total_calls ?? 0);
       return {
         source: "snapshot",
         hasSnapshot: true,
         totalRows,
-        connectionCount: payload.connectionCount ?? 0,
-        lastSyncedAt: payload.lastSyncedAt ?? null,
-        syncStatus: payload.syncStatus ?? "idle",
+        snapshotRowCount,
+        connectionCount,
+        lastSyncedAt: stateMeta.last_synced_at,
+        syncStatus: stateMeta.status,
         aggregates,
         metricGroups,
         metrics,
         campaigns: aggregates.perDay,
+        emptyReason: totalRows === 0 ? "no_results" : undefined,
       };
     } catch (e) {
       return emptyPayload(0, null, e instanceof Error ? e.message : String(e));
