@@ -206,7 +206,7 @@ function LaunchWizard() {
     setReport(null);
     setProceedInvalid(false);
     setRegion(detectRegion(f.name).region);
-    setBatchName(`${f.name.replace(/\.csv$/i, "")} · ${new Date().toISOString().slice(0, 10)}`);
+    // batchName auto-derives from campaignType (program + language + Day N).
     const text = await f.text();
     const p = parseCsv(text);
     setParsed(p);
