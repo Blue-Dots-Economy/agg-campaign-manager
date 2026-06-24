@@ -207,6 +207,9 @@ function LaunchWizard() {
           maxRetries,
           retryAfterHrs,
           concurrency,
+          selectedStatuses: recallUnanswered
+            ? ["Pending", "Unanswered", "Failed"]
+            : ["Pending"],
         },
       });
       const status = started?.status ?? started?.batch?.status ?? "started";
