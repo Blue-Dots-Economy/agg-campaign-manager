@@ -2,8 +2,7 @@
 // inside .handler() and never sent to the browser.
 
 import { createServerFn } from "@tanstack/react-start";
-
-const BASE_URL = "https://v1.getraya.app/api";
+import { delay, rayaFetch, RayaApiError } from "./raya-api";
 
 export interface RayaContact {
   contact_name: string;
@@ -17,84 +16,6 @@ export interface RayaSchedule {
   start_time: string; // "HH:mm"
   end_time: string; // "HH:mm"
   days: number[]; // 1=Mon … 7=Sun
-}
-
-class RayaApiError extends Error {
-  status: number;
-  body: unknown;
-  constructor(status: number, body: unknown, message: string) {
-    super(message);
-    this.status = status;
-    this.body = body;
-  }
-}
-
-async function rayaFetch(
-  path: string,
-  init: RequestInit & { json?: unknown } = {},
-): Promise<unknown> {
-  const apiKey = process.env.RAYA_API_KEY;
-  if (!apiKey) {
-    throw new Error(
-      "RAYA_API_KEY is not set. Add it in Project Settings → Secrets, then try again.",
-    );
-  }
-
-  const headers: Record<string, string> = {
-    "X-API-Key": apiKey,
-    Accept: "application/json",
-    ...(init.headers as Record<string, string> | undefined),
-  };
-  let body = init.body;
-  if (init.json !== undefined) {
-    headers["Content-Type"] = "application/json";
-    body = JSON.stringify(init.json);
-  }
-
-  const maxRetries = 5;
-  let res!: Response;
-  for (let attempt = 0; attempt <= maxRetries; attempt++) {
-    res = await fetch(`${BASE_URL}${path}`, { ...init, headers, body });
-    if (res.status !== 429 || attempt === maxRetries) break;
-    const retryAfter = Number(res.headers.get("retry-after"));
-    const waitMs = Number.isFinite(retryAfter) && retryAfter > 0
-      ? retryAfter * 1000
-      : Math.min(20000, 1000 * 2 ** attempt) + Math.floor(Math.random() * 500);
-    console.warn(`[raya] 429 on ${path}, retrying in ${waitMs}ms (attempt ${attempt + 1}/${maxRetries})`);
-    await new Promise((r) => setTimeout(r, waitMs));
-  }
-  const text = await res.text();
-  let parsed: unknown = text;
-  try {
-    parsed = text ? JSON.parse(text) : null;
-  } catch {
-    /* keep text */
-  }
-
-  if (!res.ok) {
-    let msg = `Raya API ${res.status}`;
-    if (res.status === 401) msg = "Raya rejected the API key (401). Check RAYA_API_KEY.";
-    else if (res.status === 429)
-      msg = "Raya rate limit hit (429). Default is 1 call per 20s — slow down and retry.";
-    else if (parsed && typeof parsed === "object") {
-      const p = parsed as Record<string, any>;
-      const m =
-        (typeof p.message === "string" && p.message) ||
-        (typeof p.error === "string" && p.error) ||
-        (typeof p.detail === "string" && p.detail) ||
-        null;
-      if (m) msg = `Raya API ${res.status}: ${m}`;
-      else {
-        // No standard message field — surface the whole body so the user can see why Raya rejected it.
-        try { msg = `Raya API ${res.status}: ${JSON.stringify(parsed).slice(0, 600)}`; } catch { /* ignore */ }
-      }
-    } else if (typeof parsed === "string" && parsed.trim()) {
-      msg = `Raya API ${res.status}: ${parsed.slice(0, 600)}`;
-    }
-    console.error("[raya] non-OK response", { path, status: res.status, body: parsed });
-    throw new RayaApiError(res.status, parsed, msg);
-  }
-  return parsed;
 }
 
 // ---------- createBatch ----------
@@ -200,6 +121,7 @@ export const rayaStartBatch = createServerFn({ method: "POST" })
     },
   )
   .handler(async ({ data }) => {
+    await delay(1_500);
     const body: Record<string, any> = {};
     if (data.schedule) body.schedule = data.schedule;
     if (typeof data.maxRetries === "number") body.max_retries = data.maxRetries;

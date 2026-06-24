@@ -119,12 +119,13 @@ function LaunchWizard() {
   const [batchId, setBatchId] = useState<string | null>(null);
   const [startStatus, setStartStatus] = useState<string | null>(null);
   const [launchError, setLaunchError] = useState<string | null>(null);
+  const [startPending, setStartPending] = useState(false);
 
   const listAgentsFn = useServerFn(listProgramAgents);
   const validateFn = useServerFn(validateContacts);
   const createBatchFn = useServerFn(rayaCreateBatch);
   const startBatchFn = useServerFn(rayaStartBatch);
-  const usage = useConcurrencyUsage();
+  const usage = useConcurrencyUsage({ enabled: !launching });
   const refreshUsage = useRefreshConcurrency();
   const available = usage.data?.available ?? Infinity;
   const cap = usage.data?.cap ?? 20;
@@ -188,6 +189,47 @@ function LaunchWizard() {
     }
   }, [validateFn]);
 
+  const startCreatedBatch = async (id: string, logRows?: number) => {
+    setLaunching(true);
+    setLaunchError(null);
+    setStartPending(false);
+    try {
+      const started: any = await startBatchFn({
+        data: {
+          batchId: id,
+          schedule: {
+            timezone: schedule.timezone,
+            start_time: schedule.startTime,
+            end_time: schedule.endTime,
+            days: schedule.days,
+          },
+          maxRetries,
+          retryAfterHrs,
+          concurrency,
+        },
+      });
+      const status = started?.status ?? started?.batch?.status ?? "started";
+      setStartStatus(String(status));
+      appendLaunchLog({
+        date: new Date().toISOString(),
+        program,
+        file: file?.name ?? batchName,
+        rows: logRows ?? report?.valid ?? 0,
+        status: "appended",
+        batchId: id,
+      });
+      toast.success(`Batch launched · ${id}`);
+      refreshUsage();
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : "Start failed";
+      setLaunchError(`${msg}\nBatch ${id} was created but not started. Use Retry start to resume without creating a duplicate batch.`);
+      setStartPending(true);
+      toast.error(msg.split("\n")[0]);
+    } finally {
+      setLaunching(false);
+    }
+  };
+
   const launch = async () => {
     if (!report) return;
     if (Number.isFinite(available) && concurrency > (available as number)) {
@@ -196,7 +238,7 @@ function LaunchWizard() {
       toast.error(msg);
       return;
     }
-    setLaunching(true); setLaunchError(null);
+    setLaunching(true); setLaunchError(null); setStartPending(false); setStartStatus(null);
     try {
       const contacts = report.validRows.map((r) => ({
         contact_name: r.name,
@@ -222,32 +264,7 @@ function LaunchWizard() {
 
       const id = created.batchId;
       setBatchId(id);
-      const started: any = await startBatchFn({
-        data: {
-          batchId: id,
-          schedule: {
-            timezone: schedule.timezone,
-            start_time: schedule.startTime,
-            end_time: schedule.endTime,
-            days: schedule.days,
-          },
-          maxRetries,
-          retryAfterHrs,
-          concurrency,
-        },
-      });
-      const status = started?.status ?? started?.batch?.status ?? "started";
-      setStartStatus(String(status));
-      appendLaunchLog({
-        date: new Date().toISOString(),
-        program,
-        file: file?.name ?? batchName,
-        rows: contacts.length,
-        status: "appended",
-        batchId: id,
-      });
-      toast.success(`Batch launched · ${id}`);
-      refreshUsage();
+      await startCreatedBatch(id, contacts.length);
     } catch (e) {
       const msg = e instanceof Error ? e.message : "Launch failed";
       setLaunchError(msg);
@@ -442,6 +459,14 @@ function LaunchWizard() {
                 <Check className="h-4 w-4" /> Batch created · <span className="font-mono">{batchId}</span>
               </div>
             )}
+            {startPending && batchId && !launching && (
+              <Button
+                onClick={() => startCreatedBatch(batchId)}
+                className="bg-brand text-brand-foreground hover:bg-brand/90 gap-1.5"
+              >
+                <Rocket className="h-4 w-4" /> Retry start
+              </Button>
+            )}
             {startStatus && (
               <div className="rounded-md bg-brand-soft text-brand px-3 py-2 text-sm flex items-center gap-2">
                 <Check className="h-4 w-4" /> Status: {startStatus}
@@ -466,7 +491,7 @@ function LaunchWizard() {
             Next <ChevronRight className="ml-1 h-4 w-4" />
           </Button>
         ) : (
-          <Button variant="outline" onClick={() => { setStep(0); setBatchId(null); setStartStatus(null); setFile(null); setParsed(null); setReport(null); }}>
+          <Button variant="outline" onClick={() => { setStep(0); setBatchId(null); setStartStatus(null); setStartPending(false); setFile(null); setParsed(null); setReport(null); }}>
             Start over
           </Button>
         )}

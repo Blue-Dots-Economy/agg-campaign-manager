@@ -19,13 +19,15 @@ export interface ConcurrencyUsage {
   error?: string;
 }
 
-export function useConcurrencyUsage() {
+export function useConcurrencyUsage(options: { enabled?: boolean } = {}) {
   const cap = useConcurrencyCap();
   const fn = useServerFn(getConcurrencyUsage);
   return useQuery<ConcurrencyUsage>({
     queryKey: ["concurrency-usage", cap],
     queryFn: () => fn({ data: { cap } }) as Promise<ConcurrencyUsage>,
-    staleTime: 15_000,
+    enabled: options.enabled ?? true,
+    staleTime: 60_000,
+    refetchInterval: false,
     refetchOnWindowFocus: false,
   });
 }
