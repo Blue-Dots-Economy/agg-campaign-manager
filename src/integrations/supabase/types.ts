@@ -101,6 +101,54 @@ export type Database = {
         }
         Relationships: []
       }
+      launched_batches: {
+        Row: {
+          agent_id: string | null
+          agent_name: string | null
+          batch_id: string
+          batch_name: string | null
+          campaign_date: string | null
+          campaign_day: string | null
+          campaign_type: string | null
+          city_campaign: string | null
+          created_at: string
+          language: string | null
+          program: string
+          region: string | null
+          updated_at: string
+        }
+        Insert: {
+          agent_id?: string | null
+          agent_name?: string | null
+          batch_id: string
+          batch_name?: string | null
+          campaign_date?: string | null
+          campaign_day?: string | null
+          campaign_type?: string | null
+          city_campaign?: string | null
+          created_at?: string
+          language?: string | null
+          program: string
+          region?: string | null
+          updated_at?: string
+        }
+        Update: {
+          agent_id?: string | null
+          agent_name?: string | null
+          batch_id?: string
+          batch_name?: string | null
+          campaign_date?: string | null
+          campaign_day?: string | null
+          campaign_type?: string | null
+          city_campaign?: string | null
+          created_at?: string
+          language?: string | null
+          program?: string
+          region?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
       program_agents: {
         Row: {
           agent_id: string
