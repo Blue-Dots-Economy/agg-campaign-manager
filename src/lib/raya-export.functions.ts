@@ -7,6 +7,7 @@ import { createClient } from "@supabase/supabase-js";
 import { delay, rayaFetch } from "./raya-api";
 import {
   appendStagingRows,
+  deleteSheetTab,
   readStagingCallIds,
   writeStagingHeaders,
 } from "./sheets.server";
@@ -231,11 +232,22 @@ function computeIntent(opts: {
 }
 
 // ---------- per-contact row builder ----------
+interface LaunchMeta {
+  campaignDay?: string | null;
+  campaignDate?: string | null;
+  campaignType?: string | null;
+  language?: string | null;
+  cityCampaign?: string | null;
+  region?: string | null;
+  batchName?: string | null;
+  agentName?: string | null;
+}
 interface BuildCtx {
   columns: string[];
   program: ProgramId;
   batchName: string;
   agentName: string;
+  launchMeta: LaunchMeta;
 }
 
 function buildRow(contact: any, lastCall: any, ctx: BuildCtx): string[] | null {
@@ -243,11 +255,18 @@ function buildRow(contact: any, lastCall: any, ctx: BuildCtx): string[] | null {
   // lastCall presence is required.
   if (!lastCall) return null;
 
-  const region = detectRegionForContact(contact, {
-    batchName: ctx.batchName,
-    agentName: ctx.agentName,
-    program: ctx.program,
-  });
+  const lm = ctx.launchMeta;
+  const region = lm.region || lm.language
+    ? {
+        region: String(lm.region ?? ""),
+        language: String(lm.language ?? ""),
+        city: String(lm.cityCampaign ?? ""),
+      }
+    : detectRegionForContact(contact, {
+        batchName: ctx.batchName,
+        agentName: ctx.agentName,
+        program: ctx.program,
+      });
 
   // call-level extraction
   const callId = asStr(lastCall?.uuid ?? lastCall?.id ?? lastCall?.execution_id ?? "");
@@ -301,10 +320,10 @@ function buildRow(contact: any, lastCall: any, ctx: BuildCtx): string[] | null {
     userIntent,
   });
 
-  // campaign metadata stamped from batch + region
-  const campaignDate = datePart(callDateIst) || new Date().toISOString().slice(0, 10);
-  const campaignType = ctx.batchName || `${ctx.program}_${region.language || ""}`.replace(/_$/, "");
-  const campaignDay = "";
+  // campaign metadata — prefer the launch-time stamped values, fall back to derived.
+  const campaignDate = (lm.campaignDate && String(lm.campaignDate)) || datePart(callDateIst) || new Date().toISOString().slice(0, 10);
+  const campaignType = (lm.campaignType && String(lm.campaignType)) || ctx.batchName || `${ctx.program}_${region.language || ""}`.replace(/_$/, "");
+  const campaignDay = (lm.campaignDay && String(lm.campaignDay)) || "";
 
   const byCol: Record<string, string> = {
     // KKB-aligned columns
@@ -447,6 +466,12 @@ export const exportBatchToStaging = createServerFn({ method: "POST" })
     const tab = (target.tab_name && target.tab_name.trim()) || "Staging";
     const sheetId = target.sheet_id;
 
+    // Cleanup: if a stray "Staging" tab exists but isn't the configured tab,
+    // remove it so all writes converge on the configured tab.
+    if (tab !== "Staging") {
+      try { await deleteSheetTab(sheetId, "Staging"); } catch { /* ignore */ }
+    }
+
     let existing: Set<string> = new Set();
     let hasHeaders = false;
     try {
@@ -464,12 +489,30 @@ export const exportBatchToStaging = createServerFn({ method: "POST" })
       await writeStagingHeaders(sheetId, tab, columns);
     }
 
+    // Look up launch-time metadata for this batch.
+    const { data: lb } = await c
+      .from("launched_batches")
+      .select("*")
+      .eq("batch_id", data.batchId)
+      .maybeSingle();
+    const launchMeta: LaunchMeta = {
+      campaignDay: (lb as any)?.campaign_day ?? null,
+      campaignDate: (lb as any)?.campaign_date ?? null,
+      campaignType: (lb as any)?.campaign_type ?? null,
+      language: (lb as any)?.language ?? null,
+      cityCampaign: (lb as any)?.city_campaign ?? null,
+      region: (lb as any)?.region ?? null,
+      batchName: (lb as any)?.batch_name ?? null,
+      agentName: (lb as any)?.agent_name ?? null,
+    };
+
     const contacts = await fetchAllBatchContacts(data.batchId);
     const ctx: BuildCtx = {
       columns,
       program: data.program,
-      batchName: data.batchName ?? "",
-      agentName: data.agentName ?? "",
+      batchName: data.batchName ?? launchMeta.batchName ?? "",
+      agentName: data.agentName ?? launchMeta.agentName ?? "",
+      launchMeta,
     };
 
     const rows: string[][] = [];

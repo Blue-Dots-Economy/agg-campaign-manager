@@ -218,6 +218,28 @@ export async function listSheetTabs(sheetId: string): Promise<string[]> {
   return (data.sheets ?? []).map((s) => s.properties?.title ?? "").filter(Boolean);
 }
 
+/** Delete a tab by title if it exists. No-op if not present. */
+export async function deleteSheetTab(sheetId: string, title: string): Promise<boolean> {
+  const token = await getAccessToken(RW_SCOPE);
+  const metaUrl = `https://sheets.googleapis.com/v4/spreadsheets/${sheetId}?fields=sheets.properties`;
+  const metaRes = await fetch(metaUrl, { headers: { authorization: `Bearer ${token}` } });
+  if (!metaRes.ok) return false;
+  const meta = (await metaRes.json()) as { sheets?: Array<{ properties?: { sheetId?: number; title?: string } }> };
+  const match = (meta.sheets ?? []).find((s) => s.properties?.title === title);
+  if (!match?.properties?.sheetId && match?.properties?.sheetId !== 0) return false;
+  const res = await fetch(
+    `https://sheets.googleapis.com/v4/spreadsheets/${sheetId}:batchUpdate`,
+    {
+      method: "POST",
+      headers: { authorization: `Bearer ${token}`, "content-type": "application/json" },
+      body: JSON.stringify({
+        requests: [{ deleteSheet: { sheetId: match.properties!.sheetId } }],
+      }),
+    },
+  );
+  return res.ok;
+}
+
 function isRangeParseError(msg: string): boolean {
   return /Unable to parse range|INVALID_ARGUMENT/i.test(msg);
 }

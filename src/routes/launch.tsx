@@ -10,6 +10,7 @@ import {
   validateContacts,
 } from "@/lib/raya.functions";
 import { listProgramAgents } from "@/lib/agents.functions";
+import { recordLaunchedBatch, getNextCampaignDay } from "@/lib/launched-batches.functions";
 import { useConcurrencyUsage, useRefreshConcurrency } from "@/hooks/useConcurrencyUsage";
 import { Link } from "@tanstack/react-router";
 import { registry, type ProgramId } from "@/programs/registry";
@@ -116,6 +117,8 @@ function LaunchWizard() {
   const [selectedStatuses, setSelectedStatuses] = useState<string[]>(["Pending"]);
 
   const [batchName, setBatchName] = useState("");
+  const [campaignDay, setCampaignDay] = useState<string>("Day 1");
+  const [campaignDate, setCampaignDate] = useState<string>(() => new Date().toISOString().slice(0, 10));
   const [launching, setLaunching] = useState(false);
   const [batchId, setBatchId] = useState<string | null>(null);
   const [startStatus, setStartStatus] = useState<string | null>(null);
@@ -126,10 +129,38 @@ function LaunchWizard() {
   const validateFn = useServerFn(validateContacts);
   const createBatchFn = useServerFn(rayaCreateBatch);
   const startBatchFn = useServerFn(rayaStartBatch);
+  const recordBatchFn = useServerFn(recordLaunchedBatch);
+  const nextDayFn = useServerFn(getNextCampaignDay);
   const usage = useConcurrencyUsage({ enabled: !launching });
   const refreshUsage = useRefreshConcurrency();
   const available = usage.data?.available ?? Infinity;
   const cap = usage.data?.cap ?? 20;
+
+  // Derive language + city_campaign from region.
+  const regionInfo = useMemo(() => {
+    if (region === "KA") return { language: "Kannada", city: "Hubli-Dharwad" };
+    if (region === "GZB") return { language: "Hindi", city: "Ghaziabad" };
+    return { language: "", city: "" };
+  }, [region]);
+  const campaignType = useMemo(() => {
+    const lang = regionInfo.language || region || "";
+    const dayNum = (campaignDay.match(/\d+/) || ["1"])[0];
+    return `${program.toUpperCase()}_${lang}_Day${dayNum}`;
+  }, [program, regionInfo.language, region, campaignDay]);
+
+  // Fetch next campaign day suggestion when program changes.
+  useEffect(() => {
+    let cancelled = false;
+    nextDayFn({ data: { program } }).then((r) => {
+      if (!cancelled) setCampaignDay(r.next);
+    }).catch(() => {});
+    return () => { cancelled = true; };
+  }, [program, nextDayFn]);
+
+  // Auto-fill batchName to the computed campaign_type so they line up.
+  useEffect(() => {
+    if (campaignType) setBatchName(campaignType);
+  }, [campaignType]);
 
 
   // Sync chosen program back to global context so the rest of the dashboard follows.
@@ -175,7 +206,7 @@ function LaunchWizard() {
     setReport(null);
     setProceedInvalid(false);
     setRegion(detectRegion(f.name).region);
-    setBatchName(`${f.name.replace(/\.csv$/i, "")} · ${new Date().toISOString().slice(0, 10)}`);
+    // batchName auto-derives from campaignType (program + language + Day N).
     const text = await f.text();
     const p = parseCsv(text);
     setParsed(p);
@@ -266,6 +297,27 @@ function LaunchWizard() {
 
       const id = created.batchId;
       setBatchId(id);
+      // Persist campaign metadata for the staging export to join on later.
+      try {
+        await recordBatchFn({
+          data: {
+            batchId: id,
+            program,
+            agentId,
+            agentName,
+            batchName,
+            campaignDay,
+            campaignDate,
+            campaignType,
+            language: regionInfo.language,
+            cityCampaign: regionInfo.city,
+            region,
+          },
+        });
+      } catch (e) {
+        // non-fatal: log and continue
+        console.error("recordLaunchedBatch failed", e);
+      }
       await startCreatedBatch(id, contacts.length);
     } catch (e) {
       const msg = e instanceof Error ? e.message : "Launch failed";
@@ -458,6 +510,11 @@ function LaunchWizard() {
             <Field label="Batch name" value={batchName} />
             <Field label="File" value={file?.name ?? "—"} />
             <Field label="Region" value={region} />
+            <Field label="Language" value={regionInfo.language || "—"} />
+            <Field label="City campaign" value={regionInfo.city || "—"} />
+            <Field label="Campaign day" value={campaignDay} />
+            <Field label="Campaign date" value={campaignDate} />
+            <Field label="Campaign type" value={campaignType} />
             <Field label="Valid contacts" value={`${report?.valid ?? 0} of ${report?.total ?? 0}`} />
             <Field label="Will skip" value={String(report?.invalid ?? 0)} />
             <Field label="Days" value={dayLabels(schedule.days)} />
@@ -469,9 +526,19 @@ function LaunchWizard() {
             <Field label="Statuses to call" value={selectedStatuses.join(", ")} />
 
           </div>
-          <div className="mt-6">
-            <Label htmlFor="bn" className="text-xs">Edit batch name</Label>
-            <Input id="bn" value={batchName} onChange={(e) => setBatchName(e.target.value)} className="mt-1 max-w-md" />
+          <div className="mt-6 grid gap-4 sm:grid-cols-3 max-w-3xl">
+            <div>
+              <Label htmlFor="bn" className="text-xs">Edit batch name</Label>
+              <Input id="bn" value={batchName} onChange={(e) => setBatchName(e.target.value)} className="mt-1" />
+            </div>
+            <div>
+              <Label htmlFor="cday" className="text-xs">Campaign day</Label>
+              <Input id="cday" value={campaignDay} onChange={(e) => setCampaignDay(e.target.value)} placeholder="Day 1" className="mt-1" />
+            </div>
+            <div>
+              <Label htmlFor="cdate" className="text-xs">Campaign date</Label>
+              <Input id="cdate" type="date" value={campaignDate} onChange={(e) => setCampaignDate(e.target.value)} className="mt-1" />
+            </div>
           </div>
         </Panel>
       )}
