@@ -36,7 +36,6 @@ function parseSheetId(input: string): string {
   if (!t) return "";
   const m = t.match(/\/d\/([A-Za-z0-9-_]+)/);
   if (m) return m[1];
-  // bare ID
   if (/^[A-Za-z0-9-_]{20,}$/.test(t)) return t;
   return "";
 }
@@ -67,12 +66,9 @@ export const setExportTarget = createServerFn({ method: "POST" })
   )
   .handler(async ({ data }) => {
     const sheetId = parseSheetId(data.sheetUrlOrId);
-    if (!sheetId) {
-      throw new Error("Provide a valid Google Sheet URL or ID.");
-    }
+    if (!sheetId) throw new Error("Provide a valid Google Sheet URL or ID.");
 
     const c = sb();
-    // SAFETY GUARD: cannot match any master sheet in sheet_connections.
     const { data: masters, error: e1 } = await c
       .from("sheet_connections")
       .select("sheet_id,name,program");
@@ -101,69 +97,291 @@ export const setExportTarget = createServerFn({ method: "POST" })
     return row as ExportTarget;
   });
 
-// ---------- helpers for mapping Raya contacts → master columns ----------
+// ---------- helpers ----------
 function normalize(k: string): string {
   return String(k ?? "").trim().toLowerCase().replace(/[\s\-]+/g, "_");
 }
 
-function flattenContact(contact: any): Record<string, any> {
-  const out: Record<string, any> = {};
-  const walk = (obj: any) => {
-    if (!obj || typeof obj !== "object") return;
-    for (const [k, v] of Object.entries(obj)) {
-      if (v !== null && typeof v === "object" && !Array.isArray(v)) {
-        walk(v);
-      } else {
-        const nk = normalize(k);
-        if (out[nk] === undefined || out[nk] === "" || out[nk] == null) {
-          out[nk] = v;
-        }
-      }
-    }
-  };
-  walk(contact);
-  // pull from most-recent execution / call if present
-  const execs =
-    contact?.executions ?? contact?.calls ?? contact?.call_history ?? null;
-  if (Array.isArray(execs) && execs.length > 0) {
-    const sorted = [...execs].sort((a, b) => {
-      const ta = Date.parse(a?.created_at ?? a?.updated_at ?? a?.call_time ?? "") || 0;
-      const tb = Date.parse(b?.created_at ?? b?.updated_at ?? b?.call_time ?? "") || 0;
-      return tb - ta;
-    });
-    walk(sorted[0]);
+function asStr(v: any): string {
+  if (v == null) return "";
+  if (typeof v === "object") {
+    try { return JSON.stringify(v); } catch { return String(v); }
   }
-  return out;
+  return String(v);
 }
 
-const COMPLETED_LIKE = new Set([
-  "completed", "answered", "done", "success", "successful",
-]);
-
-function isCompleted(contact: any): boolean {
-  const s = normalize(contact?.status ?? contact?.call_status ?? "");
-  if (COMPLETED_LIKE.has(s)) return true;
-  const dur = Number(contact?.call_duration_seconds ?? contact?.duration ?? contact?.duration_seconds ?? 0);
-  return Number.isFinite(dur) && dur > 0;
+function asArr(v: any): any[] {
+  if (Array.isArray(v)) return v;
+  if (v == null || v === "") return [];
+  if (typeof v === "string") {
+    try {
+      const p = JSON.parse(v);
+      return Array.isArray(p) ? p : [];
+    } catch { return []; }
+  }
+  return [];
 }
 
-function pickCallId(flat: Record<string, any>): string {
-  return String(
-    flat.call_id ?? flat.callid ?? flat.execution_id ?? flat.id ?? "",
-  ).trim();
+function nonEmpty(v: any): boolean {
+  if (v == null || v === "") return false;
+  if (Array.isArray(v)) return v.length > 0;
+  if (typeof v === "object") return Object.keys(v).length > 0;
+  return String(v).trim().length > 0;
 }
 
-function mapToColumns(columns: string[], flat: Record<string, any>): string[] {
-  return columns.map((col) => {
+function stripIst(s: string): string {
+  return String(s ?? "").replace(/\s*IST\s*$/i, "").trim();
+}
+
+function datePart(s: string): string {
+  const t = stripIst(s);
+  if (!t) return "";
+  const m = t.match(/^(\d{4}-\d{2}-\d{2})/);
+  if (m) return m[1];
+  const d = new Date(t);
+  return Number.isFinite(d.getTime()) ? d.toISOString().slice(0, 10) : "";
+}
+
+function pickLastCall(contact: any): any | null {
+  const arr = contact?.calls ?? contact?.executions ?? contact?.call_history ?? null;
+  if (!Array.isArray(arr) || arr.length === 0) return null;
+  const sorted = [...arr].sort((a, b) => {
+    const ta =
+      Date.parse(stripIst(a?.call_start_time_ist ?? a?.created_at ?? a?.updated_at ?? a?.call_time ?? "")) || 0;
+    const tb =
+      Date.parse(stripIst(b?.call_start_time_ist ?? b?.created_at ?? b?.updated_at ?? b?.call_time ?? "")) || 0;
+    return tb - ta;
+  });
+  return sorted[0] ?? null;
+}
+
+// ---------- region detection ----------
+type Region = { region: string; language: string; city: string };
+
+function detectRegionFromText(s: string): Region | null {
+  const t = (s || "").toLowerCase();
+  if (/(^|[^a-z])ka([^a-z]|$)|kannada|hubli|dharwad|karnataka/.test(t))
+    return { region: "KA", language: "Kannada", city: "Hubli-Dharwad" };
+  if (/(^|[^a-z])gzb([^a-z]|$)|hindi|ghaziabad|uttar.?pradesh/.test(t))
+    return { region: "GZB", language: "Hindi", city: "Ghaziabad" };
+  return null;
+}
+
+function detectRegionForContact(
+  contact: any,
+  fallbacks: { batchName?: string; agentName?: string; program?: string },
+): Region {
+  const args = contact?.agent_args ?? contact?.metadata ?? contact?.args ?? {};
+  const explicit =
+    args?._region ?? args?.region ?? contact?.region ?? contact?._region ?? "";
+  const fromExplicit = detectRegionFromText(String(explicit));
+  if (fromExplicit) return fromExplicit;
+  const cityHint = args?.city_campaign ?? args?.city ?? contact?.city_campaign ?? "";
+  const fromCity = detectRegionFromText(String(cityHint));
+  if (fromCity) return fromCity;
+  for (const txt of [fallbacks.batchName, fallbacks.agentName, fallbacks.program]) {
+    const r = detectRegionFromText(String(txt ?? ""));
+    if (r) return r;
+  }
+  return { region: "", language: "", city: "" };
+}
+
+// ---------- computed fields ----------
+function computeCallOutcome(opts: {
+  contactStatus: string;
+  durationSec: number;
+  applied: boolean;
+  jobsShown: boolean;
+  engaged: boolean;
+}): string {
+  const s = normalize(opts.contactStatus);
+  if (s === "pending") return "Pending";
+  const answered = opts.durationSec > 0;
+  if (!answered) return "No Answer";
+  if (opts.applied || opts.jobsShown || opts.engaged) return "Completed";
+  return "Early Disconnect";
+}
+
+function computeIntent(opts: {
+  durationSec: number;
+  applied: boolean;
+  triedToApply: boolean;
+  jobsShown: boolean;
+  userIntent: string;
+}): { score: number; reasoning: string } {
+  // duration 0-4
+  const d = opts.durationSec;
+  let dur = 0;
+  if (d >= 180) dur = 4;
+  else if (d >= 120) dur = 3;
+  else if (d >= 60) dur = 2;
+  else if (d >= 30) dur = 1;
+  // application 0-4
+  let app = 0;
+  if (opts.applied) app = 4;
+  else if (opts.triedToApply) app = 2;
+  // engagement 0-2
+  let eng = 0;
+  if (opts.jobsShown) eng += 1;
+  if (nonEmpty(opts.userIntent)) eng += 1;
+  const score = dur + app + eng;
+  const reasoning =
+    `Duration ${dur}/4 (${d}s), Application ${app}/4 (${opts.applied ? "applied" : opts.triedToApply ? "tried" : "none"}), Engagement ${eng}/2`;
+  return { score, reasoning };
+}
+
+// ---------- per-contact row builder ----------
+interface BuildCtx {
+  columns: string[];
+  program: ProgramId;
+  batchName: string;
+  agentName: string;
+}
+
+function buildRow(contact: any, lastCall: any, ctx: BuildCtx): string[] | null {
+  // Skip contacts with no completed call (no call recordings/duration).
+  // lastCall presence is required.
+  if (!lastCall) return null;
+
+  const region = detectRegionForContact(contact, {
+    batchName: ctx.batchName,
+    agentName: ctx.agentName,
+    program: ctx.program,
+  });
+
+  // call-level extraction
+  const callId = asStr(lastCall?.uuid ?? lastCall?.id ?? lastCall?.execution_id ?? "");
+  const callDur = Number(
+    lastCall?.call_duration ?? lastCall?.duration ?? lastCall?.duration_seconds ?? 0,
+  );
+  const callDateIst = stripIst(asStr(lastCall?.call_start_time_ist ?? lastCall?.call_time ?? ""));
+  const callRecording = asStr(lastCall?.call_recording_url ?? lastCall?.recording_url ?? "");
+  const callTranscript = asStr(lastCall?.call_transcript ?? lastCall?.transcript ?? "");
+  const finalSummary = asStr(
+    lastCall?.final_summary ?? lastCall?.summary ?? contact?.final_summary ?? "",
+  );
+  const dropReason = asStr(
+    lastCall?.drop_reason ?? contact?.drop_reason ?? "",
+  );
+
+  if (!callId) return null;
+
+  // contact-level domain fields (search both lastCall.agent_args and contact)
+  const ca = lastCall?.agent_args ?? lastCall?.args ?? {};
+  const get = (k: string) =>
+    ca?.[k] ?? contact?.[k] ?? contact?.agent_args?.[k] ?? "";
+
+  const jobsApplied = asArr(get("jobs_applied"));
+  const jobsFailed = asArr(get("jobs_failed_to_apply"));
+  const jobsRecommended = asArr(get("jobs_recommended"));
+  const jobsShownRaw = get("jobs_shown");
+  const jobsShown =
+    (Array.isArray(jobsShownRaw) ? jobsShownRaw.length > 0 : String(jobsShownRaw).toLowerCase() === "true" || asArr(jobsShownRaw).length > 0);
+  const applied = jobsApplied.length > 0;
+  const triedToApply = applied || jobsFailed.length > 0;
+  const engaged = nonEmpty(get("primary_topic")) || nonEmpty(get("user_intent"));
+  const userIntent = asStr(get("user_intent"));
+  const seekerName = asStr(get("seeker_name") || contact?.contact_name);
+  const phone = asStr(contact?.contact_phone ?? contact?.phone ?? get("phone"));
+  const primaryTopic = asStr(get("primary_topic"));
+  const contactStatus = asStr(contact?.status ?? contact?.contact_status ?? "");
+
+  const outcome = computeCallOutcome({
+    contactStatus,
+    durationSec: callDur,
+    applied,
+    jobsShown,
+    engaged,
+  });
+  const intent = computeIntent({
+    durationSec: callDur,
+    applied,
+    triedToApply,
+    jobsShown,
+    userIntent,
+  });
+
+  // campaign metadata stamped from batch + region
+  const campaignDate = datePart(callDateIst) || new Date().toISOString().slice(0, 10);
+  const campaignType = ctx.batchName || `${ctx.program}_${region.language || ""}`.replace(/_$/, "");
+  const campaignDay = "";
+
+  const byCol: Record<string, string> = {
+    // KKB-aligned columns
+    campaign_day: campaignDay,
+    campaign_date: campaignDate,
+    campaign_type: campaignType,
+    language: region.language,
+    call_id: callId,
+    phone,
+    contact_phone: phone,
+    call_duration_seconds: callDur ? String(callDur) : "0",
+    call_datetime_ist: callDateIst,
+    call_outcome: outcome,
+    call_answered: callDur > 0 ? "Yes" : "No",
+    call_engaged: engaged ? "Yes" : "No",
+    applied_to_job: applied ? "Yes" : "No",
+    applications_count: String(jobsApplied.length),
+    jobs_shown: jobsShown ? "Yes" : "No",
+    primary_topic: primaryTopic,
+    call_language: region.language,
+    call_recording_url: callRecording,
+    final_summary: finalSummary,
+    call_transcript: callTranscript,
+    tried_to_apply: triedToApply ? "Yes" : "No",
+    drop_reason: dropReason,
+    city_campaign: region.city,
+    seeker_name: seekerName,
+    user_intent: userIntent,
+    jobs_recommended: JSON.stringify(jobsRecommended),
+    jobs_applied: JSON.stringify(jobsApplied),
+    jobs_failed_to_apply: JSON.stringify(jobsFailed),
+    "intent score": String(intent.score),
+    "intent score reasoning": intent.reasoning,
+    intent_score: String(intent.score),
+    intent_score_reasoning: intent.reasoning,
+    // DKB extras (best-effort passthrough)
+    job_id: asStr(get("job_id")),
+    company_name: asStr(get("company_name")),
+    job_role_input: asStr(get("job_role_input")),
+    num_vacancies_input: asStr(get("num_vacancies_input")),
+    city_input: asStr(get("city_input")),
+    location_input: asStr(get("location_input")),
+    salary_input: asStr(get("salary_input")),
+    qualification_input: asStr(get("qualification_input")),
+    call_status: contactStatus,
+    contact_attempts: asStr(contact?.contact_attempts ?? contact?.attempts ?? ""),
+    phases_reached: asStr(get("phases_reached")),
+    job_status: asStr(get("job_status")),
+    job_role_value: asStr(get("job_role_value")),
+    num_vacancies_value: asStr(get("num_vacancies_value")),
+    salary_value: asStr(get("salary_value")),
+    location_value: asStr(get("location_value")),
+    qualification_value: asStr(get("qualification_value")),
+    fields_updated: asStr(get("fields_updated")),
+    new_job_mentioned: asStr(get("new_job_mentioned")),
+    new_job_role: asStr(get("new_job_role")),
+    new_job_vacancies: asStr(get("new_job_vacancies")),
+    new_job_salary: asStr(get("new_job_salary")),
+    new_job_location: asStr(get("new_job_location")),
+    new_job_qualification: asStr(get("new_job_qualification")),
+    new_job_posted: asStr(get("new_job_posted")),
+    talent_insights_shown: asStr(get("talent_insights_shown")),
+  };
+
+  return ctx.columns.map((col) => {
     const nk = normalize(col);
-    const v = flat[nk];
-    if (v == null) return "";
-    if (typeof v === "object") return JSON.stringify(v);
-    return String(v);
+    if (Object.prototype.hasOwnProperty.call(byCol, nk)) return byCol[nk];
+    // case-insensitive header (e.g., "Intent Score")
+    const lower = col.toLowerCase();
+    if (Object.prototype.hasOwnProperty.call(byCol, lower)) return byCol[lower];
+    // best-effort fall through to contact field or agent_args
+    const fb = (contact as any)?.[col] ?? (contact as any)?.[nk] ?? ca?.[col] ?? ca?.[nk];
+    return asStr(fb);
   });
 }
 
-// ---------- fetch all batch contacts (paginated, throttled) ----------
+// ---------- fetch all batch contacts ----------
 async function fetchAllBatchContacts(batchId: string): Promise<any[]> {
   const pageSize = 200;
   const maxPages = 20;
@@ -185,11 +403,13 @@ async function fetchAllBatchContacts(batchId: string): Promise<any[]> {
 
 // ---------- main export ----------
 export const exportBatchToStaging = createServerFn({ method: "POST" })
-  .inputValidator((d: { program: ProgramId; batchId: string }) => {
-    if (!d.program) throw new Error("program required");
-    if (!d.batchId) throw new Error("batchId required");
-    return d;
-  })
+  .inputValidator(
+    (d: { program: ProgramId; batchId: string; batchName?: string; agentName?: string }) => {
+      if (!d.program) throw new Error("program required");
+      if (!d.batchId) throw new Error("batchId required");
+      return d;
+    },
+  )
   .handler(async ({ data }) => {
     if (!process.env.RAYA_API_KEY) throw new Error("RAYA_API_KEY not set");
 
@@ -207,7 +427,7 @@ export const exportBatchToStaging = createServerFn({ method: "POST" })
     }
     if (!target.enabled) throw new Error("Staging export is disabled for this program.");
 
-    // SAFETY: re-check against masters at write time.
+    // SAFETY: never write to a master.
     const { data: masters, error: me } = await c
       .from("sheet_connections")
       .select("sheet_id,name,program");
@@ -227,7 +447,6 @@ export const exportBatchToStaging = createServerFn({ method: "POST" })
     const tab = (target.tab_name && target.tab_name.trim()) || "Staging";
     const sheetId = target.sheet_id;
 
-    // Read existing call_ids for dedupe + ensure headers.
     let existing: Set<string> = new Set();
     let hasHeaders = false;
     try {
@@ -236,8 +455,7 @@ export const exportBatchToStaging = createServerFn({ method: "POST" })
       hasHeaders = r.hasHeaders;
     } catch (e) {
       const msg = e instanceof Error ? e.message : String(e);
-      await c
-        .from("program_export_targets")
+      await c.from("program_export_targets")
         .update({ last_error: msg })
         .eq("program", data.program);
       throw new Error(`Staging sheet not accessible: ${msg}. Share it with the service account as Editor.`);
@@ -246,20 +464,30 @@ export const exportBatchToStaging = createServerFn({ method: "POST" })
       await writeStagingHeaders(sheetId, tab, columns);
     }
 
-    // Fetch contacts from Raya.
     const contacts = await fetchAllBatchContacts(data.batchId);
-    const completed = contacts.filter(isCompleted);
+    const ctx: BuildCtx = {
+      columns,
+      program: data.program,
+      batchName: data.batchName ?? "",
+      agentName: data.agentName ?? "",
+    };
 
     const rows: string[][] = [];
+    let skippedNoCall = 0;
     let skippedDup = 0;
     let skippedNoId = 0;
-    for (const ct of completed) {
-      const flat = flattenContact(ct);
-      const callId = pickCallId(flat);
+    for (const contact of contacts) {
+      const lastCall = pickLastCall(contact);
+      if (!lastCall) { skippedNoCall++; continue; }
+      const row = buildRow(contact, lastCall, ctx);
+      if (!row) { skippedNoId++; continue; }
+      // call_id position in columns
+      const idIdx = columns.findIndex((c) => normalize(c) === "call_id");
+      const callId = idIdx >= 0 ? row[idIdx] : "";
       if (!callId) { skippedNoId++; continue; }
       if (existing.has(callId)) { skippedDup++; continue; }
       existing.add(callId);
-      rows.push(mapToColumns(columns, flat));
+      rows.push(row);
     }
 
     let appended = 0;
@@ -267,15 +495,15 @@ export const exportBatchToStaging = createServerFn({ method: "POST" })
       appended = await appendStagingRows(sheetId, tab, rows);
     }
 
-    await c
-      .from("program_export_targets")
+    await c.from("program_export_targets")
       .update({ last_exported_at: new Date().toISOString(), last_error: null })
       .eq("program", data.program);
 
     return {
       appended,
       totalContacts: contacts.length,
-      completed: completed.length,
+      completed: contacts.length - skippedNoCall,
+      skippedNoCall,
       skippedDup,
       skippedNoId,
       sheetId,

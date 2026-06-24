@@ -494,7 +494,12 @@ function LiveBatchDetailDialog({
   const [now, setNow] = useState<number>(Date.now());
 
   const exportMut = useMutation({
-    mutationFn: () => exportFn({ data: { program, batchId: batch!.batchId } }),
+    mutationFn: () => exportFn({ data: {
+      program,
+      batchId: batch!.batchId,
+      batchName: batch!.batchName,
+      agentName: batch!.agentName,
+    } }),
     onSuccess: (r) => {
       toast.success(
         `Appended ${r.appended} row${r.appended === 1 ? "" : "s"} to staging${r.skippedDup ? ` · ${r.skippedDup} dedup'd` : ""}.`,
