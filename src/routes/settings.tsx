@@ -99,6 +99,10 @@ function Settings() {
         </p>
       </Panel>
 
+      <ExportStagingPanel program={programId} />
+
+
+
 
       <Panel title={`${config.label} settings`} description="Per-program configuration (saved locally for this session)">
         <div className="grid gap-4 sm:grid-cols-2">
