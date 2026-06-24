@@ -7,6 +7,7 @@ import { createClient } from "@supabase/supabase-js";
 import { delay, rayaFetch } from "./raya-api";
 import {
   appendStagingRows,
+  deleteSheetTab,
   readStagingCallIds,
   writeStagingHeaders,
 } from "./sheets.server";
