@@ -53,12 +53,18 @@ export function VerticalFunnel({
   title,
   stages,
   fill = false,
+  pickedUpKey,
 }: {
   title?: string;
   stages: VerticalFunnelStage[];
   fill?: boolean;
+  /** Key of the stage to use as a secondary "% of picked up" baseline. Shown in blue on later stages. */
+  pickedUpKey?: string;
 }) {
   const baseline = stages[0]?.value ?? 0;
+  const pickedUpIdx = pickedUpKey ? stages.findIndex((s) => s.key === pickedUpKey) : -1;
+  const pickedUpValue = pickedUpIdx >= 0 ? stages[pickedUpIdx].value : 0;
+  const pickedUpLabel = pickedUpIdx >= 0 ? stages[pickedUpIdx].label.toLowerCase() : "picked up";
   const visualWidth = (value: number) => {
     if (baseline <= 0) return 100;
     const share = Math.min(1, Math.max(0, value / baseline));
