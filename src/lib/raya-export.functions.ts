@@ -385,7 +385,7 @@ function buildRow(contact: any, lastCall: any, ctx: BuildCtx): string[] | null {
     jobs_failed_to_apply: JSON.stringify(jobsFailed ?? []),
     "intent score": fmtInt(intent.score),
     "intent score reasoning": intent.reasoning,
-    intent_score: String(intent.score),
+    intent_score: fmtInt(intent.score),
     intent_score_reasoning: intent.reasoning,
     // DKB extras (best-effort passthrough)
     job_id: asStr(get("job_id")),
