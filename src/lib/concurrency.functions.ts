@@ -3,6 +3,7 @@
 
 import { createServerFn } from "@tanstack/react-start";
 import { createClient } from "@supabase/supabase-js";
+import { delay, rayaFetch } from "./raya-api";
 
 export const CONCURRENCY_CAP_DEFAULT = 20;
 
@@ -37,16 +38,9 @@ interface ActiveBatch {
   status: string;
 }
 
-async function rayaListAgentBatches(agentId: string, apiKey: string): Promise<any[]> {
+async function rayaListAgentBatches(agentId: string): Promise<any[]> {
   const qs = new URLSearchParams({ agent_id: agentId, page_size: "100" });
-  const res = await fetch(`https://v1.getraya.app/api/batch?${qs.toString()}`, {
-    method: "GET",
-    headers: { "X-API-Key": apiKey, Accept: "application/json" },
-  });
-  if (!res.ok) return [];
-  const text = await res.text();
-  let parsed: any = null;
-  try { parsed = text ? JSON.parse(text) : null; } catch { return []; }
+  const parsed = await rayaFetch(`/batch?${qs.toString()}`, { method: "GET" }) as any;
   const items: any[] =
     parsed?.items ?? parsed?.data ?? parsed?.batches ?? (Array.isArray(parsed) ? parsed : []);
   return items;
@@ -72,8 +66,7 @@ export const getConcurrencyUsage = createServerFn({ method: "GET" })
       ? (data!.cap as number)
       : CONCURRENCY_CAP_DEFAULT;
 
-    const apiKey = process.env.RAYA_API_KEY;
-    if (!apiKey) {
+    if (!process.env.RAYA_API_KEY) {
       return { cap, used: 0, available: cap, batches: [] as ActiveBatch[], error: "RAYA_API_KEY not set" };
     }
 
@@ -86,17 +79,16 @@ export const getConcurrencyUsage = createServerFn({ method: "GET" })
     }
 
     const active: ActiveBatch[] = [];
-    // Sequential to respect Raya's 1 req/20s rate limit lightly; agents list is small.
-    const results = await Promise.all(
-      (agents ?? []).map(async (a) => {
-        const items = await rayaListAgentBatches(a.agent_id, apiKey);
-        const out: ActiveBatch[] = [];
+    // Sequential to respect Raya's API request-rate limit; avoid parallel bursts across agents.
+    for (const a of agents ?? []) {
+      try {
+        const items = await rayaListAgentBatches(a.agent_id);
         for (const item of items) {
           const status = String(item?.status ?? "").toLowerCase().trim();
           if (!ACTIVE_STATUSES.has(status)) continue;
           const concurrency = pickConcurrency(item);
           if (concurrency <= 0) continue;
-          out.push({
+          active.push({
             program: String(a.program),
             agentName: String(a.name ?? a.agent_id),
             agentId: String(a.agent_id),
@@ -106,10 +98,14 @@ export const getConcurrencyUsage = createServerFn({ method: "GET" })
             status,
           });
         }
-        return out;
-      }),
-    );
-    for (const r of results) active.push(...r);
+      } catch (e) {
+        console.warn("[raya] concurrency usage check skipped an agent", {
+          agentId: a.agent_id,
+          error: e instanceof Error ? e.message : String(e),
+        });
+      }
+      await delay(400);
+    }
 
     const used = active.reduce((s, b) => s + b.concurrency, 0);
     const available = Math.max(0, cap - used);
