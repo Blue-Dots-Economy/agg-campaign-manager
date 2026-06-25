@@ -181,9 +181,9 @@ function pickLastCall(contact: any): any | null {
   if (completed.length === 0) return null;
   const sorted = [...completed].sort((a, b) => {
     const ta =
-      Date.parse(stripIst(a?.call_start_time_ist ?? a?.created_at ?? a?.updated_at ?? a?.call_time ?? "")) || 0;
+      Date.parse(stripIst(pickCallTime(a))) || 0;
     const tb =
-      Date.parse(stripIst(b?.call_start_time_ist ?? b?.created_at ?? b?.updated_at ?? b?.call_time ?? "")) || 0;
+      Date.parse(stripIst(pickCallTime(b))) || 0;
     return tb - ta;
   });
   return sorted[0] ?? null;
@@ -414,8 +414,9 @@ function buildRow(contact: any, lastCall: any, ctx: BuildCtx): string[] | null {
     Array.isArray(jobsShownRaw) ? jobsShownRaw.length > 0 : asArr(jobsShownRaw).length > 0 || jobsRecommended.length > 0;
   const applied = jobsApplied.length > 0;
   const triedToApply = applied || jobsFailed.length > 0;
-  const userIntentRaw = asStr(input?.user_intent ?? getInput("user_intent") ?? get("user_intent"));
-  const engagedFallback = nonEmpty(get("primary_topic")) || nonEmpty(userIntentRaw) || jobsShownFallback;
+  const userIntentSignal = asStr(get("user_intent"));
+  const userIntentRaw = asStr(input?.user_intent ?? getInput("user_intent") ?? "");
+  const engagedFallback = nonEmpty(get("primary_topic")) || nonEmpty(userIntentSignal) || jobsShownFallback;
   const seekerName = asStr(input?.contact_name ?? getInput("contact_name") ?? getInput("name") ?? get("seeker_name") ?? contact?.contact_name ?? contact?.name ?? "");
   const primaryTopicFromApi = asStr(callOutput?.primary_topic ?? contact?.primary_topic ?? contactArgs?.primary_topic ?? "");
   const contactStatus = asStr(contact?.status ?? contact?.contact_status ?? "");
@@ -441,7 +442,7 @@ function buildRow(contact: any, lastCall: any, ctx: BuildCtx): string[] | null {
     applied: appliedToJob === "Yes",
     triedToApply,
     jobsShown: jobsShown === "Yes",
-    userIntent: userIntentRaw,
+    userIntent: userIntentSignal,
   });
 
   // campaign metadata — prefer the launch-time stamped values, fall back to derived.
@@ -541,6 +542,48 @@ async function fetchAllBatchContacts(batchId: string): Promise<any[]> {
     await delay(500);
   }
   return out;
+}
+
+async function fetchCallDetail(callId: string): Promise<any | null> {
+  if (!callId) return null;
+  try {
+    return (await rayaFetch(`/call/${encodeURIComponent(callId)}`, { method: "GET" })) as any;
+  } catch (e) {
+    console.warn("[raya-export] call detail unavailable", callId, e instanceof Error ? e.message : String(e));
+    return null;
+  }
+}
+
+function mergeCallDetail(call: any, detail: any | null): any {
+  if (!detail || typeof detail !== "object") return call;
+  return {
+    ...call,
+    ...detail,
+    call_output: {
+      ...(call?.call_output ?? {}),
+      ...(detail?.call_output ?? {}),
+    },
+  };
+}
+
+async function nextCampaignDay(c: ReturnType<typeof sb>, program: ProgramId): Promise<string> {
+  const { data: rows } = await c
+    .from("launched_batches")
+    .select("campaign_day")
+    .eq("program", program)
+    .order("created_at", { ascending: false })
+    .limit(100);
+  let maxN = 0;
+  for (const r of rows ?? []) {
+    const m = String((r as any).campaign_day ?? "").match(/(\d+)/);
+    if (m) maxN = Math.max(maxN, Number(m[1]));
+  }
+  return `Day ${maxN + 1}`;
+}
+
+function campaignTypeFor(program: ProgramId, language: string, campaignDay: string): string {
+  const dayNum = (String(campaignDay).match(/\d+/) || ["1"])[0];
+  return `${program.toUpperCase()}_${language || ""}_Day${dayNum}`;
 }
 
 // ---------- main export ----------
