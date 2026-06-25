@@ -9,6 +9,7 @@ import {
   appendStagingRows,
   deleteSheetTab,
   readStagingCallIds,
+  updateStagingRows,
   writeStagingHeaders,
 } from "./sheets.server";
 import { registry, type ProgramId } from "@/programs/registry";
@@ -128,6 +129,25 @@ function jsonArrayString(v: any): string {
   return JSON.stringify(arr);
 }
 
+function jsonArrayStringFromAny(v: any): string {
+  if (v == null || v === "") return "[]";
+  if (Array.isArray(v)) return JSON.stringify(v);
+  if (typeof v === "string") {
+    const t = v.trim();
+    if (!t) return "[]";
+    try {
+      const parsed = JSON.parse(t);
+      if (Array.isArray(parsed)) return JSON.stringify(parsed);
+      if (parsed && typeof parsed === "object") return JSON.stringify([parsed]);
+    } catch {
+      /* fall through */
+    }
+    return JSON.stringify([t]);
+  }
+  if (typeof v === "object") return JSON.stringify([v]);
+  return JSON.stringify([String(v)]);
+}
+
 function jsonStringOrEmptyArray(v: any): string {
   if (v == null || v === "") return "[]";
   if (typeof v === "string") return v.trim() || "[]";
@@ -161,12 +181,16 @@ function pickLastCall(contact: any): any | null {
   if (completed.length === 0) return null;
   const sorted = [...completed].sort((a, b) => {
     const ta =
-      Date.parse(stripIst(a?.call_start_time_ist ?? a?.created_at ?? a?.updated_at ?? a?.call_time ?? "")) || 0;
+      Date.parse(stripIst(pickCallTime(a))) || 0;
     const tb =
-      Date.parse(stripIst(b?.call_start_time_ist ?? b?.created_at ?? b?.updated_at ?? b?.call_time ?? "")) || 0;
+      Date.parse(stripIst(pickCallTime(b))) || 0;
     return tb - ta;
   });
   return sorted[0] ?? null;
+}
+
+function pickCallTime(call: any): any {
+  return call?.call_start_time ?? call?.start_time ?? call?.call_start_time_ist ?? call?.created_at ?? call?.call_time ?? "";
 }
 
 function isCompletedCall(call: any): boolean {
@@ -229,6 +253,15 @@ function fmtDateTimeIst(v: any): string {
   const raw = stripIst(String(v ?? "")).replace(/T/, " ");
   const m = raw.match(/^(\d{4}-\d{2}-\d{2})[ T]?(\d{2}:\d{2}:\d{2})?/);
   if (m) return m[2] ? `${m[1]} ${m[2]}` : m[1];
+  const d = new Date(raw);
+  if (!Number.isFinite(d.getTime())) return raw;
+  return d.toISOString().slice(0, 19).replace("T", " ");
+}
+
+function fmtDateTimeIstFromApi(v: any): string {
+  const raw = stripIst(String(v ?? "")).replace(/T/, " ");
+  const m = raw.match(/^(\d{4}-\d{2}-\d{2})[ T]?(\d{2}:\d{2}:\d{2})?/);
+  if (m) return `${m[1]} ${m[2] ?? "00:00:00"}`;
   const d = new Date(raw);
   if (!Number.isFinite(d.getTime())) return raw;
   return d.toISOString().slice(0, 19).replace("T", " ");
@@ -304,12 +337,19 @@ interface LaunchMeta {
   batchName?: string | null;
   agentName?: string | null;
 }
+interface InputRow {
+  contact_name?: string | null;
+  recommendations?: string | null;
+  user_intent?: string | null;
+  raw?: Record<string, any> | null;
+}
 interface BuildCtx {
   columns: string[];
   program: ProgramId;
   batchName: string;
   agentName: string;
   launchMeta: LaunchMeta;
+  inputByPhone: Map<string, InputRow>;
 }
 
 function buildRow(contact: any, lastCall: any, ctx: BuildCtx): string[] | null {
@@ -330,42 +370,65 @@ function buildRow(contact: any, lastCall: any, ctx: BuildCtx): string[] | null {
   };
 
   // call-level extraction
+  const callOutput = lastCall?.call_output ?? {};
+  const contactArgs = contact?.agent_args ?? contact?.args ?? contact?.metadata ?? {};
+  const phoneRaw = asStr(contact?.contact_phone ?? contact?.phone ?? contactArgs?.phone);
+  const phone = fmtPhone(phoneRaw);
+  const input = ctx.inputByPhone.get(phone) ?? null;
+  const inputRaw = input?.raw ?? {};
+  const inputNorm = new Map<string, any>();
+  Object.entries(inputRaw).forEach(([k, v]) => inputNorm.set(normalize(k), v));
+  const getInput = (k: string) => inputRaw?.[k] ?? inputRaw?.[normalize(k)] ?? inputNorm.get(normalize(k)) ?? "";
   const callId = asStr(lastCall?.uuid ?? lastCall?.id ?? lastCall?.execution_id ?? "");
   const callDur = Number(
     lastCall?.call_duration ?? lastCall?.duration ?? lastCall?.duration_seconds ?? 0,
   );
-  const callDateIst = stripIst(asStr(lastCall?.call_start_time_ist ?? lastCall?.call_time ?? ""));
-  const callRecording = asStr(lastCall?.call_recording_url ?? lastCall?.recording_url ?? "");
+  const callDateIst = pickCallTime(lastCall);
+  const callRecording = asStr(
+    lastCall?.call_recording_url
+      ?? lastCall?.recording_url
+      ?? lastCall?.enhanced_recording_url
+      ?? lastCall?.recording
+      ?? "",
+  );
   const finalSummary = asStr(
-    contact?.final_summary ?? contact?.summary ?? "",
+    callOutput?.final_summary ?? callOutput?.summary ?? contact?.final_summary ?? contact?.summary ?? "",
   );
   const dropReason = asStr(
-    contact?.drop_reason ?? "",
+    callOutput?.drop_reason ?? contact?.drop_reason ?? "",
   );
 
   if (!callId) return null;
 
-  // Contact-level Raya fields only. Do not use call-level args for these columns.
-  const contactArgs = contact?.agent_args ?? contact?.args ?? contact?.metadata ?? {};
-  const get = (k: string) => contact?.[k] ?? contactArgs?.[k] ?? "";
+  const get = (k: string) => callOutput?.[k] ?? contact?.[k] ?? contactArgs?.[k] ?? getInput(k) ?? "";
 
   const jobsApplied = asArr(get("jobs_applied"));
   const jobsFailed = asArr(get("jobs_failed_to_apply"));
-  const jobsRecommended = asArr(get("jobs_recommended"));
+  const jobsRecommendedRaw =
+    input?.recommendations
+      ?? getInput("recommendations")
+      ?? getInput("jobs_recommended")
+      ?? contactArgs?.recommendations
+      ?? get("jobs_recommended");
+  const jobsRecommended = asArr(jobsRecommendedRaw);
   const jobsShownRaw = get("jobs_shown");
   const jobsShownFallback =
     Array.isArray(jobsShownRaw) ? jobsShownRaw.length > 0 : asArr(jobsShownRaw).length > 0 || jobsRecommended.length > 0;
   const applied = jobsApplied.length > 0;
   const triedToApply = applied || jobsFailed.length > 0;
-  const engagedFallback = nonEmpty(get("primary_topic")) || nonEmpty(get("user_intent"));
-  // seeker_name + user_intent are intentionally left blank to match master.
-  const _seekerName = asStr(get("seeker_name") || contact?.contact_name); // captured but not exported
-  void _seekerName;
-  const userIntentRaw = asStr(get("user_intent"));
-  void userIntentRaw;
-  const phoneRaw = asStr(contact?.contact_phone ?? contact?.phone ?? get("phone"));
-  const phone = fmtPhone(phoneRaw);
-  const primaryTopic = asStr(get("primary_topic"));
+  const userIntentSignal = asStr(get("user_intent"));
+  const userIntentRaw = asStr(input?.user_intent ?? getInput("user_intent") ?? "");
+  const engagedFallback = nonEmpty(get("primary_topic")) || nonEmpty(userIntentSignal) || jobsShownFallback;
+  const seekerName = asStr(
+    input?.contact_name
+      ?? getInput("contact_name")
+      ?? getInput("name")
+      ?? contact?.contact_name
+      ?? contact?.name
+      ?? get("seeker_name")
+      ?? "",
+  );
+  const primaryTopicFromApi = asStr(callOutput?.primary_topic ?? contact?.primary_topic ?? contactArgs?.primary_topic ?? "");
   const contactStatus = asStr(contact?.status ?? contact?.contact_status ?? "");
   const callAnswered = yesNo(get("call_answered"), callDur > 0);
   const callEngaged = yesNo(get("call_engaged"), engagedFallback);
@@ -389,13 +452,15 @@ function buildRow(contact: any, lastCall: any, ctx: BuildCtx): string[] | null {
     applied: appliedToJob === "Yes",
     triedToApply,
     jobsShown: jobsShown === "Yes",
-    userIntent: userIntentRaw,
+    userIntent: userIntentSignal,
   });
 
   // campaign metadata — prefer the launch-time stamped values, fall back to derived.
   const campaignDate = fmtDateOnly(lm.campaignDate) || datePart(callDateIst) || new Date().toISOString().slice(0, 10);
-  const campaignType = (lm.campaignType && String(lm.campaignType)) || ctx.batchName || `${ctx.program}_${region.language || ""}`.replace(/_$/, "");
+  const dayNum = (String(lm.campaignDay ?? "").match(/\d+/) || ["1"])[0];
+  const campaignType = (lm.campaignType && String(lm.campaignType)) || `${ctx.program.toUpperCase()}_${region.language || ""}_Day${dayNum}`;
   const campaignDay = (lm.campaignDay && String(lm.campaignDay)) || "";
+  const primaryTopic = primaryTopicFromApi || (callEngaged === "Yes" || jobsShown === "Yes" ? "Job search" : "No engagement");
 
   const byCol: Record<string, string> = {
     campaign_day: campaignDay,
@@ -406,7 +471,7 @@ function buildRow(contact: any, lastCall: any, ctx: BuildCtx): string[] | null {
     phone,
     contact_phone: phone,
     call_duration_seconds: fmtInt(callDur),
-    call_datetime_ist: fmtDateTimeIst(callDateIst),
+    call_datetime_ist: fmtDateTimeIstFromApi(callDateIst),
     call_outcome: outcome,
     call_answered: callAnswered,
     call_engaged: callEngaged,
@@ -421,10 +486,9 @@ function buildRow(contact: any, lastCall: any, ctx: BuildCtx): string[] | null {
     tried_to_apply: triedToApply ? "Yes" : "No",
     drop_reason: dropReason,
     city_campaign: region.city,
-    // Master leaves these blank — keep consistent.
-    seeker_name: "",
-    user_intent: "",
-    jobs_recommended: jsonArrayString(get("jobs_recommended")),
+    seeker_name: seekerName,
+    user_intent: userIntentRaw,
+    jobs_recommended: jsonArrayStringFromAny(jobsRecommendedRaw),
     jobs_applied: jsonArrayString(get("jobs_applied")),
     jobs_failed_to_apply: jsonArrayString(get("jobs_failed_to_apply")),
     intent_score: fmtInt(intent.score),
@@ -490,6 +554,48 @@ async function fetchAllBatchContacts(batchId: string): Promise<any[]> {
   return out;
 }
 
+async function fetchCallDetail(callId: string): Promise<any | null> {
+  if (!callId) return null;
+  try {
+    return (await rayaFetch(`/call/${encodeURIComponent(callId)}`, { method: "GET" })) as any;
+  } catch (e) {
+    console.warn("[raya-export] call detail unavailable", callId, e instanceof Error ? e.message : String(e));
+    return null;
+  }
+}
+
+function mergeCallDetail(call: any, detail: any | null): any {
+  if (!detail || typeof detail !== "object") return call;
+  return {
+    ...call,
+    ...detail,
+    call_output: {
+      ...(call?.call_output ?? {}),
+      ...(detail?.call_output ?? {}),
+    },
+  };
+}
+
+async function nextCampaignDay(c: ReturnType<typeof sb>, program: ProgramId): Promise<string> {
+  const { data: rows } = await c
+    .from("launched_batches")
+    .select("campaign_day")
+    .eq("program", program)
+    .order("created_at", { ascending: false })
+    .limit(100);
+  let maxN = 0;
+  for (const r of rows ?? []) {
+    const m = String((r as any).campaign_day ?? "").match(/(\d+)/);
+    if (m) maxN = Math.max(maxN, Number(m[1]));
+  }
+  return `Day ${maxN + 1}`;
+}
+
+function campaignTypeFor(program: ProgramId, language: string, campaignDay: string): string {
+  const dayNum = (String(campaignDay).match(/\d+/) || ["1"])[0];
+  return `${program.toUpperCase()}_${language || ""}_Day${dayNum}`;
+}
+
 // ---------- main export ----------
 export const exportBatchToStaging = createServerFn({ method: "POST" })
   .inputValidator(
@@ -540,10 +646,12 @@ export const exportBatchToStaging = createServerFn({ method: "POST" })
     try { await deleteSheetTab(sheetId, "Staging"); } catch { /* ignore */ }
 
     let existing: Set<string> = new Set();
+    let rowByCallId: Map<string, number> = new Map();
     let hasHeaders = false;
     try {
       const r = await readStagingCallIds(sheetId, tab);
       existing = r.existing;
+      rowByCallId = r.rowByCallId;
       hasHeaders = r.hasHeaders;
       if (r.hasHeaders && r.headers.join("\u001f") !== columns.join("\u001f")) {
         await writeStagingHeaders(sheetId, tab, columns);
@@ -566,47 +674,102 @@ export const exportBatchToStaging = createServerFn({ method: "POST" })
       .select("*")
       .eq("batch_id", data.batchId)
       .maybeSingle();
-    const launchMeta: LaunchMeta = {
-      campaignDay: (lb as any)?.campaign_day ?? null,
-      campaignDate: (lb as any)?.campaign_date ?? null,
-      campaignType: (lb as any)?.campaign_type ?? null,
-      language: (lb as any)?.language ?? null,
-      cityCampaign: (lb as any)?.city_campaign ?? null,
-      region: (lb as any)?.region ?? null,
-      batchName: (lb as any)?.batch_name ?? null,
-      agentName: (lb as any)?.agent_name ?? null,
-    };
-
     const contacts = await fetchAllBatchContacts(data.batchId);
+    const sampleContact = contacts.find((contact) => pickLastCall(contact)) ?? contacts[0] ?? {};
+    const detected = detectRegionForContact(sampleContact, {
+      batchName: data.batchName ?? (lb as any)?.batch_name ?? "",
+      agentName: data.agentName ?? (lb as any)?.agent_name ?? "",
+      program: data.program,
+    });
+    const campaignDay = (lb as any)?.campaign_day ?? await nextCampaignDay(c, data.program);
+    const language = (lb as any)?.language ?? detected.language;
+    const launchMeta: LaunchMeta = {
+      campaignDay,
+      campaignDate: (lb as any)?.campaign_date ?? null,
+      campaignType: (lb as any)?.campaign_type ?? campaignTypeFor(data.program, language, campaignDay),
+      language,
+      cityCampaign: (lb as any)?.city_campaign ?? detected.city,
+      region: (lb as any)?.region ?? detected.region,
+      batchName: (lb as any)?.batch_name ?? data.batchName ?? null,
+      agentName: (lb as any)?.agent_name ?? data.agentName ?? null,
+    };
+    if (!(lb as any)?.batch_id || !(lb as any)?.campaign_day || !(lb as any)?.campaign_type) {
+      const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+      const { error: metaError } = await supabaseAdmin.from("launched_batches").upsert({
+        batch_id: data.batchId,
+        program: data.program,
+        agent_name: launchMeta.agentName,
+        batch_name: launchMeta.batchName,
+        campaign_day: launchMeta.campaignDay,
+        campaign_date: launchMeta.campaignDate,
+        campaign_type: launchMeta.campaignType,
+        language: launchMeta.language,
+        city_campaign: launchMeta.cityCampaign,
+        region: launchMeta.region,
+        updated_at: new Date().toISOString(),
+      }, { onConflict: "batch_id" });
+      if (metaError) throw new Error(metaError.message);
+    }
+
+    const inputByPhone = new Map<string, InputRow>();
+    try {
+      const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+      const { data: inputRows } = await supabaseAdmin
+        .from("launched_batch_inputs")
+        .select("normalized_phone,contact_name,recommendations,user_intent,raw")
+        .eq("batch_id", data.batchId);
+      for (const r of inputRows ?? []) {
+        inputByPhone.set(String((r as any).normalized_phone), r as InputRow);
+      }
+    } catch (e) {
+      console.warn("[raya-export] input rows unavailable", e instanceof Error ? e.message : String(e));
+    }
+
     const ctx: BuildCtx = {
       columns,
       program: data.program,
       batchName: data.batchName ?? launchMeta.batchName ?? "",
       agentName: data.agentName ?? launchMeta.agentName ?? "",
       launchMeta,
+      inputByPhone,
     };
 
     const rows: string[][] = [];
+    const updates: Array<{ rowNumber: number; values: string[] }> = [];
+    const allRowsForStatus: string[][] = [];
     let skippedNoCall = 0;
     let skippedDup = 0;
     let skippedNoId = 0;
     for (const contact of contacts) {
-      const lastCall = pickLastCall(contact);
+      let lastCall = pickLastCall(contact);
       if (!lastCall) { skippedNoCall++; continue; }
+      const callIdForDetail = asStr(lastCall?.uuid ?? lastCall?.id ?? lastCall?.execution_id ?? "");
+      lastCall = mergeCallDetail(lastCall, await fetchCallDetail(callIdForDetail));
+      await delay(350);
       const row = buildRow(contact, lastCall, ctx);
       if (!row) { skippedNoId++; continue; }
+      allRowsForStatus.push(row);
       // call_id position in columns
       const idIdx = columns.findIndex((c) => normalize(c) === "call_id");
       const callId = idIdx >= 0 ? row[idIdx] : "";
       if (!callId) { skippedNoId++; continue; }
-      if (existing.has(callId)) { skippedDup++; continue; }
+      if (existing.has(callId)) {
+        skippedDup++;
+        const rowNumber = rowByCallId.get(callId);
+        if (rowNumber) updates.push({ rowNumber, values: row });
+        continue;
+      }
       existing.add(callId);
       rows.push(row);
     }
 
     let appended = 0;
+    let updated = 0;
     if (rows.length > 0) {
       appended = await appendStagingRows(sheetId, tab, rows);
+    }
+    if (updates.length > 0) {
+      updated = await updateStagingRows(sheetId, tab, updates);
     }
 
     await c.from("program_export_targets")
@@ -615,6 +778,7 @@ export const exportBatchToStaging = createServerFn({ method: "POST" })
 
     return {
       appended,
+      updated,
       totalContacts: contacts.length,
       completed: contacts.length - skippedNoCall,
       skippedNoCall,
@@ -623,7 +787,13 @@ export const exportBatchToStaging = createServerFn({ method: "POST" })
       sheetId,
       tab,
       header: columns,
-      populatedColumns: columns.filter((_, i) => rows.some((row) => String(row[i] ?? "").trim() !== "")),
+      populatedColumns: columns.filter((_, i) => allRowsForStatus.some((row) => String(row[i] ?? "").trim() !== "")),
+      emptyColumns: columns.filter((_, i) => !allRowsForStatus.some((row) => String(row[i] ?? "").trim() !== "")),
+      rayaFields: {
+        contact: Object.keys(sampleContact ?? {}).sort(),
+        call: Object.keys(pickLastCall(sampleContact) ?? {}).sort(),
+        call_output: Object.keys((pickLastCall(sampleContact) as any)?.call_output ?? {}).sort(),
+      },
       sheetUrl: `https://docs.google.com/spreadsheets/d/${sheetId}/edit`,
     };
   });

@@ -101,6 +101,45 @@ export type Database = {
         }
         Relationships: []
       }
+      launched_batch_inputs: {
+        Row: {
+          batch_id: string
+          contact_name: string | null
+          created_at: string
+          id: string
+          normalized_phone: string
+          program: string
+          raw: Json
+          recommendations: string | null
+          updated_at: string
+          user_intent: string | null
+        }
+        Insert: {
+          batch_id: string
+          contact_name?: string | null
+          created_at?: string
+          id?: string
+          normalized_phone: string
+          program: string
+          raw?: Json
+          recommendations?: string | null
+          updated_at?: string
+          user_intent?: string | null
+        }
+        Update: {
+          batch_id?: string
+          contact_name?: string | null
+          created_at?: string
+          id?: string
+          normalized_phone?: string
+          program?: string
+          raw?: Json
+          recommendations?: string | null
+          updated_at?: string
+          user_intent?: string | null
+        }
+        Relationships: []
+      }
       launched_batches: {
         Row: {
           agent_id: string | null

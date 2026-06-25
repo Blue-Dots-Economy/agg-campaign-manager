@@ -12,6 +12,25 @@ function sb() {
   );
 }
 
+function normalizePhone(v: any): string {
+  const digits = String(v ?? "").replace(/\D+/g, "");
+  return digits.length >= 10 ? digits.slice(-10) : digits;
+}
+
+function normalizeKey(k: string): string {
+  return String(k ?? "").trim().toLowerCase().replace(/[\s\-]+/g, "_");
+}
+
+function pickRaw(row: Record<string, any>, candidates: string[]): string | null {
+  const normalized = new Map<string, any>();
+  Object.entries(row ?? {}).forEach(([k, v]) => normalized.set(normalizeKey(k), v));
+  for (const key of candidates) {
+    const value = normalized.get(normalizeKey(key));
+    if (value != null && String(value).trim() !== "") return String(value).trim();
+  }
+  return null;
+}
+
 export interface LaunchedBatchRow {
   batch_id: string;
   program: string;
@@ -42,6 +61,7 @@ export const recordLaunchedBatch = createServerFn({ method: "POST" })
       language?: string;
       cityCampaign?: string;
       region?: string;
+        inputRows?: Array<Record<string, any>>;
     }) => {
       if (!d.batchId) throw new Error("batchId required");
       if (!d.program) throw new Error("program required");
@@ -70,6 +90,35 @@ export const recordLaunchedBatch = createServerFn({ method: "POST" })
       .select()
       .single();
     if (error) throw new Error(error.message);
+
+    if (Array.isArray(data.inputRows) && data.inputRows.length > 0) {
+      const rows = data.inputRows
+        .map((r) => {
+          const phone = normalizePhone(
+            r.normalized_phone ?? r.contact_phone ?? r.phone ?? r.mobile ?? r.phone_number,
+          );
+          if (!phone) return null;
+          return {
+            batch_id: data.batchId,
+            program: data.program,
+            normalized_phone: phone,
+            contact_name: pickRaw(r, ["contact_name", "name", "seeker_name", "candidate_name"]),
+            recommendations: pickRaw(r, ["recommendations", "jobs_recommended", "recommended_jobs"]),
+            user_intent: pickRaw(r, ["user_intent", "intent"]),
+            raw: r,
+            updated_at: new Date().toISOString(),
+          };
+        })
+        .filter(Boolean);
+      if (rows.length > 0) {
+        const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+        const { error: inputError } = await supabaseAdmin
+          .from("launched_batch_inputs")
+          .upsert(rows as any[], { onConflict: "batch_id,normalized_phone" });
+        if (inputError) throw new Error(inputError.message);
+      }
+    }
+
     return row as LaunchedBatchRow;
   });
 

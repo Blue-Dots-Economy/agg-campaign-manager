@@ -312,6 +312,7 @@ function LaunchWizard() {
             language: regionInfo.language,
             cityCampaign: regionInfo.city,
             region,
+            inputRows: contacts,
           },
         });
       } catch (e) {
