@@ -110,8 +110,9 @@ export async function readStagingCallIds(
   const colJson = (await colRes.json()) as { values?: unknown[][] };
   const existing = new Set<string>();
   const rowByCallId = new Map<string, number>();
-  for (const r of colJson.values ?? []) {
-    const rowNumber = rowByCallId.size + 2;
+  for (let i = 0; i < (colJson.values ?? []).length; i++) {
+    const r = (colJson.values ?? [])[i];
+    const rowNumber = i + 2;
     const v = (r ?? [])[0];
     if (v != null && String(v).trim()) {
       const callId = String(v).trim();
