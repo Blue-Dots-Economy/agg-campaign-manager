@@ -419,7 +419,15 @@ function buildRow(contact: any, lastCall: any, ctx: BuildCtx): string[] | null {
   const userIntentSignal = asStr(get("user_intent"));
   const userIntentRaw = asStr(input?.user_intent ?? getInput("user_intent") ?? "");
   const engagedFallback = nonEmpty(get("primary_topic")) || nonEmpty(userIntentSignal) || jobsShownFallback;
-  const seekerName = asStr(input?.contact_name ?? getInput("contact_name") ?? getInput("name") ?? get("seeker_name") ?? contact?.contact_name ?? contact?.name ?? "");
+  const seekerName = asStr(
+    input?.contact_name
+      ?? getInput("contact_name")
+      ?? getInput("name")
+      ?? contact?.contact_name
+      ?? contact?.name
+      ?? get("seeker_name")
+      ?? "",
+  );
   const primaryTopicFromApi = asStr(callOutput?.primary_topic ?? contact?.primary_topic ?? contactArgs?.primary_topic ?? "");
   const contactStatus = asStr(contact?.status ?? contact?.contact_status ?? "");
   const callAnswered = yesNo(get("call_answered"), callDur > 0);
@@ -686,7 +694,8 @@ export const exportBatchToStaging = createServerFn({ method: "POST" })
       agentName: (lb as any)?.agent_name ?? data.agentName ?? null,
     };
     if (!(lb as any)?.batch_id || !(lb as any)?.campaign_day || !(lb as any)?.campaign_type) {
-      await c.from("launched_batches").upsert({
+      const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+      const { error: metaError } = await supabaseAdmin.from("launched_batches").upsert({
         batch_id: data.batchId,
         program: data.program,
         agent_name: launchMeta.agentName,
@@ -699,6 +708,7 @@ export const exportBatchToStaging = createServerFn({ method: "POST" })
         region: launchMeta.region,
         updated_at: new Date().toISOString(),
       }, { onConflict: "batch_id" });
+      if (metaError) throw new Error(metaError.message);
     }
 
     const inputByPhone = new Map<string, InputRow>();
