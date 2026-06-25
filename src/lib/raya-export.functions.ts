@@ -490,21 +490,22 @@ function buildRow(contact: any, lastCall: any, ctx: BuildCtx): string[] | null {
     city: String(lm.cityCampaign ?? detectedRegion.city),
   };
 
-  // call-level extraction
+  // ============================================================
+  // SINGLE SOURCE OF TRUTH: calls[last].call_output
+  // ============================================================
   const callOutput = lastCall?.call_output ?? {};
   const contactArgs = contact?.agent_args ?? contact?.args ?? contact?.metadata ?? {};
   const phoneRaw = asStr(contact?.contact_phone ?? contact?.phone ?? contactArgs?.phone);
   const phone = fmtPhone(phoneRaw);
   const input = ctx.inputByPhone.get(phone) ?? null;
   const inputRaw = input?.raw ?? {};
-  const inputNorm = new Map<string, any>();
-  Object.entries(inputRaw).forEach(([k, v]) => inputNorm.set(normalize(k), v));
-  const getInput = (k: string) => inputRaw?.[k] ?? inputRaw?.[normalize(k)] ?? inputNorm.get(normalize(k)) ?? "";
+  const getInput = (k: string) => inputRaw?.[k] ?? inputRaw?.[normalize(k)] ?? "";
+
+  // Call-object fields
   const callId = asStr(lastCall?.uuid ?? lastCall?.id ?? lastCall?.execution_id ?? "");
-  const callDur = Number(
-    lastCall?.call_duration ?? lastCall?.duration ?? lastCall?.duration_seconds ?? 0,
-  );
-  const callDateIst = pickCallTime(lastCall);
+  if (!callId) return null;
+  const callDur = Number(lastCall?.call_duration ?? lastCall?.duration ?? 0);
+  const callDateIst = pickCallTime(lastCall); // call.call_start_time
   const callRecording = asStr(
     lastCall?.call_recording_url
       ?? lastCall?.recording_url
@@ -512,68 +513,27 @@ function buildRow(contact: any, lastCall: any, ctx: BuildCtx): string[] | null {
       ?? lastCall?.recording
       ?? "",
   );
-  const finalSummary = asStr(
-    callOutput?.final_summary ?? callOutput?.summary ?? contact?.final_summary ?? contact?.summary ?? "",
-  );
-  const dropReason = asStr(
-    callOutput?.drop_reason ?? contact?.drop_reason ?? "",
-  );
+  const rayaOutcomeStr = asStr(lastCall?.outcome ?? lastCall?.call_outcome ?? "");
 
-  if (!callId) return null;
+  // call_output fields — these are authoritative; no agent_args/input/transcript fallbacks here
+  const jobsRecommendedArr = asArr(callOutput?.jobs_recommended);
+  const jobsAppliedArr = asArr(callOutput?.jobs_applied);
+  const jobsFailedArr = asArr(callOutput?.jobs_failed_to_apply);
+  const finalSummary = asStr(callOutput?.final_summary ?? "");
+  const primaryTopic = asStr(callOutput?.primary_topic ?? "");
+  const dropReason = asStr(callOutput?.drop_reason ?? "");
+  const seekerName = asStr(callOutput?.seeker_name ?? contact?.name ?? "");
+  const userIntentRaw = asStr(callOutput?.user_intent ?? "");
+  const appliedToJob = yesNo(callOutput?.applied_to_job, jobsAppliedArr.length > 0);
+  const jobsShown = yesNo(callOutput?.jobs_shown, jobsRecommendedArr.length > 0);
+  const callEngaged = yesNo(callOutput?.call_engaged, nonEmpty(primaryTopic));
+  const callAnswered = yesNo(callOutput?.call_answered, callDur > 0);
+  const applicationsCount = Number(callOutput?.applications_count ?? jobsAppliedArr.length ?? 0);
 
-  const get = (k: string) => callOutput?.[k] ?? contact?.[k] ?? contactArgs?.[k] ?? getInput(k) ?? "";
-
-  const jobsRecommendedRaw =
-    input?.recommendations
-      ?? getInput("recommendations")
-      ?? getInput("jobs_recommended")
-      ?? contactArgs?.recommendations
-      ?? get("jobs_recommended");
-  const jobsRecommended = asArr(jobsRecommendedRaw);
-  const recMap = recommendationLookup(jobsRecommended);
-
-  // Source priority for applied/failed: explicit API field → derive from transcript apply_job tool calls.
-  const transcriptRaw = lastCall?.call_transcript ?? lastCall?.transcript;
-  const apiApplied = asArr(get("jobs_applied"));
-  const apiFailed = asArr(get("jobs_failed_to_apply"));
-  let jobsApplied: any[] = apiApplied;
-  let jobsFailed: any[] = apiFailed;
-  if (apiApplied.length === 0 && apiFailed.length === 0) {
-    const outcomes = extractApplyOutcomes(transcriptRaw);
-    jobsApplied = outcomes.filter((o) => o.ok).map((o) => enrichJob(o.job_id, o.profile_id, recMap));
-    jobsFailed = outcomes.filter((o) => !o.ok).map((o) => enrichJob(o.job_id, o.profile_id, recMap));
-  }
-  const jobsShownRaw = get("jobs_shown");
-  const jobsShownFallback =
-    Array.isArray(jobsShownRaw) ? jobsShownRaw.length > 0 : asArr(jobsShownRaw).length > 0 || jobsRecommended.length > 0;
-  const applied = jobsApplied.length > 0;
-  const triedToApply = applied || jobsFailed.length > 0;
-
-  const userIntentSignal = asStr(get("user_intent"));
-  const userIntentRaw = asStr(input?.user_intent ?? getInput("user_intent") ?? "");
-  const engagedFallback = nonEmpty(get("primary_topic")) || nonEmpty(userIntentSignal) || jobsShownFallback;
-  const seekerName = asStr(
-    input?.contact_name
-      ?? getInput("contact_name")
-      ?? getInput("name")
-      ?? contact?.contact_name
-      ?? contact?.name
-      ?? get("seeker_name")
-      ?? "",
-  );
-  const primaryTopicFromApi = asStr(callOutput?.primary_topic ?? contact?.primary_topic ?? contactArgs?.primary_topic ?? "");
-  const contactStatus = asStr(contact?.status ?? contact?.contact_status ?? "");
-  const callAnswered = yesNo(get("call_answered"), callDur > 0);
-  const callEngaged = yesNo(get("call_engaged"), engagedFallback);
-  const appliedToJob = yesNo(get("applied_to_job"), applied);
-  const jobsShown = yesNo(jobsShownRaw, jobsShownFallback);
-  const applicationsCount = Number(get("applications_count") || jobsApplied.length || 0);
-
-  // Pass through Raya's own outcome string; only derive if Raya didn't send one.
-  const rayaOutcome = asStr(
-    lastCall?.call_outcome ?? lastCall?.outcome ?? contact?.call_outcome ?? "",
-  );
-  const outcome = rayaOutcomeOrDerive(rayaOutcome, {
+  // Computed
+  const triedToApply = jobsAppliedArr.length > 0 || jobsFailedArr.length > 0;
+  const contactStatus = asStr(contact?.status ?? "");
+  const outcome = rayaOutcomeOrDerive(rayaOutcomeStr, {
     contactStatus,
     durationSec: callDur,
     applied: appliedToJob === "Yes",
@@ -585,15 +545,14 @@ function buildRow(contact: any, lastCall: any, ctx: BuildCtx): string[] | null {
     applied: appliedToJob === "Yes",
     triedToApply,
     jobsShown: jobsShown === "Yes",
-    userIntent: userIntentSignal,
+    userIntent: userIntentRaw,
   });
 
-  // campaign metadata — prefer the launch-time stamped values, fall back to derived.
+  // Campaign metadata (from launched_batches join)
+  const campaignDay = String(lm.campaignDay ?? "").trim();
   const campaignDate = fmtDateOnly(lm.campaignDate) || datePart(callDateIst) || new Date().toISOString().slice(0, 10);
-  const dayNum = (String(lm.campaignDay ?? "").match(/\d+/) || ["1"])[0];
-  const campaignType = (lm.campaignType && String(lm.campaignType)) || `${ctx.program.toUpperCase()}_${region.language || ""}_Day${dayNum}`;
-  const campaignDay = (lm.campaignDay && String(lm.campaignDay)) || "";
-  const primaryTopic = primaryTopicFromApi || (callEngaged === "Yes" || jobsShown === "Yes" ? "Job search" : "No engagement");
+  const dayNum = (campaignDay.match(/\d+/) || ["1"])[0];
+  const campaignType = String(lm.campaignType ?? "").trim() || `${ctx.program.toUpperCase()}_${region.language || ""}_Day${dayNum}`;
 
   const byCol: Record<string, string> = {
     campaign_day: campaignDay,
@@ -621,38 +580,38 @@ function buildRow(contact: any, lastCall: any, ctx: BuildCtx): string[] | null {
     city_campaign: region.city,
     seeker_name: seekerName,
     user_intent: userIntentRaw,
-    jobs_recommended: jsonArrayStringFromAny(jobsRecommendedRaw),
-    jobs_applied: JSON.stringify(jobsApplied),
-    jobs_failed_to_apply: JSON.stringify(jobsFailed),
+    jobs_recommended: JSON.stringify(jobsRecommendedArr),
+    jobs_applied: JSON.stringify(jobsAppliedArr),
+    jobs_failed_to_apply: JSON.stringify(jobsFailedArr),
     intent_score: fmtInt(intent.score),
     intent_score_reasoning: intent.reasoning,
-    // DKB extras (best-effort passthrough)
-    job_id: asStr(get("job_id")),
-    company_name: asStr(get("company_name")),
-    job_role_input: asStr(get("job_role_input")),
-    num_vacancies_input: asStr(get("num_vacancies_input")),
-    city_input: asStr(get("city_input")),
-    location_input: asStr(get("location_input")),
-    salary_input: asStr(get("salary_input")),
-    qualification_input: asStr(get("qualification_input")),
+    // DKB extras (best-effort passthrough from call_output / contact)
+    job_id: asStr(callOutput?.job_id ?? contactArgs?.job_id ?? getInput("job_id")),
+    company_name: asStr(callOutput?.company_name ?? contactArgs?.company_name ?? getInput("company_name")),
+    job_role_input: asStr(contactArgs?.job_role_input ?? getInput("job_role_input")),
+    num_vacancies_input: asStr(contactArgs?.num_vacancies_input ?? getInput("num_vacancies_input")),
+    city_input: asStr(contactArgs?.city_input ?? getInput("city_input")),
+    location_input: asStr(contactArgs?.location_input ?? getInput("location_input")),
+    salary_input: asStr(contactArgs?.salary_input ?? getInput("salary_input")),
+    qualification_input: asStr(contactArgs?.qualification_input ?? getInput("qualification_input")),
     call_status: contactStatus,
     contact_attempts: asStr(contact?.contact_attempts ?? contact?.attempts ?? ""),
-    phases_reached: asStr(get("phases_reached")),
-    job_status: asStr(get("job_status")),
-    job_role_value: asStr(get("job_role_value")),
-    num_vacancies_value: asStr(get("num_vacancies_value")),
-    salary_value: asStr(get("salary_value")),
-    location_value: asStr(get("location_value")),
-    qualification_value: asStr(get("qualification_value")),
-    fields_updated: asStr(get("fields_updated")),
-    new_job_mentioned: asStr(get("new_job_mentioned")),
-    new_job_role: asStr(get("new_job_role")),
-    new_job_vacancies: asStr(get("new_job_vacancies")),
-    new_job_salary: asStr(get("new_job_salary")),
-    new_job_location: asStr(get("new_job_location")),
-    new_job_qualification: asStr(get("new_job_qualification")),
-    new_job_posted: asStr(get("new_job_posted")),
-    talent_insights_shown: asStr(get("talent_insights_shown")),
+    phases_reached: asStr(callOutput?.phases_reached ?? ""),
+    job_status: asStr(callOutput?.job_status ?? ""),
+    job_role_value: asStr(callOutput?.job_role_value ?? ""),
+    num_vacancies_value: asStr(callOutput?.num_vacancies_value ?? ""),
+    salary_value: asStr(callOutput?.salary_value ?? ""),
+    location_value: asStr(callOutput?.location_value ?? ""),
+    qualification_value: asStr(callOutput?.qualification_value ?? ""),
+    fields_updated: asStr(callOutput?.fields_updated ?? ""),
+    new_job_mentioned: asStr(callOutput?.new_job_mentioned ?? ""),
+    new_job_role: asStr(callOutput?.new_job_role ?? ""),
+    new_job_vacancies: asStr(callOutput?.new_job_vacancies ?? ""),
+    new_job_salary: asStr(callOutput?.new_job_salary ?? ""),
+    new_job_location: asStr(callOutput?.new_job_location ?? ""),
+    new_job_qualification: asStr(callOutput?.new_job_qualification ?? ""),
+    new_job_posted: asStr(callOutput?.new_job_posted ?? ""),
+    talent_insights_shown: asStr(callOutput?.talent_insights_shown ?? ""),
   };
 
   return ctx.columns.map((col) => {
