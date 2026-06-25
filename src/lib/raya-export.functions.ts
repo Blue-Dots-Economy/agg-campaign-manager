@@ -523,8 +523,6 @@ function buildRow(contact: any, lastCall: any, ctx: BuildCtx): string[] | null {
 
   const get = (k: string) => callOutput?.[k] ?? contact?.[k] ?? contactArgs?.[k] ?? getInput(k) ?? "";
 
-  const jobsApplied = asArr(get("jobs_applied"));
-  const jobsFailed = asArr(get("jobs_failed_to_apply"));
   const jobsRecommendedRaw =
     input?.recommendations
       ?? getInput("recommendations")
@@ -532,11 +530,25 @@ function buildRow(contact: any, lastCall: any, ctx: BuildCtx): string[] | null {
       ?? contactArgs?.recommendations
       ?? get("jobs_recommended");
   const jobsRecommended = asArr(jobsRecommendedRaw);
+  const recMap = recommendationLookup(jobsRecommended);
+
+  // Source priority for applied/failed: explicit API field → derive from transcript apply_job tool calls.
+  const transcriptRaw = lastCall?.call_transcript ?? lastCall?.transcript;
+  const apiApplied = asArr(get("jobs_applied"));
+  const apiFailed = asArr(get("jobs_failed_to_apply"));
+  let jobsApplied: any[] = apiApplied;
+  let jobsFailed: any[] = apiFailed;
+  if (apiApplied.length === 0 && apiFailed.length === 0) {
+    const outcomes = extractApplyOutcomes(transcriptRaw);
+    jobsApplied = outcomes.filter((o) => o.ok).map((o) => enrichJob(o.job_id, o.profile_id, recMap));
+    jobsFailed = outcomes.filter((o) => !o.ok).map((o) => enrichJob(o.job_id, o.profile_id, recMap));
+  }
   const jobsShownRaw = get("jobs_shown");
   const jobsShownFallback =
     Array.isArray(jobsShownRaw) ? jobsShownRaw.length > 0 : asArr(jobsShownRaw).length > 0 || jobsRecommended.length > 0;
   const applied = jobsApplied.length > 0;
   const triedToApply = applied || jobsFailed.length > 0;
+
   const userIntentSignal = asStr(get("user_intent"));
   const userIntentRaw = asStr(input?.user_intent ?? getInput("user_intent") ?? "");
   const engagedFallback = nonEmpty(get("primary_topic")) || nonEmpty(userIntentSignal) || jobsShownFallback;
