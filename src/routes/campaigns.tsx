@@ -502,7 +502,7 @@ function LiveBatchDetailDialog({
     } }),
     onSuccess: (r) => {
       toast.success(
-        `Appended ${r.appended} row${r.appended === 1 ? "" : "s"} to staging${r.skippedDup ? ` · ${r.skippedDup} dedup'd` : ""}.`,
+        `Appended ${r.appended} row${r.appended === 1 ? "" : "s"}; updated ${r.updated ?? 0} existing row${(r.updated ?? 0) === 1 ? "" : "s"} in staging.`,
         {
           action: {
             label: "Open sheet",
