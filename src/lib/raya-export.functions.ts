@@ -622,8 +622,8 @@ function buildRow(contact: any, lastCall: any, ctx: BuildCtx): string[] | null {
     seeker_name: seekerName,
     user_intent: userIntentRaw,
     jobs_recommended: jsonArrayStringFromAny(jobsRecommendedRaw),
-    jobs_applied: jsonArrayString(get("jobs_applied")),
-    jobs_failed_to_apply: jsonArrayString(get("jobs_failed_to_apply")),
+    jobs_applied: JSON.stringify(jobsApplied),
+    jobs_failed_to_apply: JSON.stringify(jobsFailed),
     intent_score: fmtInt(intent.score),
     intent_score_reasoning: intent.reasoning,
     // DKB extras (best-effort passthrough)
