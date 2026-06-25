@@ -677,7 +677,7 @@ export const exportBatchToStaging = createServerFn({ method: "POST" })
     const language = (lb as any)?.language ?? detected.language;
     const launchMeta: LaunchMeta = {
       campaignDay,
-      campaignDate: (lb as any)?.campaign_date ?? new Date().toISOString().slice(0, 10),
+      campaignDate: (lb as any)?.campaign_date ?? null,
       campaignType: (lb as any)?.campaign_type ?? campaignTypeFor(data.program, language, campaignDay),
       language,
       cityCampaign: (lb as any)?.city_campaign ?? detected.city,
