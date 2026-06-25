@@ -9,6 +9,7 @@ import {
   appendStagingRows,
   deleteSheetTab,
   readStagingCallIds,
+  updateStagingRows,
   writeStagingHeaders,
 } from "./sheets.server";
 import { registry, type ProgramId } from "@/programs/registry";
@@ -128,6 +129,25 @@ function jsonArrayString(v: any): string {
   return JSON.stringify(arr);
 }
 
+function jsonArrayStringFromAny(v: any): string {
+  if (v == null || v === "") return "[]";
+  if (Array.isArray(v)) return JSON.stringify(v);
+  if (typeof v === "string") {
+    const t = v.trim();
+    if (!t) return "[]";
+    try {
+      const parsed = JSON.parse(t);
+      if (Array.isArray(parsed)) return JSON.stringify(parsed);
+      if (parsed && typeof parsed === "object") return JSON.stringify([parsed]);
+    } catch {
+      /* fall through */
+    }
+    return JSON.stringify([t]);
+  }
+  if (typeof v === "object") return JSON.stringify([v]);
+  return JSON.stringify([String(v)]);
+}
+
 function jsonStringOrEmptyArray(v: any): string {
   if (v == null || v === "") return "[]";
   if (typeof v === "string") return v.trim() || "[]";
@@ -167,6 +187,10 @@ function pickLastCall(contact: any): any | null {
     return tb - ta;
   });
   return sorted[0] ?? null;
+}
+
+function pickCallTime(call: any): any {
+  return call?.call_start_time ?? call?.start_time ?? call?.call_start_time_ist ?? call?.created_at ?? call?.call_time ?? "";
 }
 
 function isCompletedCall(call: any): boolean {
@@ -229,6 +253,15 @@ function fmtDateTimeIst(v: any): string {
   const raw = stripIst(String(v ?? "")).replace(/T/, " ");
   const m = raw.match(/^(\d{4}-\d{2}-\d{2})[ T]?(\d{2}:\d{2}:\d{2})?/);
   if (m) return m[2] ? `${m[1]} ${m[2]}` : m[1];
+  const d = new Date(raw);
+  if (!Number.isFinite(d.getTime())) return raw;
+  return d.toISOString().slice(0, 19).replace("T", " ");
+}
+
+function fmtDateTimeIstFromApi(v: any): string {
+  const raw = stripIst(String(v ?? "")).replace(/T/, " ");
+  const m = raw.match(/^(\d{4}-\d{2}-\d{2})[ T]?(\d{2}:\d{2}:\d{2})?/);
+  if (m) return `${m[1]} ${m[2] ?? "00:00:00"}`;
   const d = new Date(raw);
   if (!Number.isFinite(d.getTime())) return raw;
   return d.toISOString().slice(0, 19).replace("T", " ");
@@ -304,12 +337,19 @@ interface LaunchMeta {
   batchName?: string | null;
   agentName?: string | null;
 }
+interface InputRow {
+  contact_name?: string | null;
+  recommendations?: string | null;
+  user_intent?: string | null;
+  raw?: Record<string, any> | null;
+}
 interface BuildCtx {
   columns: string[];
   program: ProgramId;
   batchName: string;
   agentName: string;
   launchMeta: LaunchMeta;
+  inputByPhone: Map<string, InputRow>;
 }
 
 function buildRow(contact: any, lastCall: any, ctx: BuildCtx): string[] | null {
@@ -330,42 +370,54 @@ function buildRow(contact: any, lastCall: any, ctx: BuildCtx): string[] | null {
   };
 
   // call-level extraction
+  const callOutput = lastCall?.call_output ?? {};
+  const contactArgs = contact?.agent_args ?? contact?.args ?? contact?.metadata ?? {};
+  const phoneRaw = asStr(contact?.contact_phone ?? contact?.phone ?? contactArgs?.phone);
+  const phone = fmtPhone(phoneRaw);
+  const input = ctx.inputByPhone.get(phone) ?? null;
+  const inputRaw = input?.raw ?? {};
+  const getInput = (k: string) => inputRaw?.[k] ?? inputRaw?.[normalize(k)] ?? "";
   const callId = asStr(lastCall?.uuid ?? lastCall?.id ?? lastCall?.execution_id ?? "");
   const callDur = Number(
     lastCall?.call_duration ?? lastCall?.duration ?? lastCall?.duration_seconds ?? 0,
   );
-  const callDateIst = stripIst(asStr(lastCall?.call_start_time_ist ?? lastCall?.call_time ?? ""));
-  const callRecording = asStr(lastCall?.call_recording_url ?? lastCall?.recording_url ?? "");
+  const callDateIst = pickCallTime(lastCall);
+  const callRecording = asStr(
+    lastCall?.call_recording_url
+      ?? lastCall?.recording_url
+      ?? lastCall?.enhanced_recording_url
+      ?? lastCall?.recording
+      ?? "",
+  );
   const finalSummary = asStr(
-    contact?.final_summary ?? contact?.summary ?? "",
+    callOutput?.final_summary ?? callOutput?.summary ?? contact?.final_summary ?? contact?.summary ?? "",
   );
   const dropReason = asStr(
-    contact?.drop_reason ?? "",
+    callOutput?.drop_reason ?? contact?.drop_reason ?? "",
   );
 
   if (!callId) return null;
 
-  // Contact-level Raya fields only. Do not use call-level args for these columns.
-  const contactArgs = contact?.agent_args ?? contact?.args ?? contact?.metadata ?? {};
-  const get = (k: string) => contact?.[k] ?? contactArgs?.[k] ?? "";
+  const get = (k: string) => callOutput?.[k] ?? contact?.[k] ?? contactArgs?.[k] ?? getInput(k) ?? "";
 
   const jobsApplied = asArr(get("jobs_applied"));
   const jobsFailed = asArr(get("jobs_failed_to_apply"));
-  const jobsRecommended = asArr(get("jobs_recommended"));
+  const jobsRecommendedRaw =
+    input?.recommendations
+      ?? getInput("recommendations")
+      ?? getInput("jobs_recommended")
+      ?? contactArgs?.recommendations
+      ?? get("jobs_recommended");
+  const jobsRecommended = asArr(jobsRecommendedRaw);
   const jobsShownRaw = get("jobs_shown");
   const jobsShownFallback =
     Array.isArray(jobsShownRaw) ? jobsShownRaw.length > 0 : asArr(jobsShownRaw).length > 0 || jobsRecommended.length > 0;
   const applied = jobsApplied.length > 0;
   const triedToApply = applied || jobsFailed.length > 0;
-  const engagedFallback = nonEmpty(get("primary_topic")) || nonEmpty(get("user_intent"));
-  // seeker_name + user_intent are intentionally left blank to match master.
-  const _seekerName = asStr(get("seeker_name") || contact?.contact_name); // captured but not exported
-  void _seekerName;
-  const userIntentRaw = asStr(get("user_intent"));
-  void userIntentRaw;
-  const phoneRaw = asStr(contact?.contact_phone ?? contact?.phone ?? get("phone"));
-  const phone = fmtPhone(phoneRaw);
-  const primaryTopic = asStr(get("primary_topic"));
+  const userIntentRaw = asStr(input?.user_intent ?? getInput("user_intent") ?? get("user_intent"));
+  const engagedFallback = nonEmpty(get("primary_topic")) || nonEmpty(userIntentRaw) || jobsShownFallback;
+  const seekerName = asStr(input?.contact_name ?? getInput("contact_name") ?? getInput("name") ?? get("seeker_name") ?? contact?.contact_name ?? contact?.name ?? "");
+  const primaryTopicFromApi = asStr(callOutput?.primary_topic ?? contact?.primary_topic ?? contactArgs?.primary_topic ?? "");
   const contactStatus = asStr(contact?.status ?? contact?.contact_status ?? "");
   const callAnswered = yesNo(get("call_answered"), callDur > 0);
   const callEngaged = yesNo(get("call_engaged"), engagedFallback);
@@ -394,8 +446,10 @@ function buildRow(contact: any, lastCall: any, ctx: BuildCtx): string[] | null {
 
   // campaign metadata — prefer the launch-time stamped values, fall back to derived.
   const campaignDate = fmtDateOnly(lm.campaignDate) || datePart(callDateIst) || new Date().toISOString().slice(0, 10);
-  const campaignType = (lm.campaignType && String(lm.campaignType)) || ctx.batchName || `${ctx.program}_${region.language || ""}`.replace(/_$/, "");
+  const dayNum = (String(lm.campaignDay ?? "").match(/\d+/) || ["1"])[0];
+  const campaignType = (lm.campaignType && String(lm.campaignType)) || `${ctx.program.toUpperCase()}_${region.language || ""}_Day${dayNum}`;
   const campaignDay = (lm.campaignDay && String(lm.campaignDay)) || "";
+  const primaryTopic = primaryTopicFromApi || (callEngaged === "Yes" || jobsShown === "Yes" ? "Job search" : "No engagement");
 
   const byCol: Record<string, string> = {
     campaign_day: campaignDay,
@@ -406,7 +460,7 @@ function buildRow(contact: any, lastCall: any, ctx: BuildCtx): string[] | null {
     phone,
     contact_phone: phone,
     call_duration_seconds: fmtInt(callDur),
-    call_datetime_ist: fmtDateTimeIst(callDateIst),
+    call_datetime_ist: fmtDateTimeIstFromApi(callDateIst),
     call_outcome: outcome,
     call_answered: callAnswered,
     call_engaged: callEngaged,
@@ -421,10 +475,9 @@ function buildRow(contact: any, lastCall: any, ctx: BuildCtx): string[] | null {
     tried_to_apply: triedToApply ? "Yes" : "No",
     drop_reason: dropReason,
     city_campaign: region.city,
-    // Master leaves these blank — keep consistent.
-    seeker_name: "",
-    user_intent: "",
-    jobs_recommended: jsonArrayString(get("jobs_recommended")),
+    seeker_name: seekerName,
+    user_intent: userIntentRaw,
+    jobs_recommended: jsonArrayStringFromAny(jobsRecommendedRaw),
     jobs_applied: jsonArrayString(get("jobs_applied")),
     jobs_failed_to_apply: jsonArrayString(get("jobs_failed_to_apply")),
     intent_score: fmtInt(intent.score),
