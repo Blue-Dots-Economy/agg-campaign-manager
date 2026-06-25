@@ -154,6 +154,127 @@ function jsonStringOrEmptyArray(v: any): string {
   try { return JSON.stringify(v); } catch { return "[]"; }
 }
 
+// ---------- transcript-based apply_job parsing ----------
+function parseToolArgs(raw: any): Record<string, any> {
+  if (raw == null) return {};
+  if (typeof raw === "object") return raw as Record<string, any>;
+  const s = String(raw);
+  try {
+    const p = JSON.parse(s);
+    if (p && typeof p === "object") return p as Record<string, any>;
+  } catch { /* fall through */ }
+  const out: Record<string, any> = {};
+  // regex fallback — job_id values can contain spaces and parens, e.g. "9988683683_ITI (Other)"
+  const mj = s.match(/["']?job_id["']?\s*[:=]\s*["']([^"']+)["']/i);
+  const mp = s.match(/["']?profile_id["']?\s*[:=]\s*["']([^"']+)["']/i);
+  if (mj) out.job_id = mj[1];
+  if (mp) out.profile_id = mp[1];
+  return out;
+}
+
+function isErrorToolResult(result: any): boolean {
+  if (result == null) return false;
+  if (typeof result === "string") {
+    const t = result.toLowerCase();
+    return /\b(error|failed|fail|404|not.?found|exception|invalid)\b/.test(t);
+  }
+  if (typeof result === "object") {
+    const r: any = result;
+    if (r.error || r.errors) return true;
+    if (typeof r.status === "number" && r.status >= 400) return true;
+    if (typeof r.status_code === "number" && r.status_code >= 400) return true;
+    const ok = r.ok ?? r.success;
+    if (ok === false) return true;
+    try { return isErrorToolResult(JSON.stringify(r)); } catch { return false; }
+  }
+  return false;
+}
+
+interface ApplyOutcome { job_id: string; profile_id: string; ok: boolean }
+
+function extractApplyOutcomes(transcript: any): ApplyOutcome[] {
+  const out: ApplyOutcome[] = [];
+  if (!transcript) return out;
+  let items: any[] = [];
+  if (Array.isArray(transcript)) items = transcript;
+  else if (typeof transcript === "string") {
+    try {
+      const p = JSON.parse(transcript);
+      if (Array.isArray(p)) items = p;
+    } catch { return out; }
+  } else return out;
+
+  const resultsByCallId = new Map<string, any>();
+  for (const it of items) {
+    const role = String(it?.role ?? it?.type ?? "").toLowerCase();
+    const tcid = it?.tool_call_id ?? it?.id;
+    if ((role === "tool" || role === "tool_result" || it?.tool_result) && tcid) {
+      resultsByCallId.set(String(tcid), it?.content ?? it?.result ?? it?.output ?? it);
+    }
+  }
+
+  for (let i = 0; i < items.length; i++) {
+    const it = items[i];
+    const toolCalls: any[] = it?.tool_calls ?? (it?.tool_call ? [it.tool_call] : []);
+    const inlineName = it?.tool_name ?? it?.name ?? it?.function?.name;
+    const candidates: Array<{ name: string; args: any; id?: string; inlineResult?: any }> = [];
+    for (const tc of toolCalls) {
+      const name = tc?.function?.name ?? tc?.name ?? tc?.tool_name ?? "";
+      const args = tc?.function?.arguments ?? tc?.arguments ?? tc?.args ?? tc?.input;
+      candidates.push({ name, args, id: tc?.id ?? tc?.tool_call_id });
+    }
+    if (inlineName && (it?.arguments || it?.args || it?.input)) {
+      candidates.push({
+        name: inlineName,
+        args: it?.arguments ?? it?.args ?? it?.input,
+        id: it?.id ?? it?.tool_call_id,
+        inlineResult: it?.result ?? it?.output,
+      });
+    }
+    for (const cand of candidates) {
+      if (String(cand.name).toLowerCase() !== "apply_job") continue;
+      const a = parseToolArgs(cand.args);
+      const jobId = String(a.job_id ?? a.jobId ?? "").trim();
+      const profileId = String(a.profile_id ?? a.profileId ?? "").trim();
+      if (!jobId) continue;
+      let result: any = cand.inlineResult;
+      if (result == null && cand.id) result = resultsByCallId.get(String(cand.id));
+      if (result == null) {
+        const next = items[i + 1];
+        const nrole = String(next?.role ?? next?.type ?? "").toLowerCase();
+        if (next && (nrole === "tool" || nrole === "tool_result" || next?.tool_result)) {
+          result = next?.content ?? next?.result ?? next?.output ?? next;
+        }
+      }
+      out.push({ job_id: jobId, profile_id: profileId, ok: !isErrorToolResult(result) });
+    }
+  }
+  return out;
+}
+
+function recommendationLookup(recs: any[]): Map<string, any> {
+  const map = new Map<string, any>();
+  for (const r of recs) {
+    if (!r || typeof r !== "object") continue;
+    const id = String((r as any).job_id ?? (r as any).id ?? "").trim();
+    if (id) map.set(id, r);
+  }
+  return map;
+}
+
+function enrichJob(jobId: string, profileId: string, recMap: Map<string, any>): Record<string, any> {
+  const rec = recMap.get(jobId) ?? {};
+  const obj: Record<string, any> = { job_id: jobId };
+  if (profileId) obj.profile_id = profileId;
+  if (rec.role ?? rec.job_role) obj.role = rec.role ?? rec.job_role;
+  if (rec.company ?? rec.company_name) obj.company = rec.company ?? rec.company_name;
+  if (rec.salary != null) obj.salary = rec.salary;
+  if (rec.location != null) obj.location = rec.location;
+  const vac = rec.vacancy ?? rec.vacancies ?? rec.num_vacancies;
+  if (vac != null) obj.vacancy = vac;
+  return obj;
+}
+
 function nonEmpty(v: any): boolean {
   if (v == null || v === "") return false;
   if (Array.isArray(v)) return v.length > 0;
@@ -402,8 +523,6 @@ function buildRow(contact: any, lastCall: any, ctx: BuildCtx): string[] | null {
 
   const get = (k: string) => callOutput?.[k] ?? contact?.[k] ?? contactArgs?.[k] ?? getInput(k) ?? "";
 
-  const jobsApplied = asArr(get("jobs_applied"));
-  const jobsFailed = asArr(get("jobs_failed_to_apply"));
   const jobsRecommendedRaw =
     input?.recommendations
       ?? getInput("recommendations")
@@ -411,11 +530,25 @@ function buildRow(contact: any, lastCall: any, ctx: BuildCtx): string[] | null {
       ?? contactArgs?.recommendations
       ?? get("jobs_recommended");
   const jobsRecommended = asArr(jobsRecommendedRaw);
+  const recMap = recommendationLookup(jobsRecommended);
+
+  // Source priority for applied/failed: explicit API field → derive from transcript apply_job tool calls.
+  const transcriptRaw = lastCall?.call_transcript ?? lastCall?.transcript;
+  const apiApplied = asArr(get("jobs_applied"));
+  const apiFailed = asArr(get("jobs_failed_to_apply"));
+  let jobsApplied: any[] = apiApplied;
+  let jobsFailed: any[] = apiFailed;
+  if (apiApplied.length === 0 && apiFailed.length === 0) {
+    const outcomes = extractApplyOutcomes(transcriptRaw);
+    jobsApplied = outcomes.filter((o) => o.ok).map((o) => enrichJob(o.job_id, o.profile_id, recMap));
+    jobsFailed = outcomes.filter((o) => !o.ok).map((o) => enrichJob(o.job_id, o.profile_id, recMap));
+  }
   const jobsShownRaw = get("jobs_shown");
   const jobsShownFallback =
     Array.isArray(jobsShownRaw) ? jobsShownRaw.length > 0 : asArr(jobsShownRaw).length > 0 || jobsRecommended.length > 0;
   const applied = jobsApplied.length > 0;
   const triedToApply = applied || jobsFailed.length > 0;
+
   const userIntentSignal = asStr(get("user_intent"));
   const userIntentRaw = asStr(input?.user_intent ?? getInput("user_intent") ?? "");
   const engagedFallback = nonEmpty(get("primary_topic")) || nonEmpty(userIntentSignal) || jobsShownFallback;
@@ -489,8 +622,8 @@ function buildRow(contact: any, lastCall: any, ctx: BuildCtx): string[] | null {
     seeker_name: seekerName,
     user_intent: userIntentRaw,
     jobs_recommended: jsonArrayStringFromAny(jobsRecommendedRaw),
-    jobs_applied: jsonArrayString(get("jobs_applied")),
-    jobs_failed_to_apply: jsonArrayString(get("jobs_failed_to_apply")),
+    jobs_applied: JSON.stringify(jobsApplied),
+    jobs_failed_to_apply: JSON.stringify(jobsFailed),
     intent_score: fmtInt(intent.score),
     intent_score_reasoning: intent.reasoning,
     // DKB extras (best-effort passthrough)
