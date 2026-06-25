@@ -376,7 +376,9 @@ function buildRow(contact: any, lastCall: any, ctx: BuildCtx): string[] | null {
   const phone = fmtPhone(phoneRaw);
   const input = ctx.inputByPhone.get(phone) ?? null;
   const inputRaw = input?.raw ?? {};
-  const getInput = (k: string) => inputRaw?.[k] ?? inputRaw?.[normalize(k)] ?? "";
+  const inputNorm = new Map<string, any>();
+  Object.entries(inputRaw).forEach(([k, v]) => inputNorm.set(normalize(k), v));
+  const getInput = (k: string) => inputRaw?.[k] ?? inputRaw?.[normalize(k)] ?? inputNorm.get(normalize(k)) ?? "";
   const callId = asStr(lastCall?.uuid ?? lastCall?.id ?? lastCall?.execution_id ?? "");
   const callDur = Number(
     lastCall?.call_duration ?? lastCall?.duration ?? lastCall?.duration_seconds ?? 0,
@@ -636,10 +638,12 @@ export const exportBatchToStaging = createServerFn({ method: "POST" })
     try { await deleteSheetTab(sheetId, "Staging"); } catch { /* ignore */ }
 
     let existing: Set<string> = new Set();
+    let rowByCallId: Map<string, number> = new Map();
     let hasHeaders = false;
     try {
       const r = await readStagingCallIds(sheetId, tab);
       existing = r.existing;
+      rowByCallId = r.rowByCallId;
       hasHeaders = r.hasHeaders;
       if (r.hasHeaders && r.headers.join("\u001f") !== columns.join("\u001f")) {
         await writeStagingHeaders(sheetId, tab, columns);
@@ -662,47 +666,100 @@ export const exportBatchToStaging = createServerFn({ method: "POST" })
       .select("*")
       .eq("batch_id", data.batchId)
       .maybeSingle();
-    const launchMeta: LaunchMeta = {
-      campaignDay: (lb as any)?.campaign_day ?? null,
-      campaignDate: (lb as any)?.campaign_date ?? null,
-      campaignType: (lb as any)?.campaign_type ?? null,
-      language: (lb as any)?.language ?? null,
-      cityCampaign: (lb as any)?.city_campaign ?? null,
-      region: (lb as any)?.region ?? null,
-      batchName: (lb as any)?.batch_name ?? null,
-      agentName: (lb as any)?.agent_name ?? null,
-    };
-
     const contacts = await fetchAllBatchContacts(data.batchId);
+    const sampleContact = contacts.find((contact) => pickLastCall(contact)) ?? contacts[0] ?? {};
+    const detected = detectRegionForContact(sampleContact, {
+      batchName: data.batchName ?? (lb as any)?.batch_name ?? "",
+      agentName: data.agentName ?? (lb as any)?.agent_name ?? "",
+      program: data.program,
+    });
+    const campaignDay = (lb as any)?.campaign_day ?? await nextCampaignDay(c, data.program);
+    const language = (lb as any)?.language ?? detected.language;
+    const launchMeta: LaunchMeta = {
+      campaignDay,
+      campaignDate: (lb as any)?.campaign_date ?? new Date().toISOString().slice(0, 10),
+      campaignType: (lb as any)?.campaign_type ?? campaignTypeFor(data.program, language, campaignDay),
+      language,
+      cityCampaign: (lb as any)?.city_campaign ?? detected.city,
+      region: (lb as any)?.region ?? detected.region,
+      batchName: (lb as any)?.batch_name ?? data.batchName ?? null,
+      agentName: (lb as any)?.agent_name ?? data.agentName ?? null,
+    };
+    if (!(lb as any)?.batch_id || !(lb as any)?.campaign_day || !(lb as any)?.campaign_type) {
+      await c.from("launched_batches").upsert({
+        batch_id: data.batchId,
+        program: data.program,
+        agent_name: launchMeta.agentName,
+        batch_name: launchMeta.batchName,
+        campaign_day: launchMeta.campaignDay,
+        campaign_date: launchMeta.campaignDate,
+        campaign_type: launchMeta.campaignType,
+        language: launchMeta.language,
+        city_campaign: launchMeta.cityCampaign,
+        region: launchMeta.region,
+        updated_at: new Date().toISOString(),
+      }, { onConflict: "batch_id" });
+    }
+
+    const inputByPhone = new Map<string, InputRow>();
+    try {
+      const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+      const { data: inputRows } = await supabaseAdmin
+        .from("launched_batch_inputs")
+        .select("normalized_phone,contact_name,recommendations,user_intent,raw")
+        .eq("batch_id", data.batchId);
+      for (const r of inputRows ?? []) {
+        inputByPhone.set(String((r as any).normalized_phone), r as InputRow);
+      }
+    } catch (e) {
+      console.warn("[raya-export] input rows unavailable", e instanceof Error ? e.message : String(e));
+    }
+
     const ctx: BuildCtx = {
       columns,
       program: data.program,
       batchName: data.batchName ?? launchMeta.batchName ?? "",
       agentName: data.agentName ?? launchMeta.agentName ?? "",
       launchMeta,
+      inputByPhone,
     };
 
     const rows: string[][] = [];
+    const updates: Array<{ rowNumber: number; values: string[] }> = [];
+    const allRowsForStatus: string[][] = [];
     let skippedNoCall = 0;
     let skippedDup = 0;
     let skippedNoId = 0;
     for (const contact of contacts) {
-      const lastCall = pickLastCall(contact);
+      let lastCall = pickLastCall(contact);
       if (!lastCall) { skippedNoCall++; continue; }
+      const callIdForDetail = asStr(lastCall?.uuid ?? lastCall?.id ?? lastCall?.execution_id ?? "");
+      lastCall = mergeCallDetail(lastCall, await fetchCallDetail(callIdForDetail));
+      await delay(350);
       const row = buildRow(contact, lastCall, ctx);
       if (!row) { skippedNoId++; continue; }
+      allRowsForStatus.push(row);
       // call_id position in columns
       const idIdx = columns.findIndex((c) => normalize(c) === "call_id");
       const callId = idIdx >= 0 ? row[idIdx] : "";
       if (!callId) { skippedNoId++; continue; }
-      if (existing.has(callId)) { skippedDup++; continue; }
+      if (existing.has(callId)) {
+        skippedDup++;
+        const rowNumber = rowByCallId.get(callId);
+        if (rowNumber) updates.push({ rowNumber, values: row });
+        continue;
+      }
       existing.add(callId);
       rows.push(row);
     }
 
     let appended = 0;
+    let updated = 0;
     if (rows.length > 0) {
       appended = await appendStagingRows(sheetId, tab, rows);
+    }
+    if (updates.length > 0) {
+      updated = await updateStagingRows(sheetId, tab, updates);
     }
 
     await c.from("program_export_targets")
@@ -711,6 +768,7 @@ export const exportBatchToStaging = createServerFn({ method: "POST" })
 
     return {
       appended,
+      updated,
       totalContacts: contacts.length,
       completed: contacts.length - skippedNoCall,
       skippedNoCall,
@@ -719,7 +777,13 @@ export const exportBatchToStaging = createServerFn({ method: "POST" })
       sheetId,
       tab,
       header: columns,
-      populatedColumns: columns.filter((_, i) => rows.some((row) => String(row[i] ?? "").trim() !== "")),
+      populatedColumns: columns.filter((_, i) => allRowsForStatus.some((row) => String(row[i] ?? "").trim() !== "")),
+      emptyColumns: columns.filter((_, i) => !allRowsForStatus.some((row) => String(row[i] ?? "").trim() !== "")),
+      rayaFields: {
+        contact: Object.keys(sampleContact ?? {}).sort(),
+        call: Object.keys(pickLastCall(sampleContact) ?? {}).sort(),
+        call_output: Object.keys((pickLastCall(sampleContact) as any)?.call_output ?? {}).sort(),
+      },
       sheetUrl: `https://docs.google.com/spreadsheets/d/${sheetId}/edit`,
     };
   });
