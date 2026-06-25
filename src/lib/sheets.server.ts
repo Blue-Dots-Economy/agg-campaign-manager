@@ -67,7 +67,7 @@ const RW_SCOPE = "https://www.googleapis.com/auth/spreadsheets";
 export async function readStagingCallIds(
   sheetId: string,
   tab: string,
-): Promise<{ existing: Set<string>; hasHeaders: boolean; headers: string[] }> {
+): Promise<{ existing: Set<string>; rowByCallId: Map<string, number>; hasHeaders: boolean; headers: string[] }> {
   const token = await getAccessToken(RW_SCOPE);
 
   // Ensure the tab exists; create if missing.
@@ -90,7 +90,7 @@ export async function readStagingCallIds(
       const text = await addRes.text();
       throw new Error(`Failed to create tab '${tab}' (${addRes.status}): ${text.slice(0, 300)}`);
     }
-    return { existing: new Set(), hasHeaders: false, headers: [] };
+    return { existing: new Set(), rowByCallId: new Map(), hasHeaders: false, headers: [] };
   }
 
   const tabPrefix = quoteTab(tab);
@@ -99,21 +99,27 @@ export async function readStagingCallIds(
   if (!headerRes.ok) throw new Error(`Sheets header read failed (${headerRes.status})`);
   const headerJson = (await headerRes.json()) as { values?: string[][] };
   const headers = (headerJson.values?.[0] ?? []).map((h) => String(h ?? "").trim());
-  if (headers.length === 0) return { existing: new Set(), hasHeaders: false, headers: [] };
+  if (headers.length === 0) return { existing: new Set(), rowByCallId: new Map(), hasHeaders: false, headers: [] };
   const norm = headers.map(normalizeHeader);
   const callIdCol = norm.indexOf("call_id");
-  if (callIdCol < 0) return { existing: new Set(), hasHeaders: true, headers };
+  if (callIdCol < 0) return { existing: new Set(), rowByCallId: new Map(), hasHeaders: true, headers };
   const letter = colLetter(callIdCol);
   const colUrl = `https://sheets.googleapis.com/v4/spreadsheets/${sheetId}/values/${tabPrefix}${letter}2:${letter}200000`;
   const colRes = await fetch(colUrl, { headers: { authorization: `Bearer ${token}` } });
   if (!colRes.ok) throw new Error(`Sheets call_id read failed (${colRes.status})`);
   const colJson = (await colRes.json()) as { values?: unknown[][] };
   const existing = new Set<string>();
+  const rowByCallId = new Map<string, number>();
   for (const r of colJson.values ?? []) {
+    const rowNumber = rowByCallId.size + 2;
     const v = (r ?? [])[0];
-    if (v != null && String(v).trim()) existing.add(String(v).trim());
+    if (v != null && String(v).trim()) {
+      const callId = String(v).trim();
+      existing.add(callId);
+      rowByCallId.set(callId, rowNumber);
+    }
   }
-  return { existing, hasHeaders: true, headers };
+  return { existing, rowByCallId, hasHeaders: true, headers };
 }
 
 /** Write the header row to a tab (used when staging tab is empty). */
@@ -179,6 +185,35 @@ export async function appendStagingRows(
   if (!res.ok) {
     const text = await res.text();
     throw new Error(`Sheets append failed (${res.status}): ${text.slice(0, 300)}`);
+  }
+  return rows.length;
+}
+
+/** Update existing staging rows by exact sheet row number. */
+export async function updateStagingRows(
+  sheetId: string,
+  tab: string,
+  rows: Array<{ rowNumber: number; values: string[] }>,
+): Promise<number> {
+  if (rows.length === 0) return 0;
+  const token = await getAccessToken(RW_SCOPE);
+  const tabPrefix = quoteTab(tab);
+  const data = rows.map((row) => ({
+    range: `${tabPrefix}A${row.rowNumber}:${colLetter(row.values.length - 1)}${row.rowNumber}`,
+    majorDimension: "ROWS",
+    values: [row.values],
+  }));
+  const res = await fetch(
+    `https://sheets.googleapis.com/v4/spreadsheets/${sheetId}/values:batchUpdate`,
+    {
+      method: "POST",
+      headers: { authorization: `Bearer ${token}`, "content-type": "application/json" },
+      body: JSON.stringify({ valueInputOption: "RAW", data }),
+    },
+  );
+  if (!res.ok) {
+    const text = await res.text();
+    throw new Error(`Sheets row update failed (${res.status}): ${text.slice(0, 300)}`);
   }
   return rows.length;
 }
