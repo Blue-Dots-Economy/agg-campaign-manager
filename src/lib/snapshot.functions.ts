@@ -143,7 +143,7 @@ export async function performSync(program: ProgramId, opts?: { force?: boolean }
         .maybeSingle();
       if (state && state.status === "syncing") {
         const startedAgoMs = Date.now() - new Date(state.updated_at as string).getTime();
-        if (startedAgoMs < 10 * 60_000) {
+        if (startedAgoMs < 15 * 60_000) {
           return {
             ok: true,
             program,
@@ -154,8 +154,14 @@ export async function performSync(program: ProgramId, opts?: { force?: boolean }
             skipped: true,
           };
         }
+        // Lock is stale — reset it so this run proceeds cleanly
+        await client
+          .from("program_sync_state")
+          .update({ status: "ok", updated_at: new Date().toISOString() })
+          .eq("program", program);
       }
     }
+
 
     const runStart = new Date().toISOString();
     await client
