@@ -235,7 +235,7 @@ export async function performSync(program: ProgramId, opts?: { force?: boolean }
               effectiveTabForConn = effectiveTab;
               if (rows.length === 0) break;
 
-              const pageRows: typeof allRows = [];
+              const pageRows: UpsertRow[] = [];
               for (let i = 0; i < rows.length; i++) {
                 const mapped = mapRow(headers, rows[i]);
                 const callId = mapped.call_id?.trim() || `${c.id}:${pageStart - 2 + i}`;
