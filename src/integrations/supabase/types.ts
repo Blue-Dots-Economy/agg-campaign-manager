@@ -331,27 +331,16 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      get_program_aggregate_payload:
-        | { Args: { _program: string }; Returns: Json }
-        | {
-            Args: {
-              _date_from?: string
-              _date_to?: string
-              _program: string
-              _state?: string
-            }
-            Returns: Json
-          }
-        | {
-            Args: {
-              _campaign_type?: string
-              _date_from?: string
-              _date_to?: string
-              _program: string
-              _state?: string
-            }
-            Returns: Json
-          }
+      get_program_aggregate_payload: {
+        Args: {
+          _campaign_type?: string
+          _date_from?: string
+          _date_to?: string
+          _program: string
+          _state?: string
+        }
+        Returns: Json
+      }
       get_program_aggregates:
         | { Args: { _program: string }; Returns: Json }
         | {
