@@ -277,44 +277,50 @@ export async function performSync(program: ProgramId, opts?: { force?: boolean }
     // existing rows are updated in place. synced_at is refreshed for every
     // row that appeared in the sheet on this run, which is what we use to
     // reconcile deletions below.
-    const BATCH = 500;
-    for (let i = 0; i < allRows.length; i += BATCH) {
-      const slice = allRows.slice(i, i + BATCH);
-      const { error } = await client
-        .from("call_rows")
-        .upsert(slice, { onConflict: "program,call_id" });
-      if (error) {
-        errors.push({ id: "_upsert", name: "snapshot", message: error.message });
-        break;
+    const BATCH = 2000;
+    let completedRows = 0;
+    let count: number | null = null;
+    let lastSyncedAt = new Date().toISOString();
+    try {
+      for (let i = 0; i < allRows.length; i += BATCH) {
+        const slice = allRows.slice(i, i + BATCH);
+        const { error } = await client
+          .from("call_rows")
+          .upsert(slice, { onConflict: "program,call_id" });
+        if (error) {
+          errors.push({ id: "_upsert", name: "snapshot", message: error.message });
+          break;
+        }
+        completedRows += slice.length;
       }
-    }
 
-    // Reconcile deletions: rows that weren't touched in this run are no longer
-    // in the sheet. Only do this when the run actually fetched data without
-    // upsert errors, so a transient sheet failure can't wipe the snapshot.
-    if (errors.length === 0 && allRows.length > 0) {
-      await client
+      // Reconcile deletions: rows that weren't touched in this run are no longer
+      // in the sheet. Only do this when the run actually fetched data without
+      // upsert errors, so a transient sheet failure can't wipe the snapshot.
+      if (errors.length === 0 && allRows.length > 0) {
+        await client
+          .from("call_rows")
+          .delete()
+          .eq("program", program)
+          .lt("synced_at", runStart);
+      }
+    } finally {
+      const { count: c } = await client
         .from("call_rows")
-        .delete()
-        .eq("program", program)
-        .lt("synced_at", runStart);
+        .select("id", { head: true, count: "exact" })
+        .eq("program", program);
+      count = c ?? null;
+      lastSyncedAt = new Date().toISOString();
+      await client.from("program_sync_state").upsert({
+        program,
+        last_synced_at: lastSyncedAt,
+        row_count: count ?? completedRows,
+        status: errors.length > 0 ? "partial" : "ok",
+        last_error: errors.length > 0 ? errors[0].message : null,
+        updated_at: lastSyncedAt,
+      });
     }
 
-    // Final row count from the table itself (covers both upsert and delete).
-    const { count } = await client
-      .from("call_rows")
-      .select("id", { head: true, count: "exact" })
-      .eq("program", program);
-
-    const lastSyncedAt = new Date().toISOString();
-    await client.from("program_sync_state").upsert({
-      program,
-      last_synced_at: lastSyncedAt,
-      row_count: count ?? allRows.length,
-      status: errors.length > 0 ? "partial" : "ok",
-      last_error: errors.length > 0 ? errors[0].message : null,
-      updated_at: lastSyncedAt,
-    });
 
     return {
       ok: errors.length === 0,
