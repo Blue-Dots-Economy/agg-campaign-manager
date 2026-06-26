@@ -225,6 +225,7 @@ export async function performSync(program: ProgramId, opts?: { force?: boolean }
     let completedRows = 0;
     let count: number | null = null;
     let lastSyncedAt = new Date().toISOString();
+    let statusWritten = false;
 
     try {
       if (process.env.GOOGLE_SERVICE_ACCOUNT_JSON && list.length > 0) {
