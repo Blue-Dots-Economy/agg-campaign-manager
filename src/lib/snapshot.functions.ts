@@ -133,40 +133,46 @@ export async function performSync(program: ProgramId, opts?: { force?: boolean }
   const p = (async (): Promise<SyncResult> => {
     const client = sb();
 
-    // Concurrent-run guard: if another sync started < 10 min ago and is still
-    // marked "syncing", skip rather than stack.
-    if (!opts?.force) {
-      const { data: state } = await client
+    const runStart = new Date().toISOString();
+    const staleThresholdIso = new Date(Date.now() - 15 * 60_000).toISOString();
+
+    // Atomic lock claim. A single conditional UPDATE either flips status to
+    // "syncing" (we won the lock) or matches zero rows (someone else holds a
+    // fresh lock). PostgreSQL re-checks the WHERE predicate after row-locking,
+    // so only ONE concurrent caller can win — no check-then-act race.
+    // We claim if the row is NOT currently "syncing", OR its lock is stale
+    // (updated_at older than 15 min — a crashed/stuck previous run).
+    {
+      // Ensure the row exists so the conditional UPDATE has something to match.
+      await client
         .from("program_sync_state")
-        .select("status, updated_at, last_synced_at, row_count")
+        .upsert({ program }, { onConflict: "program", ignoreDuplicates: true });
+
+      const { data: claimed, error: claimErr } = await client
+        .from("program_sync_state")
+        .update({ status: "syncing", updated_at: runStart })
         .eq("program", program)
-        .maybeSingle();
-      if (state && state.status === "syncing") {
-        const startedAgoMs = Date.now() - new Date(state.updated_at as string).getTime();
-        if (startedAgoMs < 15 * 60_000) {
-          return {
-            ok: true,
-            program,
-            rowCount: Number(state.row_count ?? 0),
-            connectionCount: 0,
-            errors: [],
-            lastSyncedAt: (state.last_synced_at as string) ?? new Date().toISOString(),
-            skipped: true,
-          };
-        }
-        // Lock is stale — reset it so this run proceeds cleanly
-        await client
+        .or(`status.neq.syncing,updated_at.lt.${staleThresholdIso}`)
+        .select("program, last_synced_at, row_count");
+
+      if (claimErr || !claimed || claimed.length === 0) {
+        // Another sync holds a fresh lock — skip cleanly instead of stacking.
+        const { data: cur } = await client
           .from("program_sync_state")
-          .update({ status: "ok", updated_at: new Date().toISOString() })
-          .eq("program", program);
+          .select("last_synced_at, row_count")
+          .eq("program", program)
+          .maybeSingle();
+        return {
+          ok: true,
+          program,
+          rowCount: Number(cur?.row_count ?? 0),
+          connectionCount: 0,
+          errors: [],
+          lastSyncedAt: (cur?.last_synced_at as string) ?? new Date().toISOString(),
+          skipped: true,
+        };
       }
     }
-
-
-    const runStart = new Date().toISOString();
-    await client
-      .from("program_sync_state")
-      .upsert({ program, status: "syncing", updated_at: runStart });
 
     const { data: conns } = await client
       .from("sheet_connections")
