@@ -343,22 +343,38 @@ export async function performSync(program: ProgramId, opts?: { force?: boolean }
           .eq("program", program)
           .lt("synced_at", runStart);
       }
-    } finally {
-      const { count: cnt } = await client
-        .from("call_rows")
-        .select("id", { head: true, count: "exact" })
-        .eq("program", program);
-      count = cnt ?? null;
+
+      // Cheap, eager closeout — write status BEFORE any heavy work so a
+      // near-limit runtime kill can't leave the lock stuck at "syncing".
+      // Use completedRows (already tracked) instead of an expensive exact count.
+      count = completedRows;
       lastSyncedAt = new Date().toISOString();
+      statusWritten = true;
       await client.from("program_sync_state").upsert({
         program,
         last_synced_at: lastSyncedAt,
-        row_count: count ?? completedRows,
+        row_count: completedRows,
         status: errors.length > 0 ? "partial" : "ok",
         last_error: errors.length > 0 ? errors[0].message : null,
         updated_at: lastSyncedAt,
       });
+    } finally {
+      // Safety net: only if the eager write above didn't run (e.g. an exception
+      // before reconcile). Keeps the lock from sticking at "syncing".
+      if (!statusWritten) {
+        lastSyncedAt = new Date().toISOString();
+        await client.from("program_sync_state").upsert({
+          program,
+          last_synced_at: lastSyncedAt,
+          row_count: completedRows,
+          status: errors.length > 0 ? "partial" : "ok",
+          last_error: errors.length > 0 ? errors[0].message : null,
+          updated_at: lastSyncedAt,
+        });
+      }
     }
+
+
 
 
     return {
