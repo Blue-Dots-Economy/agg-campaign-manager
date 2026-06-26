@@ -328,7 +328,102 @@ export type Database = {
       }
     }
     Views: {
-      [_ in never]: never
+      kkb_grid: {
+        Row: {
+          applications_count: number | null
+          applied_to_job: string | null
+          call_answered: string | null
+          call_datetime_ist: string | null
+          call_duration_seconds: number | null
+          call_engaged: string | null
+          call_id: string | null
+          call_language: string | null
+          call_outcome: string | null
+          call_recording_url: string | null
+          call_transcript: string | null
+          campaign_date: string | null
+          campaign_day: string | null
+          campaign_type: string | null
+          city_campaign: string | null
+          drop_reason: string | null
+          final_summary: string | null
+          intent_score: number | null
+          intent_score_reasoning: string | null
+          jobs_applied: string | null
+          jobs_failed_to_apply: string | null
+          jobs_recommended: string | null
+          jobs_shown: string | null
+          language: string | null
+          phone: string | null
+          primary_topic: string | null
+          seeker_name: string | null
+          tried_to_apply: string | null
+          user_intent: string | null
+        }
+        Insert: {
+          applications_count?: number | null
+          applied_to_job?: never
+          call_answered?: never
+          call_datetime_ist?: never
+          call_duration_seconds?: number | null
+          call_engaged?: never
+          call_id?: string | null
+          call_language?: never
+          call_outcome?: string | null
+          call_recording_url?: never
+          call_transcript?: never
+          campaign_date?: string | null
+          campaign_day?: string | null
+          campaign_type?: string | null
+          city_campaign?: string | null
+          drop_reason?: string | null
+          final_summary?: never
+          intent_score?: number | null
+          intent_score_reasoning?: never
+          jobs_applied?: never
+          jobs_failed_to_apply?: never
+          jobs_recommended?: never
+          jobs_shown?: never
+          language?: string | null
+          phone?: string | null
+          primary_topic?: never
+          seeker_name?: never
+          tried_to_apply?: never
+          user_intent?: never
+        }
+        Update: {
+          applications_count?: number | null
+          applied_to_job?: never
+          call_answered?: never
+          call_datetime_ist?: never
+          call_duration_seconds?: number | null
+          call_engaged?: never
+          call_id?: string | null
+          call_language?: never
+          call_outcome?: string | null
+          call_recording_url?: never
+          call_transcript?: never
+          campaign_date?: string | null
+          campaign_day?: string | null
+          campaign_type?: string | null
+          city_campaign?: string | null
+          drop_reason?: string | null
+          final_summary?: never
+          intent_score?: number | null
+          intent_score_reasoning?: never
+          jobs_applied?: never
+          jobs_failed_to_apply?: never
+          jobs_recommended?: never
+          jobs_shown?: never
+          language?: string | null
+          phone?: string | null
+          primary_topic?: never
+          seeker_name?: never
+          tried_to_apply?: never
+          user_intent?: never
+        }
+        Relationships: []
+      }
     }
     Functions: {
       get_program_aggregate_payload: {
