@@ -220,7 +220,7 @@ export async function performSync(program: ProgramId, opts?: { force?: boolean }
     };
 
 
-    const BATCH = 2000;
+    const BATCH = 500;
     const PAGE = 10000;
     let completedRows = 0;
     let count: number | null = null;
