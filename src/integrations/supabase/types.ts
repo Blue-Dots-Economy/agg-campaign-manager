@@ -342,10 +342,30 @@ export type Database = {
             }
             Returns: Json
           }
+        | {
+            Args: {
+              _campaign_type?: string
+              _date_from?: string
+              _date_to?: string
+              _program: string
+              _state?: string
+            }
+            Returns: Json
+          }
       get_program_aggregates:
         | { Args: { _program: string }; Returns: Json }
         | {
             Args: {
+              _date_from?: string
+              _date_to?: string
+              _program: string
+              _state?: string
+            }
+            Returns: Json
+          }
+        | {
+            Args: {
+              _campaign_type?: string
               _date_from?: string
               _date_to?: string
               _program: string
@@ -364,10 +384,30 @@ export type Database = {
             }
             Returns: Json
           }
+        | {
+            Args: {
+              _campaign_type?: string
+              _date_from?: string
+              _date_to?: string
+              _program: string
+              _state?: string
+            }
+            Returns: Json
+          }
       get_program_metrics_raw:
         | { Args: { _program: string }; Returns: Json }
         | {
             Args: {
+              _date_from?: string
+              _date_to?: string
+              _program: string
+              _state?: string
+            }
+            Returns: Json
+          }
+        | {
+            Args: {
+              _campaign_type?: string
               _date_from?: string
               _date_to?: string
               _program: string
