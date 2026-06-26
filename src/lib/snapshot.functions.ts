@@ -134,7 +134,11 @@ export async function performSync(program: ProgramId, opts?: { force?: boolean }
     const client = sb();
 
     const runStart = new Date().toISOString();
-    const staleThresholdIso = new Date(Date.now() - 15 * 60_000).toISOString();
+    // 4-min stale threshold. A healthy sync heartbeats updated_at every page
+    // (~30-40s), so this never reclaims a live run; but if a sync is hard-killed
+    // by the Workers runtime limit (finally never runs, lock never released),
+    // the next attempt reclaims it after 4 min instead of being blocked for 15.
+    const staleThresholdIso = new Date(Date.now() - 4 * 60_000).toISOString();
 
     // Atomic lock claim. A single conditional UPDATE either flips status to
     // "syncing" (we won the lock) or matches zero rows (someone else holds a
