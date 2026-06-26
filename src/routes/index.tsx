@@ -62,6 +62,7 @@ function Overview() {
     state: "all",
     dateFrom: null,
     dateTo: null,
+    campaignType: "all",
   });
   const query = useProgramAggregates(config, filters);
   const data = query.data;
@@ -76,11 +77,21 @@ function Overview() {
     const prevTo = new Date(from.getTime() - dayMs);
     const prevFrom = new Date(prevTo.getTime() - (len - 1) * dayMs);
     const iso = (d: Date) => d.toISOString().slice(0, 10);
-    return { state: filters.state, dateFrom: iso(prevFrom), dateTo: iso(prevTo) };
+    return {
+      state: filters.state,
+      dateFrom: iso(prevFrom),
+      dateTo: iso(prevTo),
+      campaignType: filters.campaignType,
+    };
   })();
   const prevQuery = useProgramAggregates(
     config,
-    prevFilters ?? { state: filters.state, dateFrom: null, dateTo: null },
+    prevFilters ?? {
+      state: filters.state,
+      dateFrom: null,
+      dateTo: null,
+      campaignType: filters.campaignType,
+    },
   );
   const prevMetrics = prevFilters ? prevQuery.data?.metrics : undefined;
 
