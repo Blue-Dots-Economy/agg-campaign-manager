@@ -13,6 +13,7 @@ export interface OverviewFilters {
   state?: string;             // 'all' | 'GZB' | 'KA'
   dateFrom?: string | null;   // YYYY-MM-DD
   dateTo?: string | null;     // YYYY-MM-DD
+  campaignType?: string;      // 'all' | 'normal' | 'higher_education'
 }
 
 const STALE_AFTER_MS = 15 * 60_000; // 15 minutes — on-load freshness trigger
@@ -22,9 +23,10 @@ export function useProgramAggregates(config: ProgramConfig, filters?: OverviewFi
   const state = filters?.state ?? "all";
   const dateFrom = filters?.dateFrom ?? null;
   const dateTo = filters?.dateTo ?? null;
+  const campaignType = filters?.campaignType ?? "all";
   const query = useQuery<AggregatePayload>({
-    queryKey: ["program-aggregates", config.id, state, dateFrom, dateTo],
-    queryFn: () => fn({ data: { program: config.id, state, dateFrom, dateTo } }),
+    queryKey: ["program-aggregates", config.id, state, dateFrom, dateTo, campaignType],
+    queryFn: () => fn({ data: { program: config.id, state, dateFrom, dateTo, campaignType } }),
     staleTime: 5 * 60_000,
     gcTime: 30 * 60_000,
     placeholderData: keepPreviousData,
