@@ -181,7 +181,7 @@ export async function performSync(program: ProgramId, opts?: { force?: boolean }
     }>;
 
     const errors: SyncResult["errors"] = [];
-    const allRows: Array<{
+    type UpsertRow = {
       program: ProgramId;
       connection_id: string;
       call_id: string;
@@ -207,7 +207,8 @@ export async function performSync(program: ProgramId, opts?: { force?: boolean }
       applications_count: number | null;
       data: CallRow;
       synced_at: string;
-    }> = [];
+    };
+
 
     const BATCH = 2000;
     const PAGE = 10000;
