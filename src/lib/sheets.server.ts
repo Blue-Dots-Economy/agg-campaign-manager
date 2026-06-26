@@ -297,6 +297,8 @@ async function readSheetForTab(
   sheetId: string,
   token: string,
   tab: string,
+  startRow: number = 2,
+  pageSize: number = 200000,
 ): Promise<SheetReadResult> {
   const tabPrefix = quoteTab(tab);
   const headerUrl = `https://sheets.googleapis.com/v4/spreadsheets/${sheetId}/values/${tabPrefix}A1:ZZ1`;
@@ -319,7 +321,8 @@ async function readSheetForTab(
     if (last && last[1] === i - 1) last[1] = i;
     else groups.push([i, i]);
   }
-  const ranges = groups.map(([s, e]) => `${tabPrefix}${colLetter(s)}2:${colLetter(e)}200000`);
+  const endRow = startRow + pageSize - 1;
+  const ranges = groups.map(([s, e]) => `${tabPrefix}${colLetter(s)}${startRow}:${colLetter(e)}${endRow}`);
 
   // FORMATTED_VALUE + FORMATTED_STRING so date cells come back as their
   // displayed strings ("2026-06-23") instead of Excel serials ("46196").
@@ -357,18 +360,34 @@ async function readSheetForTab(
   return { headers: keptHeaders, rows, rowCount, effectiveTab: tab };
 }
 
+/** Returns the data-row count for a tab (rows after the header). */
+export async function getSheetRowCount(sheetId: string, tab: string): Promise<number> {
+  const token = await getAccessToken();
+  const tabPrefix = quoteTab(tab);
+  const url = `https://sheets.googleapis.com/v4/spreadsheets/${sheetId}/values/${tabPrefix}A2:A200000?majorDimension=ROWS&valueRenderOption=FORMATTED_VALUE`;
+  const res = await fetch(url, { headers: { authorization: `Bearer ${token}` } });
+  if (!res.ok) return 0;
+  const data = (await res.json()) as { values?: unknown[][] };
+  return (data.values ?? []).length;
+}
+
 /**
  * Reads a sheet. If tabName is missing or invalid, falls back to the first
  * tab in the spreadsheet. The returned `effectiveTab` reflects the tab actually
  * used so callers can persist any correction.
  */
-export async function readSheet(sheetId: string, tabName?: string): Promise<SheetReadResult> {
+export async function readSheet(
+  sheetId: string,
+  tabName?: string,
+  startRow: number = 2,
+  pageSize: number = 200000,
+): Promise<SheetReadResult> {
   const token = await getAccessToken();
   const trimmed = (tabName ?? "").trim();
 
   if (trimmed) {
     try {
-      return await readSheetForTab(sheetId, token, trimmed);
+      return await readSheetForTab(sheetId, token, trimmed, startRow, pageSize);
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
       if (!isRangeParseError(msg)) throw err;
@@ -378,8 +397,9 @@ export async function readSheet(sheetId: string, tabName?: string): Promise<Shee
 
   const tabs = await listSheetTabs(sheetId);
   if (tabs.length === 0) throw new Error("Spreadsheet has no tabs");
-  return await readSheetForTab(sheetId, token, tabs[0]);
+  return await readSheetForTab(sheetId, token, tabs[0], startRow, pageSize);
 }
+
 
 export interface CallDetail {
   call_transcript: string;

@@ -181,7 +181,7 @@ export async function performSync(program: ProgramId, opts?: { force?: boolean }
     }>;
 
     const errors: SyncResult["errors"] = [];
-    const allRows: Array<{
+    type UpsertRow = {
       program: ProgramId;
       connection_id: string;
       call_id: string;
@@ -207,97 +207,125 @@ export async function performSync(program: ProgramId, opts?: { force?: boolean }
       applications_count: number | null;
       data: CallRow;
       synced_at: string;
-    }> = [];
+    };
 
-    if (process.env.GOOGLE_SERVICE_ACCOUNT_JSON && list.length > 0) {
-      const { readSheet } = await import("./sheets.server");
-      const seen = new Set<string>();
-      for (const c of list) {
-        try {
-          const { headers, rows, effectiveTab } = await readSheet(c.sheet_id, c.tab_name ?? undefined);
-          for (let i = 0; i < rows.length; i++) {
-            const mapped = mapRow(headers, rows[i]);
-            // call_id must be unique per program for upsert. Fall back to a
-            // stable connection+row-index key when the sheet row has none.
-            const callId = mapped.call_id?.trim() || `${c.id}:${i}`;
-            if (seen.has(callId)) continue;
-            seen.add(callId);
-            allRows.push({
-              program,
-              connection_id: c.id,
-              call_id: callId,
-              campaign_day: mapped.campaign_day || "",
-              intent_score: Number.isFinite(mapped["Intent Score"]) ? mapped["Intent Score"] : null,
-              call_answered: mapped.call_answered,
-              call_engaged: mapped.call_engaged,
-              applied_to_job: mapped.applied_to_job,
-              tried_to_apply: mapped.tried_to_apply,
-              call_status: mapped.raw?.call_status ?? "",
-              job_status: mapped.raw?.job_status ?? "",
-              new_job_posted: mapped.raw?.new_job_posted ?? "",
-              talent_insights_shown: mapped.raw?.talent_insights_shown ?? "",
-              phases_reached: mapped.raw?.phases_reached ?? "",
-              drop_reason: mapped.drop_reason || mapped.raw?.drop_reason || "",
-              call_outcome: mapped.raw?.call_outcome || mapped.call_outcome || "",
-              city_campaign: mapped.raw?.city_campaign || mapped.city_campaign || "",
-              campaign_date: normalizeCampaignDate(mapped.campaign_date || mapped.raw?.campaign_date),
-              campaign_type: mapped.campaign_type || mapped.raw?.campaign_type || "",
-              language: mapped.language || mapped.raw?.language || "",
-              phone: mapped.phone || "",
-              call_duration_seconds: Number.isFinite(mapped.call_duration_seconds) ? mapped.call_duration_seconds : null,
-              applications_count: Number.isFinite(mapped.applications_count) ? mapped.applications_count : null,
-              data: mapped,
-              synced_at: new Date().toISOString(),
-            });
-          }
-          const patch: Record<string, unknown> = {
-            status: "connected",
-            row_count: rows.length,
-            last_error: null,
-            last_synced_at: new Date().toISOString(),
-          };
-          if (effectiveTab && effectiveTab !== (c.tab_name ?? "")) patch.tab_name = effectiveTab;
-          await client.from("sheet_connections").update(patch).eq("id", c.id);
-        } catch (err) {
-          const msg = err instanceof Error ? err.message : String(err);
-          errors.push({ id: c.id, name: c.name, message: msg });
-          await client
-            .from("sheet_connections")
-            .update({
-              status: "error",
-              last_error: msg,
-              last_synced_at: new Date().toISOString(),
-            })
-            .eq("id", c.id);
-        }
-      }
-    }
 
-    // Incremental upsert keyed on (program, call_id) — new rows are added,
-    // existing rows are updated in place. synced_at is refreshed for every
-    // row that appeared in the sheet on this run, which is what we use to
-    // reconcile deletions below.
     const BATCH = 2000;
+    const PAGE = 10000;
     let completedRows = 0;
     let count: number | null = null;
     let lastSyncedAt = new Date().toISOString();
+
     try {
-      for (let i = 0; i < allRows.length; i += BATCH) {
-        const slice = allRows.slice(i, i + BATCH);
-        const { error } = await client
-          .from("call_rows")
-          .upsert(slice, { onConflict: "program,call_id" });
-        if (error) {
-          errors.push({ id: "_upsert", name: "snapshot", message: error.message });
-          break;
+      if (process.env.GOOGLE_SERVICE_ACCOUNT_JSON && list.length > 0) {
+        const { readSheet } = await import("./sheets.server");
+        const seen = new Set<string>();
+        for (const c of list) {
+          let pageStart = 2;
+          let totalMappedForConn = 0;
+          let effectiveTabForConn: string | null = null;
+          try {
+            while (true) {
+              const { headers, rows, effectiveTab } = await readSheet(
+                c.sheet_id,
+                c.tab_name ?? undefined,
+                pageStart,
+                PAGE,
+              );
+              effectiveTabForConn = effectiveTab;
+              if (rows.length === 0) break;
+
+              const pageRows: UpsertRow[] = [];
+              for (let i = 0; i < rows.length; i++) {
+                const mapped = mapRow(headers, rows[i]);
+                const callId = mapped.call_id?.trim() || `${c.id}:${pageStart - 2 + i}`;
+                if (seen.has(callId)) continue;
+                seen.add(callId);
+                pageRows.push({
+                  program,
+                  connection_id: c.id,
+                  call_id: callId,
+                  campaign_day: mapped.campaign_day || "",
+                  intent_score: Number.isFinite(mapped["Intent Score"]) ? mapped["Intent Score"] : null,
+                  call_answered: mapped.call_answered,
+                  call_engaged: mapped.call_engaged,
+                  applied_to_job: mapped.applied_to_job,
+                  tried_to_apply: mapped.tried_to_apply,
+                  call_status: mapped.raw?.call_status ?? "",
+                  job_status: mapped.raw?.job_status ?? "",
+                  new_job_posted: mapped.raw?.new_job_posted ?? "",
+                  talent_insights_shown: mapped.raw?.talent_insights_shown ?? "",
+                  phases_reached: mapped.raw?.phases_reached ?? "",
+                  drop_reason: mapped.drop_reason || mapped.raw?.drop_reason || "",
+                  call_outcome: mapped.raw?.call_outcome || mapped.call_outcome || "",
+                  city_campaign: mapped.raw?.city_campaign || mapped.city_campaign || "",
+                  campaign_date: normalizeCampaignDate(mapped.campaign_date || mapped.raw?.campaign_date),
+                  campaign_type: mapped.campaign_type || mapped.raw?.campaign_type || "",
+                  language: mapped.language || mapped.raw?.language || "",
+                  phone: mapped.phone || "",
+                  call_duration_seconds: Number.isFinite(mapped.call_duration_seconds) ? mapped.call_duration_seconds : null,
+                  applications_count: Number.isFinite(mapped.applications_count) ? mapped.applications_count : null,
+                  data: mapped,
+                  synced_at: new Date().toISOString(),
+                });
+              }
+
+              let pageUpsertFailed = false;
+              for (let i = 0; i < pageRows.length; i += BATCH) {
+                const slice = pageRows.slice(i, i + BATCH);
+                const { error } = await client
+                  .from("call_rows")
+                  .upsert(slice, { onConflict: "program,call_id" });
+                if (error) {
+                  errors.push({ id: "_upsert", name: "snapshot", message: error.message });
+                  pageUpsertFailed = true;
+                  break;
+                }
+                completedRows += slice.length;
+              }
+              if (pageUpsertFailed) break;
+
+              // Heartbeat so the stale-lock guard sees fresh updated_at.
+              await client
+                .from("program_sync_state")
+                .update({ updated_at: new Date().toISOString() })
+                .eq("program", program);
+
+              totalMappedForConn += rows.length;
+              if (rows.length < PAGE) break;
+              pageStart += PAGE;
+            }
+
+            const patch: Record<string, unknown> = {
+              status: "connected",
+              row_count: totalMappedForConn,
+              last_error: null,
+              last_synced_at: new Date().toISOString(),
+            };
+            if (effectiveTabForConn && effectiveTabForConn !== (c.tab_name ?? "")) {
+              patch.tab_name = effectiveTabForConn;
+            }
+            await client.from("sheet_connections").update(patch).eq("id", c.id);
+          } catch (err) {
+            const msg = err instanceof Error ? err.message : String(err);
+            errors.push({ id: c.id, name: c.name, message: msg });
+            await client
+              .from("sheet_connections")
+              .update({
+                status: "error",
+                last_error: msg,
+                last_synced_at: new Date().toISOString(),
+              })
+              .eq("id", c.id);
+          }
+          if (errors.some((e) => e.id === "_upsert")) break;
         }
-        completedRows += slice.length;
       }
 
       // Reconcile deletions: rows that weren't touched in this run are no longer
-      // in the sheet. Only do this when the run actually fetched data without
-      // upsert errors, so a transient sheet failure can't wipe the snapshot.
-      if (errors.length === 0 && allRows.length > 0) {
+      // in the sheet. Only do this when the run succeeded without upsert errors,
+      // so a transient sheet failure can't wipe the snapshot.
+      if (errors.length === 0 && completedRows > 0) {
         await client
           .from("call_rows")
           .delete()
@@ -305,11 +333,11 @@ export async function performSync(program: ProgramId, opts?: { force?: boolean }
           .lt("synced_at", runStart);
       }
     } finally {
-      const { count: c } = await client
+      const { count: cnt } = await client
         .from("call_rows")
         .select("id", { head: true, count: "exact" })
         .eq("program", program);
-      count = c ?? null;
+      count = cnt ?? null;
       lastSyncedAt = new Date().toISOString();
       await client.from("program_sync_state").upsert({
         program,
@@ -325,11 +353,12 @@ export async function performSync(program: ProgramId, opts?: { force?: boolean }
     return {
       ok: errors.length === 0,
       program,
-      rowCount: count ?? allRows.length,
+      rowCount: count ?? completedRows,
       connectionCount: list.length,
       errors,
       lastSyncedAt,
     };
+
   })();
   inflight.set(program, p);
   try {
