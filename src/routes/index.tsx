@@ -62,6 +62,7 @@ function Overview() {
     state: "all",
     dateFrom: null,
     dateTo: null,
+    campaignType: "all",
   });
   const query = useProgramAggregates(config, filters);
   const data = query.data;
@@ -76,11 +77,21 @@ function Overview() {
     const prevTo = new Date(from.getTime() - dayMs);
     const prevFrom = new Date(prevTo.getTime() - (len - 1) * dayMs);
     const iso = (d: Date) => d.toISOString().slice(0, 10);
-    return { state: filters.state, dateFrom: iso(prevFrom), dateTo: iso(prevTo) };
+    return {
+      state: filters.state,
+      dateFrom: iso(prevFrom),
+      dateTo: iso(prevTo),
+      campaignType: filters.campaignType,
+    };
   })();
   const prevQuery = useProgramAggregates(
     config,
-    prevFilters ?? { state: filters.state, dateFrom: null, dateTo: null },
+    prevFilters ?? {
+      state: filters.state,
+      dateFrom: null,
+      dateTo: null,
+      campaignType: filters.campaignType,
+    },
   );
   const prevMetrics = prevFilters ? prevQuery.data?.metrics : undefined;
 
@@ -101,7 +112,7 @@ function Overview() {
 
   const filterBar = (
     <div className="flex items-center justify-between gap-3 flex-wrap">
-      <OverviewFilters value={filters} onChange={setFilters} />
+      <OverviewFilters value={filters} onChange={setFilters} showCampaignType={!isDkb} />
       {query.isFetching && (
         <span className="text-xs text-muted-foreground">Updating…</span>
       )}
@@ -109,7 +120,10 @@ function Overview() {
   );
 
   const hasActiveFilters =
-    filters.state !== "all" || Boolean(filters.dateFrom) || Boolean(filters.dateTo);
+    filters.state !== "all" ||
+    Boolean(filters.dateFrom) ||
+    Boolean(filters.dateTo) ||
+    (!isDkb && filters.campaignType !== "all");
   const isEmpty = !data || data.source === "empty" || data.totalRows === 0;
   if (isEmpty) {
     const reason =
@@ -121,7 +135,13 @@ function Overview() {
           reason={reason}
           onClearFilters={
             hasActiveFilters
-              ? () => setFilters({ state: "all", dateFrom: null, dateTo: null })
+              ? () =>
+                  setFilters({
+                    state: "all",
+                    dateFrom: null,
+                    dateTo: null,
+                    campaignType: "all",
+                  })
               : undefined
           }
         />
