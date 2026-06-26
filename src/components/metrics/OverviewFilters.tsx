@@ -8,17 +8,25 @@ import { Calendar } from "@/components/ui/calendar";
 import { cn } from "@/lib/utils";
 
 export type StateValue = "all" | "GZB" | "KA";
+export type CampaignTypeValue = "all" | "normal" | "higher_education";
 
 export interface OverviewFilterValue {
   state: StateValue;
   dateFrom: string | null; // YYYY-MM-DD
   dateTo: string | null;
+  campaignType: CampaignTypeValue;
 }
 
 const STATE_OPTIONS: { value: StateValue; label: string }[] = [
   { value: "all", label: "All states" },
   { value: "GZB", label: "GZB · Ghaziabad" },
   { value: "KA", label: "KA · Hubli-Dharwad" },
+];
+
+const CAMPAIGN_TYPE_OPTIONS: { value: CampaignTypeValue; label: string }[] = [
+  { value: "all", label: "All types" },
+  { value: "normal", label: "KKB" },
+  { value: "higher_education", label: "Higher Education" },
 ];
 
 const fmt = (d: Date) => format(d, "yyyy-MM-dd");
@@ -32,9 +40,11 @@ const parseLocal = (s: string): Date => {
 export function OverviewFilters({
   value,
   onChange,
+  showCampaignType = false,
 }: {
   value: OverviewFilterValue;
   onChange: (next: OverviewFilterValue) => void;
+  showCampaignType?: boolean;
 }) {
   const [open, setOpen] = useState(false);
 
@@ -68,6 +78,12 @@ export function OverviewFilters({
     setOpen(false);
   };
 
+  const isClearable =
+    value.dateFrom ||
+    value.dateTo ||
+    value.state !== "all" ||
+    (showCampaignType && value.campaignType !== "all");
+
   return (
     <div className="flex flex-wrap items-center gap-2">
       {/* State segmented control */}
@@ -91,6 +107,30 @@ export function OverviewFilters({
           );
         })}
       </div>
+
+      {/* Campaign type segmented control (KKB only) */}
+      {showCampaignType && (
+        <div className="inline-flex rounded-md border border-border bg-card p-0.5 text-xs">
+          {CAMPAIGN_TYPE_OPTIONS.map((opt) => {
+            const active = value.campaignType === opt.value;
+            return (
+              <button
+                key={opt.value}
+                type="button"
+                onClick={() => onChange({ ...value, campaignType: opt.value })}
+                className={cn(
+                  "px-3 py-1.5 rounded transition-colors",
+                  active
+                    ? "bg-primary text-primary-foreground"
+                    : "text-muted-foreground hover:text-foreground",
+                )}
+              >
+                {opt.label}
+              </button>
+            );
+          })}
+        </div>
+      )}
 
       {/* Date range */}
       <Popover open={open} onOpenChange={setOpen}>
@@ -155,12 +195,12 @@ export function OverviewFilters({
         </PopoverContent>
       </Popover>
 
-      {(value.dateFrom || value.dateTo || value.state !== "all") && (
+      {isClearable && (
         <Button
           variant="ghost"
           size="sm"
           className="h-8 gap-1 text-xs text-muted-foreground"
-          onClick={() => onChange({ state: "all", dateFrom: null, dateTo: null })}
+          onClick={() => onChange({ state: "all", dateFrom: null, dateTo: null, campaignType: "all" })}
         >
           <X className="h-3.5 w-3.5" />
           Clear
