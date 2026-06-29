@@ -62,6 +62,7 @@ export interface DkbMetrics {
   jobsClosed: number;
   companiesUnresolved: number;
   newJobsDiscussed: number;
+  newJobsPosted: number;
   providerFunnel?: DkbProviderFunnelStage[];
 }
 
