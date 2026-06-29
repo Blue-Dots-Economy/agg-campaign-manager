@@ -149,12 +149,10 @@ function Overview() {
     );
   }
 
-  const { kpis, intents, regions, phases, jobStatus, outcomes, dkbIntents, dropAnalysis } =
+  const { kpis, intents, regions, phases, jobStatus, outcomes, dkbIntents } =
     data.aggregates;
   const metrics = data.metrics ?? {};
   const hasMetrics = Object.keys(metrics).length > 0;
-  const hideRegion: "GZB" | "KA" | undefined =
-    filters.state === "GZB" ? "KA" : filters.state === "KA" ? "GZB" : undefined;
   const prevKpis = prevFilters ? prevQuery.data?.aggregates?.kpis : undefined;
 
 
