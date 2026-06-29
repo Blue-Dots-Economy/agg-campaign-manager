@@ -16,7 +16,7 @@ import {
 } from "recharts";
 import { useMemo, useState } from "react";
 import { useProgram } from "@/programs/context";
-import { useProgramAggregates } from "@/programs/useProgramAggregates";
+import { useProgramAggregates, useKkbDropAnalysis } from "@/programs/useProgramAggregates";
 import { KpiCard } from "@/components/KpiCard";
 import {
   KkbOverviewMetrics,
@@ -26,8 +26,7 @@ import {
 } from "@/components/metrics/program-overviews";
 import { Panel } from "@/components/Panel";
 import { NoDataState, LoadingState } from "@/components/EmptyState";
-import { FunnelSankey } from "@/components/metrics/FunnelSankey";
-import { DropBreakdownPanel } from "@/components/metrics/DropBreakdownPanel";
+import { DropAnalysisHeatmap } from "@/components/metrics/DropAnalysisHeatmap";
 import {
   OverviewFilters,
   type OverviewFilterValue,
