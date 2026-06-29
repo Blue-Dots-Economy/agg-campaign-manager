@@ -16,7 +16,7 @@ import {
 } from "recharts";
 import { useMemo, useState } from "react";
 import { useProgram } from "@/programs/context";
-import { useProgramAggregates } from "@/programs/useProgramAggregates";
+import { useProgramAggregates, useKkbDropAnalysis } from "@/programs/useProgramAggregates";
 import { KpiCard } from "@/components/KpiCard";
 import {
   KkbOverviewMetrics,
@@ -26,8 +26,7 @@ import {
 } from "@/components/metrics/program-overviews";
 import { Panel } from "@/components/Panel";
 import { NoDataState, LoadingState } from "@/components/EmptyState";
-import { FunnelSankey } from "@/components/metrics/FunnelSankey";
-import { DropBreakdownPanel } from "@/components/metrics/DropBreakdownPanel";
+import { DropAnalysisHeatmap } from "@/components/metrics/DropAnalysisHeatmap";
 import {
   OverviewFilters,
   type OverviewFilterValue,
@@ -65,6 +64,7 @@ function Overview() {
     campaignType: "all",
   });
   const query = useProgramAggregates(config, filters);
+  const dropAnalysisQuery = useKkbDropAnalysis(isDkb ? undefined : filters);
   const data = query.data;
 
   // Previous-period query: only when both dateFrom & dateTo are set.
@@ -149,12 +149,10 @@ function Overview() {
     );
   }
 
-  const { kpis, intents, regions, phases, jobStatus, outcomes, dkbIntents, dropAnalysis } =
+  const { kpis, intents, regions, phases, jobStatus, outcomes, dkbIntents } =
     data.aggregates;
   const metrics = data.metrics ?? {};
   const hasMetrics = Object.keys(metrics).length > 0;
-  const hideRegion: "GZB" | "KA" | undefined =
-    filters.state === "GZB" ? "KA" : filters.state === "KA" ? "GZB" : undefined;
   const prevKpis = prevFilters ? prevQuery.data?.aggregates?.kpis : undefined;
 
 
@@ -316,11 +314,12 @@ function Overview() {
               </div>
             </Panel>
 
-            <FunnelDropCard
-              metrics={metrics as unknown as KkbMetrics}
-              rows={dropAnalysis}
-              hideRegion={hideRegion}
-            />
+            <Panel
+              title="Drop analysis — where seekers drop off and why"
+              description="Normalized drop reasons across each funnel transition. Click a row to see the raw reasons inside it."
+            >
+              <DropAnalysisHeatmap data={dropAnalysisQuery.data} />
+            </Panel>
           </div>
 
 
@@ -376,48 +375,3 @@ function Overview() {
   );
 }
 
-function FunnelDropCard({
-  metrics,
-  rows,
-  hideRegion,
-}: {
-  metrics: KkbMetrics;
-  rows: Array<{ stage: string; reason: string; gzb: number; ka: number; total: number }>;
-  hideRegion?: "GZB" | "KA";
-}) {
-  const [selectedReason, setSelectedReason] = useState<string | null>(null);
-  return (
-    <div className="rounded-xl border bg-card p-5">
-      <div className="mb-1 flex items-baseline justify-between gap-4">
-        <div className="text-sm font-semibold text-foreground">Funnel flow & drop reasons</div>
-        {selectedReason && (
-          <div className="text-xs text-muted-foreground">
-            Filtered by <span className="font-medium text-foreground">{selectedReason}</span>
-          </div>
-        )}
-      </div>
-      <p className="mb-4 text-xs text-muted-foreground">
-        Sankey: trunk = survivors (teal); ribbons peeling off = drops by reason. Click a ribbon or a reason in the panel to break it down by stage.
-      </p>
-      <div className="grid gap-5 lg:grid-cols-5">
-        <div className="lg:col-span-3">
-          <FunnelSankey
-            m={metrics}
-            rows={rows}
-            hideRegion={hideRegion}
-            selectedReason={selectedReason}
-            onSelectReason={setSelectedReason}
-          />
-        </div>
-        <div className="lg:col-span-2 min-h-[420px]">
-          <DropBreakdownPanel
-            rows={rows}
-            hideRegion={hideRegion}
-            selectedReason={selectedReason}
-            onSelectReason={setSelectedReason}
-          />
-        </div>
-      </div>
-    </div>
-  );
-}
