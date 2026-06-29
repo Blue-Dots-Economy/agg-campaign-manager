@@ -222,7 +222,7 @@ export function DkbOverviewMetrics({
 
   const funnelData = m.providerFunnel ?? [];
   const calledProviders = funnelData[0]?.providers ?? 0;
-  const colors: FunnelColor[] = ["blue", "green", "green", "coral"];
+  const colors: FunnelColor[] = ["blue", "green", "green", "coral", "purple"];
   const pct = (n: number, d: number) => (d > 0 ? (n / d) * 100 : 0);
   const drop = (n: number, d: number) => (d > 0 ? Math.max(0, (1 - n / d) * 100) : 0);
 
