@@ -681,3 +681,43 @@ export const fetchCampaignDayRowsFn = createServerFn({ method: "GET" })
     if (error) throw new Error(error.message);
     return { rows: (out ?? []).map((r: { data: CallRow }) => r.data) };
   });
+
+export interface KkbDropAnalysisPayload {
+  stages: Array<{ key: string; label: string }>;
+  buckets: Array<{
+    bucket: string;
+    byStage: Record<string, number>;
+    total: number;
+    raw: Array<{ reason: string; count: number }>;
+  }>;
+  maxCell: number;
+  grandTotal: number;
+}
+
+export const fetchKkbDropAnalysis = createServerFn({ method: "GET" })
+  .inputValidator(
+    (d: { state?: string; dateFrom?: string | null; dateTo?: string | null; campaignType?: string }) => d,
+  )
+  .handler(async ({ data }): Promise<KkbDropAnalysisPayload> => {
+    const empty: KkbDropAnalysisPayload = { stages: [], buckets: [], maxCell: 0, grandTotal: 0 };
+    try {
+      const client = sb();
+      const { data: rpcData, error } = await client.rpc("get_kkb_drop_analysis", {
+        _state: data.state && data.state !== "all" ? data.state : "all",
+        _date_from: data.dateFrom ?? null,
+        _date_to: data.dateTo ?? null,
+        _campaign_type: data.campaignType ?? "all",
+      });
+      if (error) throw new Error(error.message);
+      if (!rpcData || typeof rpcData !== "object") return empty;
+      const p = rpcData as KkbDropAnalysisPayload;
+      return {
+        stages: Array.isArray(p.stages) ? p.stages : [],
+        buckets: Array.isArray(p.buckets) ? p.buckets : [],
+        maxCell: Number(p.maxCell ?? 0) || 0,
+        grandTotal: Number(p.grandTotal ?? 0) || 0,
+      };
+    } catch {
+      return empty;
+    }
+  });
