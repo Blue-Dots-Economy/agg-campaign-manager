@@ -42,6 +42,26 @@ export function useProgramAggregates(config: ProgramConfig, filters?: OverviewFi
   return query;
 }
 
+export function useKkbDropAnalysis(filters?: OverviewFilters) {
+  const fn = useServerFn(fetchKkbDropAnalysis);
+  const state = filters?.state ?? "all";
+  const dateFrom = filters?.dateFrom ?? null;
+  const dateTo = filters?.dateTo ?? null;
+  const campaignType = filters?.campaignType ?? "all";
+  return useQuery<KkbDropAnalysisPayload>({
+    queryKey: ["kkb-drop-analysis", state, dateFrom, dateTo, campaignType],
+    queryFn: () => fn({ data: { state, dateFrom, dateTo, campaignType } }),
+    staleTime: 5 * 60_000,
+    gcTime: 30 * 60_000,
+    placeholderData: keepPreviousData,
+    refetchOnWindowFocus: false,
+    refetchOnReconnect: false,
+    refetchOnMount: false,
+    retry: 1,
+    retryDelay: 1500,
+  });
+}
+
 export function useSyncProgram(programId: ProgramId) {
   const qc = useQueryClient();
   const fn = useServerFn(syncProgramSnapshot);
