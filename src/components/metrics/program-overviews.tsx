@@ -62,6 +62,7 @@ export interface DkbMetrics {
   jobsClosed: number;
   companiesUnresolved: number;
   newJobsDiscussed: number;
+  newJobsPosted: number;
   providerFunnel?: DkbProviderFunnelStage[];
 }
 
@@ -221,7 +222,7 @@ export function DkbOverviewMetrics({
 
   const funnelData = m.providerFunnel ?? [];
   const calledProviders = funnelData[0]?.providers ?? 0;
-  const colors: FunnelColor[] = ["blue", "green", "green", "coral"];
+  const colors: FunnelColor[] = ["blue", "green", "green", "coral", "purple"];
   const pct = (n: number, d: number) => (d > 0 ? (n / d) * 100 : 0);
   const drop = (n: number, d: number) => (d > 0 ? Math.max(0, (1 - n / d) * 100) : 0);
 
@@ -280,12 +281,6 @@ export function DkbOverviewMetrics({
                 previous={prevHighIntent}
                 trend={series(perDay, (p) => p.high_intent)}
               />
-              <MetricCard
-                label="Active openings"
-                value={m.activeOpenings}
-                sub={previous ? undefined : "Currently hiring (post-campaign)"}
-                previous={prev(previous, "activeOpenings")}
-              />
             </div>
           </div>
         </div>
@@ -295,7 +290,7 @@ export function DkbOverviewMetrics({
         title="Active hiring"
         subtitle="Vacancy-weighted (sum of num_vacancies_input)"
       >
-        <div className="grid gap-4 lg:grid-cols-2">
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
           <MetricCard
             label="Active Openings"
             value={m.activeOpenings}
@@ -307,6 +302,18 @@ export function DkbOverviewMetrics({
             value={m.jobsActive}
             sub="Companies actively hiring"
             previous={prev(previous, "jobsActive")}
+          />
+          <MetricCard
+            label="New jobs posted"
+            value={m.newJobsPosted}
+            sub="Companies that posted new roles"
+            previous={prev(previous, "newJobsPosted")}
+          />
+          <MetricCard
+            label="New job openings"
+            value={m.newOpenings}
+            sub="New vacancies posted during calls"
+            previous={prev(previous, "newOpenings")}
           />
         </div>
       </MetricSection>
