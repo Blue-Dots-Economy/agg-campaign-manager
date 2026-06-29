@@ -318,31 +318,6 @@ export function DkbOverviewMetrics({
         </div>
       </MetricSection>
 
-            </div>
-          </div>
-        </div>
-      </MetricSection>
-
-      <MetricSection
-        title="Active hiring"
-        subtitle="Vacancy-weighted (sum of num_vacancies_input)"
-      >
-        <div className="grid gap-4 lg:grid-cols-2">
-          <MetricCard
-            label="Active Openings"
-            value={m.activeOpenings}
-            sub="Vacancies currently hiring (post-campaign)"
-            previous={prev(previous, "activeOpenings")}
-          />
-          <MetricCard
-            label="Active Providers"
-            value={m.jobsActive}
-            sub="Companies actively hiring"
-            previous={prev(previous, "jobsActive")}
-          />
-        </div>
-      </MetricSection>
-
 
       <MetricSection title="Call metrics" subtitle="Per call (raw rows)">
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
