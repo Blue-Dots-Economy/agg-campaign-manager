@@ -426,6 +426,15 @@ export type Database = {
       }
     }
     Functions: {
+      get_kkb_drop_analysis: {
+        Args: {
+          _campaign_type?: string
+          _date_from?: string
+          _date_to?: string
+          _state?: string
+        }
+        Returns: Json
+      }
       get_program_aggregate_payload: {
         Args: {
           _campaign_type?: string
