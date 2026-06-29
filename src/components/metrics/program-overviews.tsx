@@ -281,12 +281,43 @@ export function DkbOverviewMetrics({
                 previous={prevHighIntent}
                 trend={series(perDay, (p) => p.high_intent)}
               />
-              <MetricCard
-                label="Active openings"
-                value={m.activeOpenings}
-                sub={previous ? undefined : "Currently hiring (post-campaign)"}
-                previous={prev(previous, "activeOpenings")}
-              />
+            </div>
+          </div>
+        </div>
+      </MetricSection>
+
+      <MetricSection
+        title="Active hiring"
+        subtitle="Vacancy-weighted (sum of num_vacancies_input)"
+      >
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          <MetricCard
+            label="Active Openings"
+            value={m.activeOpenings}
+            sub="Vacancies currently hiring (post-campaign)"
+            previous={prev(previous, "activeOpenings")}
+          />
+          <MetricCard
+            label="Active Providers"
+            value={m.jobsActive}
+            sub="Companies actively hiring"
+            previous={prev(previous, "jobsActive")}
+          />
+          <MetricCard
+            label="New jobs posted"
+            value={m.newJobsPosted}
+            sub="Companies that posted new roles"
+            previous={prev(previous, "newJobsPosted")}
+          />
+          <MetricCard
+            label="New job openings"
+            value={m.newOpenings}
+            sub="New vacancies posted during calls"
+            previous={prev(previous, "newOpenings")}
+          />
+        </div>
+      </MetricSection>
+
             </div>
           </div>
         </div>
