@@ -4,7 +4,9 @@ import { useServerFn } from "@tanstack/react-start";
 import {
   fetchProgramAggregates,
   syncProgramSnapshot,
+  fetchKkbDropAnalysis,
   type AggregatePayload,
+  type KkbDropAnalysisPayload,
 } from "@/lib/snapshot.functions";
 import type { ProgramConfig, ProgramId } from "./registry";
 import { toast } from "sonner";
