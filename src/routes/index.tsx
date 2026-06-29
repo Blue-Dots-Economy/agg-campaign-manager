@@ -64,6 +64,7 @@ function Overview() {
     campaignType: "all",
   });
   const query = useProgramAggregates(config, filters);
+  const dropAnalysisQuery = useKkbDropAnalysis(isDkb ? undefined : filters);
   const data = query.data;
 
   // Previous-period query: only when both dateFrom & dateTo are set.
