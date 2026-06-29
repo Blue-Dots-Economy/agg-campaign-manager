@@ -1,4 +1,4 @@
-import { MetricSection, SplitBar, SegmentedBar } from "@/components/metrics/primitives";
+import { MetricSection, SplitBar } from "@/components/metrics/primitives";
 import { MetricCard } from "@/components/metrics/MetricCard";
 import { VerticalFunnel, type VerticalFunnelStage, type FunnelColor } from "@/components/metrics/VerticalFunnel";
 
