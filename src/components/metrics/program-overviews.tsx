@@ -292,32 +292,25 @@ export function DkbOverviewMetrics({
       </MetricSection>
 
       <MetricSection
-        title="Openings & companies"
+        title="Active hiring"
         subtitle="Vacancy-weighted (sum of num_vacancies_input)"
       >
         <div className="grid gap-4 lg:grid-cols-2">
-          <SegmentedBar
-            title="Openings by status"
-            totalLabel="Total"
-            total={m.totalOpenings}
-            segments={[
-              { label: "Active", value: m.activeOpenings, color: "green" },
-              { label: "Closed", value: m.closedOpenings, color: "red" },
-              { label: "Unresolved", value: m.unresolvedOpenings, color: "amber" },
-            ]}
+          <MetricCard
+            label="Active Openings"
+            value={m.activeOpenings}
+            sub="Vacancies currently hiring (post-campaign)"
+            previous={prev(previous, "activeOpenings")}
           />
-          <SegmentedBar
-            title="Companies by job status"
-            totalLabel="Companies called"
-            total={m.companiesCalled}
-            segments={[
-              { label: "Active jobs", value: m.jobsActive, color: "green" },
-              { label: "Closed jobs", value: m.jobsClosed, color: "red" },
-              { label: "Unresolved", value: m.companiesUnresolved, color: "amber" },
-            ]}
+          <MetricCard
+            label="Active Providers"
+            value={m.jobsActive}
+            sub="Companies actively hiring"
+            previous={prev(previous, "jobsActive")}
           />
         </div>
       </MetricSection>
+
 
       <MetricSection title="Call metrics" subtitle="Per call (raw rows)">
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
