@@ -316,11 +316,12 @@ function Overview() {
               </div>
             </Panel>
 
-            <FunnelDropCard
-              metrics={metrics as unknown as KkbMetrics}
-              rows={dropAnalysis}
-              hideRegion={hideRegion}
-            />
+            <Panel
+              title="Drop analysis — where seekers drop off and why"
+              description="Normalized drop reasons across each funnel transition. Click a row to see the raw reasons inside it."
+            >
+              <DropAnalysisHeatmap data={dropAnalysisQuery.data} />
+            </Panel>
           </div>
 
 
