@@ -333,20 +333,9 @@ export async function performSync(program: ProgramId, opts?: { force?: boolean }
         }
       }
 
-      // Reconcile deletions: rows that weren't touched in this run are no longer
-      // in the sheet. Only do this when the run succeeded without upsert errors,
-      // so a transient sheet failure can't wipe the snapshot.
-      if (errors.length === 0 && completedRows > 0) {
-        await client
-          .from("call_rows")
-          .delete()
-          .eq("program", program)
-          .lt("synced_at", runStart);
-      }
-
-      // Cheap, eager closeout — write status BEFORE any heavy work so a
-      // near-limit runtime kill can't leave the lock stuck at "syncing".
-      // Use completedRows (already tracked) instead of an expensive exact count.
+      // Write status FIRST, eagerly, so a near-limit runtime kill during the
+      // reconcile-delete (which scans call_rows and is the slowest step on
+      // large sheets) can't leave the lock stuck at "syncing".
       count = completedRows;
       lastSyncedAt = new Date().toISOString();
       statusWritten = true;
@@ -358,6 +347,23 @@ export async function performSync(program: ProgramId, opts?: { force?: boolean }
         last_error: errors.length > 0 ? errors[0].message : null,
         updated_at: lastSyncedAt,
       });
+
+      // Reconcile deletions: rows that weren't touched in this run are no
+      // longer in the sheet. Best-effort — wrapped so a timeout here doesn't
+      // throw away the successful status write above. Only delete on a clean
+      // run so a transient sheet failure can't wipe the snapshot.
+      if (errors.length === 0 && completedRows > 0) {
+        try {
+          await client
+            .from("call_rows")
+            .delete()
+            .eq("program", program)
+            .lt("synced_at", runStart);
+        } catch {
+          /* ignore — status is already written; next run will reconcile */
+        }
+      }
+
     } finally {
       // Safety net: only if the eager write above didn't run (e.g. an exception
       // before reconcile). Keeps the lock from sticking at "syncing".
