@@ -64,6 +64,28 @@ export function useKkbDropAnalysis(filters?: OverviewFilters) {
   });
 }
 
+export function useCampaignList(
+  config: ProgramConfig,
+  filters?: Pick<OverviewFilters, "state" | "dateFrom" | "dateTo">,
+) {
+  const fn = useServerFn(fetchCampaignList);
+  const state = filters?.state ?? "all";
+  const dateFrom = filters?.dateFrom ?? null;
+  const dateTo = filters?.dateTo ?? null;
+  return useQuery<CampaignListItem[]>({
+    queryKey: ["campaign-list", config.id, state, dateFrom, dateTo],
+    queryFn: () => fn({ data: { program: config.id, state, dateFrom, dateTo } }),
+    staleTime: 5 * 60_000,
+    gcTime: 30 * 60_000,
+    placeholderData: keepPreviousData,
+    refetchOnWindowFocus: false,
+    refetchOnReconnect: false,
+    refetchOnMount: false,
+    retry: 1,
+    retryDelay: 1500,
+  });
+}
+
 export function useSyncProgram(programId: ProgramId) {
   const qc = useQueryClient();
   const fn = useServerFn(syncProgramSnapshot);
