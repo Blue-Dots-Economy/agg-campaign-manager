@@ -19,6 +19,8 @@ import { Route as CampaignReviewRouteImport } from './routes/campaign-review'
 import { Route as AnalyticsRouteImport } from './routes/analytics'
 import { Route as AgentsRouteImport } from './routes/agents'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as CampaignReviewIndexRouteImport } from './routes/campaign-review.index'
+import { Route as CampaignReviewCampaignRouteImport } from './routes/campaign-review.$campaign'
 import { Route as ApiPublicHooksSyncSnapshotsRouteImport } from './routes/api/public/hooks/sync-snapshots'
 
 const SettingsRoute = SettingsRouteImport.update({
@@ -71,6 +73,16 @@ const IndexRoute = IndexRouteImport.update({
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const CampaignReviewIndexRoute = CampaignReviewIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => CampaignReviewRoute,
+} as any)
+const CampaignReviewCampaignRoute = CampaignReviewCampaignRouteImport.update({
+  id: '/$campaign',
+  path: '/$campaign',
+  getParentRoute: () => CampaignReviewRoute,
+} as any)
 const ApiPublicHooksSyncSnapshotsRoute =
   ApiPublicHooksSyncSnapshotsRouteImport.update({
     id: '/api/public/hooks/sync-snapshots',
@@ -82,26 +94,29 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/agents': typeof AgentsRoute
   '/analytics': typeof AnalyticsRoute
-  '/campaign-review': typeof CampaignReviewRoute
+  '/campaign-review': typeof CampaignReviewRouteWithChildren
   '/campaigns': typeof CampaignsRoute
   '/connections': typeof ConnectionsRoute
   '/data': typeof DataRoute
   '/launch': typeof LaunchRoute
   '/schedule': typeof ScheduleRoute
   '/settings': typeof SettingsRoute
+  '/campaign-review/$campaign': typeof CampaignReviewCampaignRoute
+  '/campaign-review/': typeof CampaignReviewIndexRoute
   '/api/public/hooks/sync-snapshots': typeof ApiPublicHooksSyncSnapshotsRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/agents': typeof AgentsRoute
   '/analytics': typeof AnalyticsRoute
-  '/campaign-review': typeof CampaignReviewRoute
   '/campaigns': typeof CampaignsRoute
   '/connections': typeof ConnectionsRoute
   '/data': typeof DataRoute
   '/launch': typeof LaunchRoute
   '/schedule': typeof ScheduleRoute
   '/settings': typeof SettingsRoute
+  '/campaign-review/$campaign': typeof CampaignReviewCampaignRoute
+  '/campaign-review': typeof CampaignReviewIndexRoute
   '/api/public/hooks/sync-snapshots': typeof ApiPublicHooksSyncSnapshotsRoute
 }
 export interface FileRoutesById {
@@ -109,13 +124,15 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/agents': typeof AgentsRoute
   '/analytics': typeof AnalyticsRoute
-  '/campaign-review': typeof CampaignReviewRoute
+  '/campaign-review': typeof CampaignReviewRouteWithChildren
   '/campaigns': typeof CampaignsRoute
   '/connections': typeof ConnectionsRoute
   '/data': typeof DataRoute
   '/launch': typeof LaunchRoute
   '/schedule': typeof ScheduleRoute
   '/settings': typeof SettingsRoute
+  '/campaign-review/$campaign': typeof CampaignReviewCampaignRoute
+  '/campaign-review/': typeof CampaignReviewIndexRoute
   '/api/public/hooks/sync-snapshots': typeof ApiPublicHooksSyncSnapshotsRoute
 }
 export interface FileRouteTypes {
@@ -131,19 +148,22 @@ export interface FileRouteTypes {
     | '/launch'
     | '/schedule'
     | '/settings'
+    | '/campaign-review/$campaign'
+    | '/campaign-review/'
     | '/api/public/hooks/sync-snapshots'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
     | '/agents'
     | '/analytics'
-    | '/campaign-review'
     | '/campaigns'
     | '/connections'
     | '/data'
     | '/launch'
     | '/schedule'
     | '/settings'
+    | '/campaign-review/$campaign'
+    | '/campaign-review'
     | '/api/public/hooks/sync-snapshots'
   id:
     | '__root__'
@@ -157,6 +177,8 @@ export interface FileRouteTypes {
     | '/launch'
     | '/schedule'
     | '/settings'
+    | '/campaign-review/$campaign'
+    | '/campaign-review/'
     | '/api/public/hooks/sync-snapshots'
   fileRoutesById: FileRoutesById
 }
@@ -164,7 +186,7 @@ export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AgentsRoute: typeof AgentsRoute
   AnalyticsRoute: typeof AnalyticsRoute
-  CampaignReviewRoute: typeof CampaignReviewRoute
+  CampaignReviewRoute: typeof CampaignReviewRouteWithChildren
   CampaignsRoute: typeof CampaignsRoute
   ConnectionsRoute: typeof ConnectionsRoute
   DataRoute: typeof DataRoute
@@ -246,6 +268,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/campaign-review/': {
+      id: '/campaign-review/'
+      path: '/'
+      fullPath: '/campaign-review/'
+      preLoaderRoute: typeof CampaignReviewIndexRouteImport
+      parentRoute: typeof CampaignReviewRoute
+    }
+    '/campaign-review/$campaign': {
+      id: '/campaign-review/$campaign'
+      path: '/$campaign'
+      fullPath: '/campaign-review/$campaign'
+      preLoaderRoute: typeof CampaignReviewCampaignRouteImport
+      parentRoute: typeof CampaignReviewRoute
+    }
     '/api/public/hooks/sync-snapshots': {
       id: '/api/public/hooks/sync-snapshots'
       path: '/api/public/hooks/sync-snapshots'
@@ -256,11 +292,25 @@ declare module '@tanstack/react-router' {
   }
 }
 
+interface CampaignReviewRouteChildren {
+  CampaignReviewCampaignRoute: typeof CampaignReviewCampaignRoute
+  CampaignReviewIndexRoute: typeof CampaignReviewIndexRoute
+}
+
+const CampaignReviewRouteChildren: CampaignReviewRouteChildren = {
+  CampaignReviewCampaignRoute: CampaignReviewCampaignRoute,
+  CampaignReviewIndexRoute: CampaignReviewIndexRoute,
+}
+
+const CampaignReviewRouteWithChildren = CampaignReviewRoute._addFileChildren(
+  CampaignReviewRouteChildren,
+)
+
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AgentsRoute: AgentsRoute,
   AnalyticsRoute: AnalyticsRoute,
-  CampaignReviewRoute: CampaignReviewRoute,
+  CampaignReviewRoute: CampaignReviewRouteWithChildren,
   CampaignsRoute: CampaignsRoute,
   ConnectionsRoute: ConnectionsRoute,
   DataRoute: DataRoute,
