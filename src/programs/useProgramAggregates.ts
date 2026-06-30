@@ -5,8 +5,10 @@ import {
   fetchProgramAggregates,
   syncProgramSnapshot,
   fetchKkbDropAnalysis,
+  fetchCampaignList,
   type AggregatePayload,
   type KkbDropAnalysisPayload,
+  type CampaignListItem,
 } from "@/lib/snapshot.functions";
 import type { ProgramConfig, ProgramId } from "./registry";
 import { toast } from "sonner";
