@@ -6,6 +6,7 @@ import { useProgram } from "@/programs/context";
 import { useCampaignList } from "@/programs/useProgramAggregates";
 import { humanizeCampaignType } from "@/lib/campaign-name";
 import { Input } from "@/components/ui/input";
+import { buttonVariants } from "@/components/ui/button";
 import { Panel } from "@/components/Panel";
 import { LoadingState } from "@/components/EmptyState";
 import { cn } from "@/lib/utils";
@@ -156,7 +157,7 @@ function CampaignCard({
         highlighted ? "border-primary border-2 shadow-sm" : "border-border",
       )}
     >
-      <div className="flex items-start justify-between gap-2">
+      <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
           <div className="flex items-center gap-2 flex-wrap">
             <h3 className="font-semibold truncate">{humanizeCampaignType(campaign.campaignType)}</h3>
@@ -171,7 +172,10 @@ function CampaignCard({
             {campaign.region ? ` · ${campaign.region}` : ""}
           </div>
         </div>
-        <ArrowRight className="h-4 w-4 text-muted-foreground transition-transform group-hover:translate-x-0.5" />
+        <span className={cn(buttonVariants({ size: "sm" }), "shrink-0 gap-1.5 pointer-events-none")}>
+          Review
+          <ArrowRight className="h-3.5 w-3.5 transition-transform group-hover:translate-x-0.5" />
+        </span>
       </div>
       <div className="mt-4 grid grid-cols-4 gap-2 text-xs">
         <Metric label="Calls" value={campaign.totalCalls.toLocaleString()} />
@@ -204,8 +208,9 @@ function CampaignRow({ campaign, successLabel }: { campaign: CampaignLike; succe
           <Metric label="Engaged" value={campaign.engaged.toLocaleString()} align="right" />
           <Metric label={successLabel} value={campaign.converted.toLocaleString()} align="right" />
         </div>
-        <span className="text-xs text-primary inline-flex items-center gap-1 ml-2 whitespace-nowrap">
-          Review <ArrowRight className="h-3 w-3" />
+        <span className={cn(buttonVariants({ size: "sm" }), "ml-2 shrink-0 gap-1.5 pointer-events-none")}>
+          Review
+          <ArrowRight className="h-3.5 w-3.5 transition-transform group-hover:translate-x-0.5" />
         </span>
       </Link>
     </li>
