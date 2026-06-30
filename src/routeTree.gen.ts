@@ -15,6 +15,7 @@ import { Route as LaunchRouteImport } from './routes/launch'
 import { Route as DataRouteImport } from './routes/data'
 import { Route as ConnectionsRouteImport } from './routes/connections'
 import { Route as CampaignsRouteImport } from './routes/campaigns'
+import { Route as CampaignReviewRouteImport } from './routes/campaign-review'
 import { Route as AnalyticsRouteImport } from './routes/analytics'
 import { Route as AgentsRouteImport } from './routes/agents'
 import { Route as IndexRouteImport } from './routes/index'
@@ -50,6 +51,11 @@ const CampaignsRoute = CampaignsRouteImport.update({
   path: '/campaigns',
   getParentRoute: () => rootRouteImport,
 } as any)
+const CampaignReviewRoute = CampaignReviewRouteImport.update({
+  id: '/campaign-review',
+  path: '/campaign-review',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const AnalyticsRoute = AnalyticsRouteImport.update({
   id: '/analytics',
   path: '/analytics',
@@ -76,6 +82,7 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/agents': typeof AgentsRoute
   '/analytics': typeof AnalyticsRoute
+  '/campaign-review': typeof CampaignReviewRoute
   '/campaigns': typeof CampaignsRoute
   '/connections': typeof ConnectionsRoute
   '/data': typeof DataRoute
@@ -88,6 +95,7 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/agents': typeof AgentsRoute
   '/analytics': typeof AnalyticsRoute
+  '/campaign-review': typeof CampaignReviewRoute
   '/campaigns': typeof CampaignsRoute
   '/connections': typeof ConnectionsRoute
   '/data': typeof DataRoute
@@ -101,6 +109,7 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/agents': typeof AgentsRoute
   '/analytics': typeof AnalyticsRoute
+  '/campaign-review': typeof CampaignReviewRoute
   '/campaigns': typeof CampaignsRoute
   '/connections': typeof ConnectionsRoute
   '/data': typeof DataRoute
@@ -115,6 +124,7 @@ export interface FileRouteTypes {
     | '/'
     | '/agents'
     | '/analytics'
+    | '/campaign-review'
     | '/campaigns'
     | '/connections'
     | '/data'
@@ -127,6 +137,7 @@ export interface FileRouteTypes {
     | '/'
     | '/agents'
     | '/analytics'
+    | '/campaign-review'
     | '/campaigns'
     | '/connections'
     | '/data'
@@ -139,6 +150,7 @@ export interface FileRouteTypes {
     | '/'
     | '/agents'
     | '/analytics'
+    | '/campaign-review'
     | '/campaigns'
     | '/connections'
     | '/data'
@@ -152,6 +164,7 @@ export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AgentsRoute: typeof AgentsRoute
   AnalyticsRoute: typeof AnalyticsRoute
+  CampaignReviewRoute: typeof CampaignReviewRoute
   CampaignsRoute: typeof CampaignsRoute
   ConnectionsRoute: typeof ConnectionsRoute
   DataRoute: typeof DataRoute
@@ -205,6 +218,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof CampaignsRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/campaign-review': {
+      id: '/campaign-review'
+      path: '/campaign-review'
+      fullPath: '/campaign-review'
+      preLoaderRoute: typeof CampaignReviewRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/analytics': {
       id: '/analytics'
       path: '/analytics'
@@ -240,6 +260,7 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AgentsRoute: AgentsRoute,
   AnalyticsRoute: AnalyticsRoute,
+  CampaignReviewRoute: CampaignReviewRoute,
   CampaignsRoute: CampaignsRoute,
   ConnectionsRoute: ConnectionsRoute,
   DataRoute: DataRoute,
