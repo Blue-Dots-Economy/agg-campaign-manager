@@ -698,7 +698,7 @@ export interface KkbDropAnalysisPayload {
 
 export const fetchKkbDropAnalysis = createServerFn({ method: "GET" })
   .inputValidator(
-    (d: { state?: string; dateFrom?: string | null; dateTo?: string | null; campaignType?: string }) => d,
+    (d: { state?: string; dateFrom?: string | null; dateTo?: string | null; campaignType?: string; campaign?: string | null }) => d,
   )
   .handler(async ({ data }): Promise<KkbDropAnalysisPayload> => {
     const empty: KkbDropAnalysisPayload = { stages: [], buckets: [], maxCell: 0, grandTotal: 0 };
@@ -709,6 +709,7 @@ export const fetchKkbDropAnalysis = createServerFn({ method: "GET" })
         _date_from: data.dateFrom ?? null,
         _date_to: data.dateTo ?? null,
         _campaign_type: data.campaignType ?? "all",
+        _campaign: data.campaign ?? null,
       });
       if (error) throw new Error(error.message);
       if (!rpcData || typeof rpcData !== "object") return empty;
