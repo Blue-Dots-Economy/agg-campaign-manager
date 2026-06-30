@@ -326,7 +326,7 @@ export function ProgramAnalytics({
 
             <Panel
               title="Drop analysis — where seekers drop off and why"
-              description="Normalized drop reasons across each funnel transition. Click a row to see the raw reasons inside it."
+              description="Normalized drop reasons across each conversation phase. Click a row to see the raw reasons inside it."
             >
               <DropAnalysisHeatmap data={dropAnalysisQuery.data} />
             </Panel>
