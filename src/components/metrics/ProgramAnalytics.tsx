@@ -160,11 +160,13 @@ export function ProgramAnalytics({
     ? prevQuery.data?.aggregates?.kpis
     : undefined;
 
+  const comparisonLabel = comparison ? `vs ${comparison.label} avg` : undefined;
+
   return (
     <div className="space-y-6">
       {comparison && (
         <div className="text-xs text-muted-foreground">
-          Compared to <span className="font-medium text-foreground">{comparison.label}</span>
+          Compared to <span className="font-medium text-foreground">{comparison.label} average</span>
         </div>
       )}
       {hasMetrics ? (
@@ -173,12 +175,14 @@ export function ProgramAnalytics({
             m={metrics as unknown as DkbMetrics}
             previous={prevMetrics as unknown as DkbMetrics | undefined}
             perDay={perDayRollup}
+            comparisonLabel={comparisonLabel}
           />
         ) : (
           <KkbOverviewMetrics
             m={metrics as unknown as KkbMetrics}
             previous={prevMetrics as unknown as KkbMetrics | undefined}
             perDay={perDayRollup}
+            comparisonLabel={comparisonLabel}
           />
         )
       ) : (
