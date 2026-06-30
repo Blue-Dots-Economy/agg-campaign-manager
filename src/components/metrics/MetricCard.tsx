@@ -39,6 +39,7 @@ export function MetricCard({
   unit,
   trailing,
   trend,
+  comparisonLabel,
   className,
 }: MetricCardProps) {
   const numericValue = typeof value === "number" ? value : null;
@@ -58,10 +59,11 @@ export function MetricCard({
   }
 
   const display = formatValue(value, format, unit);
+  const parenthetical = comparisonLabel ?? "prev period";
   const subLine =
     sub ??
     (hasTrend
-      ? `from ${formatValue(previous as number, format, unit)} (prev period)`
+      ? `from ${formatValue(previous as number, format, unit)} (${parenthetical})`
       : undefined);
 
   const sparkSeries = (trend ?? []).filter((n) => Number.isFinite(n));
