@@ -18,6 +18,7 @@ export interface OverviewFilters {
   dateFrom?: string | null;   // YYYY-MM-DD
   dateTo?: string | null;     // YYYY-MM-DD
   campaignType?: string;      // 'all' | 'normal' | 'higher_education'
+  campaign?: string | null;   // exact campaign_type value (Campaign Review scope)
 }
 
 const STALE_AFTER_MS = 15 * 60_000; // 15 minutes — on-load freshness trigger
@@ -28,9 +29,10 @@ export function useProgramAggregates(config: ProgramConfig, filters?: OverviewFi
   const dateFrom = filters?.dateFrom ?? null;
   const dateTo = filters?.dateTo ?? null;
   const campaignType = filters?.campaignType ?? "all";
+  const campaign = filters?.campaign ?? null;
   const query = useQuery<AggregatePayload>({
-    queryKey: ["program-aggregates", config.id, state, dateFrom, dateTo, campaignType],
-    queryFn: () => fn({ data: { program: config.id, state, dateFrom, dateTo, campaignType } }),
+    queryKey: ["program-aggregates", config.id, state, dateFrom, dateTo, campaignType, campaign],
+    queryFn: () => fn({ data: { program: config.id, state, dateFrom, dateTo, campaignType, campaign } }),
     staleTime: 5 * 60_000,
     gcTime: 30 * 60_000,
     placeholderData: keepPreviousData,
@@ -50,9 +52,10 @@ export function useKkbDropAnalysis(filters?: OverviewFilters) {
   const dateFrom = filters?.dateFrom ?? null;
   const dateTo = filters?.dateTo ?? null;
   const campaignType = filters?.campaignType ?? "all";
+  const campaign = filters?.campaign ?? null;
   return useQuery<KkbDropAnalysisPayload>({
-    queryKey: ["kkb-drop-analysis", state, dateFrom, dateTo, campaignType],
-    queryFn: () => fn({ data: { state, dateFrom, dateTo, campaignType } }),
+    queryKey: ["kkb-drop-analysis", state, dateFrom, dateTo, campaignType, campaign],
+    queryFn: () => fn({ data: { state, dateFrom, dateTo, campaignType, campaign } }),
     staleTime: 5 * 60_000,
     gcTime: 30 * 60_000,
     placeholderData: keepPreviousData,
