@@ -307,25 +307,30 @@ export function DkbOverviewMetrics({
             value={m.activeOpenings}
             sub="Vacancies currently hiring (post-campaign)"
             previous={prev(previous, "activeOpenings")}
+            comparisonLabel={comparisonLabel}
           />
           <MetricCard
             label="Active Providers"
             value={m.jobsActive}
             sub="Companies actively hiring"
             previous={prev(previous, "jobsActive")}
+            comparisonLabel={comparisonLabel}
           />
           <MetricCard
             label="New jobs posted"
             value={m.newJobsPosted}
             sub="Companies that posted new roles"
             previous={prev(previous, "newJobsPosted")}
+            comparisonLabel={comparisonLabel}
           />
           <MetricCard
             label="New job openings"
             value={m.newOpenings}
             sub="New vacancies posted during calls"
             previous={prev(previous, "newOpenings")}
+            comparisonLabel={comparisonLabel}
           />
+
         </div>
       </MetricSection>
 
