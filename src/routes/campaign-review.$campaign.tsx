@@ -62,7 +62,7 @@ function CampaignReviewDetail() {
     const d = parseDate(current.campaignDate);
     return d ? format(d, "MMM d, yyyy") : "—";
   })();
-  const label = `vs ${region ?? "all"} avg`;
+  const label = region ?? "all";
 
   return (
     <div className="space-y-6">
