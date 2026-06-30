@@ -208,8 +208,9 @@ function CampaignRow({ campaign, successLabel }: { campaign: CampaignLike; succe
           <Metric label="Engaged" value={campaign.engaged.toLocaleString()} align="right" />
           <Metric label={successLabel} value={campaign.converted.toLocaleString()} align="right" />
         </div>
-        <span className="text-xs text-primary inline-flex items-center gap-1 ml-2 whitespace-nowrap">
-          Review <ArrowRight className="h-3 w-3" />
+        <span className={cn(buttonVariants({ size: "sm" }), "ml-2 shrink-0 gap-1.5 pointer-events-none")}>
+          Review
+          <ArrowRight className="h-3.5 w-3.5 transition-transform group-hover:translate-x-0.5" />
         </span>
       </Link>
     </li>
