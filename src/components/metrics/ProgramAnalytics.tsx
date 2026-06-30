@@ -162,6 +162,11 @@ export function ProgramAnalytics({
 
   return (
     <div className="space-y-6">
+      {comparison && (
+        <div className="text-xs text-muted-foreground">
+          Compared to <span className="font-medium text-foreground">{comparison.label}</span>
+        </div>
+      )}
       {hasMetrics ? (
         isDkb ? (
           <DkbOverviewMetrics
