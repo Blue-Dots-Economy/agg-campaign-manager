@@ -605,13 +605,14 @@ function normalizeMetricGroups(value: unknown): MetricGroup[] {
 }
 
 export const fetchProgramAggregates = createServerFn({ method: "GET" })
-  .inputValidator((d: { program: ProgramId; state?: string; dateFrom?: string | null; dateTo?: string | null; campaignType?: string }) => d)
+  .inputValidator((d: { program: ProgramId; state?: string; dateFrom?: string | null; dateTo?: string | null; campaignType?: string; campaign?: string | null }) => d)
   .handler(async ({ data }): Promise<AggregatePayload> => {
     const program = data.program;
     const state = data.state && data.state !== "all" ? data.state : "all";
     const dateFrom = data.dateFrom ?? null;
     const dateTo = data.dateTo ?? null;
     const campaignType = data.campaignType ?? "all";
+    const campaign = data.campaign ?? null;
     try {
       let payload: AggregateRpcPayload;
       try {
@@ -622,6 +623,7 @@ export const fetchProgramAggregates = createServerFn({ method: "GET" })
           _date_from: dateFrom,
           _date_to: dateTo,
           _campaign_type: campaignType,
+          _campaign: campaign,
         });
         if (error) throw new Error(error.message);
         payload = (rpcData && typeof rpcData === "object" ? rpcData : {}) as AggregateRpcPayload;
