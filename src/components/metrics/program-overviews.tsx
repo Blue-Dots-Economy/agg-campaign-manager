@@ -342,6 +342,7 @@ export function DkbOverviewMetrics({
             value={m.totalCalls}
             sub={previous ? undefined : "All dialled attempts"}
             previous={prev(previous, "totalCalls")}
+            comparisonLabel={comparisonLabel}
             trend={series(perDay, (p) => p.rows)}
           />
           <MetricCard
@@ -349,6 +350,7 @@ export function DkbOverviewMetrics({
             value={m.answeredCalls}
             sub={previous ? `${pickupPct.toFixed(1)}% pickup` : `${pickupPct.toFixed(1)}% pickup rate`}
             previous={prev(previous, "answeredCalls")}
+            comparisonLabel={comparisonLabel}
             trend={series(perDay, (p) => p.answered)}
           />
           <MetricCard
@@ -356,6 +358,7 @@ export function DkbOverviewMetrics({
             value={m.unansweredCalls}
             sub={previous ? undefined : "No pickup"}
             previous={prev(previous, "unansweredCalls")}
+            comparisonLabel={comparisonLabel}
           />
           <MetricCard
             label="Productive conversations"
@@ -363,6 +366,7 @@ export function DkbOverviewMetrics({
             format="percent"
             sub={previous ? undefined : `${m.productiveCalls.toLocaleString()} calls — answered + > 30s`}
             previous={prevProductivePct}
+            comparisonLabel={comparisonLabel}
             trend={series(perDay, (p) => safeDiv(p.engaged, p.rows) * 100)}
           />
           <MetricCard
@@ -370,6 +374,7 @@ export function DkbOverviewMetrics({
             value={`${m.avgDuration.toFixed(1)} sec`}
             sub={previous ? undefined : "Answered calls only"}
             previous={prev(previous, "avgDuration")}
+            comparisonLabel={comparisonLabel}
           />
         </div>
       </MetricSection>
