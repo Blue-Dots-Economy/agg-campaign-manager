@@ -280,6 +280,7 @@ export function DkbOverviewMetrics({
                 format="percent"
                 sub={previous ? undefined : `${m.productiveCalls.toLocaleString()} calls — answered + > 30s`}
                 previous={prevProductivePct}
+                comparisonLabel={comparisonLabel}
                 trend={series(perDay, (p) => safeDiv(p.engaged, p.rows) * 100)}
               />
               <MetricCard
@@ -287,8 +288,10 @@ export function DkbOverviewMetrics({
                 value={highIntentTotal}
                 sub={previous ? undefined : "Intent score ≥ 5"}
                 previous={prevHighIntent}
+                comparisonLabel={comparisonLabel}
                 trend={series(perDay, (p) => p.high_intent)}
               />
+
             </div>
           </div>
         </div>
