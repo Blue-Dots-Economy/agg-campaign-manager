@@ -15,6 +15,8 @@ export interface MetricCardProps {
   trailing?: React.ReactNode;
   /** Optional time-series for the sparkline rendered in the empty right side. */
   trend?: number[];
+  /** Override the "(prev period)" parenthetical in the auto-generated sub line. */
+  comparisonLabel?: string;
   className?: string;
 }
 
