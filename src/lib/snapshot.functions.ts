@@ -721,3 +721,50 @@ export const fetchKkbDropAnalysis = createServerFn({ method: "GET" })
       return empty;
     }
   });
+
+export interface CampaignListItem {
+  campaignType: string;
+  campaignDate: string | null;
+  language: string | null;
+  region: string | null;
+  totalCalls: number;
+  answered: number;
+  engaged: number;
+  highIntent: number;
+  converted: number;
+}
+
+export const fetchCampaignList = createServerFn({ method: "GET" })
+  .inputValidator(
+    (d: { program: ProgramId; state?: string; dateFrom?: string | null; dateTo?: string | null }) => d,
+  )
+  .handler(async ({ data }): Promise<CampaignListItem[]> => {
+    try {
+      const client = sb();
+      const { data: rpcData, error } = await client.rpc("get_campaign_list", {
+        _program: data.program,
+        _state: data.state && data.state !== "all" ? data.state : "all",
+        _date_from: data.dateFrom ?? null,
+        _date_to: data.dateTo ?? null,
+      });
+      if (error) throw new Error(error.message);
+      if (!Array.isArray(rpcData)) return [];
+      return rpcData.flatMap((it): CampaignListItem[] => {
+        if (!it || typeof it !== "object") return [];
+        const o = it as Record<string, unknown>;
+        return [{
+          campaignType: String(o.campaignType ?? ""),
+          campaignDate: o.campaignDate ? String(o.campaignDate) : null,
+          language: o.language ? String(o.language) : null,
+          region: o.region ? String(o.region) : null,
+          totalCalls: Number(o.totalCalls ?? 0) || 0,
+          answered: Number(o.answered ?? 0) || 0,
+          engaged: Number(o.engaged ?? 0) || 0,
+          highIntent: Number(o.highIntent ?? 0) || 0,
+          converted: Number(o.converted ?? 0) || 0,
+        }];
+      });
+    } catch {
+      return [];
+    }
+  });

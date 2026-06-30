@@ -5,8 +5,10 @@ import {
   fetchProgramAggregates,
   syncProgramSnapshot,
   fetchKkbDropAnalysis,
+  fetchCampaignList,
   type AggregatePayload,
   type KkbDropAnalysisPayload,
+  type CampaignListItem,
 } from "@/lib/snapshot.functions";
 import type { ProgramConfig, ProgramId } from "./registry";
 import { toast } from "sonner";
@@ -51,6 +53,28 @@ export function useKkbDropAnalysis(filters?: OverviewFilters) {
   return useQuery<KkbDropAnalysisPayload>({
     queryKey: ["kkb-drop-analysis", state, dateFrom, dateTo, campaignType],
     queryFn: () => fn({ data: { state, dateFrom, dateTo, campaignType } }),
+    staleTime: 5 * 60_000,
+    gcTime: 30 * 60_000,
+    placeholderData: keepPreviousData,
+    refetchOnWindowFocus: false,
+    refetchOnReconnect: false,
+    refetchOnMount: false,
+    retry: 1,
+    retryDelay: 1500,
+  });
+}
+
+export function useCampaignList(
+  config: ProgramConfig,
+  filters?: Pick<OverviewFilters, "state" | "dateFrom" | "dateTo">,
+) {
+  const fn = useServerFn(fetchCampaignList);
+  const state = filters?.state ?? "all";
+  const dateFrom = filters?.dateFrom ?? null;
+  const dateTo = filters?.dateTo ?? null;
+  return useQuery<CampaignListItem[]>({
+    queryKey: ["campaign-list", config.id, state, dateFrom, dateTo],
+    queryFn: () => fn({ data: { program: config.id, state, dateFrom, dateTo } }),
     staleTime: 5 * 60_000,
     gcTime: 30 * 60_000,
     placeholderData: keepPreviousData,
