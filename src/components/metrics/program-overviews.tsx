@@ -178,6 +178,7 @@ export function KkbOverviewMetrics({
                 format="percent"
                 sub={previous ? undefined : `${m.productiveCalls.toLocaleString()} calls — answered + > 30s`}
                 previous={prevProductivePct}
+                comparisonLabel={comparisonLabel}
                 trend={series(perDay, (p) => safeDiv(p.engaged, p.rows) * 100)}
               />
               <MetricCard
@@ -185,6 +186,7 @@ export function KkbOverviewMetrics({
                 value={m.highIntentCalls}
                 sub={previous ? undefined : "Intent score ≥ 5"}
                 previous={prev(previous, "highIntentCalls")}
+                comparisonLabel={comparisonLabel}
                 trend={series(perDay, (p) => p.high_intent)}
               />
               <MetricCard
@@ -193,8 +195,10 @@ export function KkbOverviewMetrics({
                 format="percent"
                 sub={previous ? undefined : "Applied / answered seekers"}
                 previous={prevAppRate}
+                comparisonLabel={comparisonLabel}
                 trend={series(perDay, (p) => safeDiv(p.converted, p.answered) * 100)}
               />
+
             </div>
           </div>
         </div>
