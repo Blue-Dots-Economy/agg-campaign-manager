@@ -77,10 +77,12 @@ export function KkbOverviewMetrics({
   m,
   previous,
   perDay,
+  comparisonLabel,
 }: {
   m: KkbMetrics;
   previous?: KkbMetrics;
   perDay?: DailyPoint[];
+  comparisonLabel?: string;
 }) {
   const appRate = m.answeredSeekers > 0 ? (m.appliedSeekers / m.answeredSeekers) * 100 : 0;
   const productivePct = m.totalCalls > 0 ? (m.productiveCalls / m.totalCalls) * 100 : 0;
