@@ -50,15 +50,32 @@ export interface ProgramAnalyticsProps {
   config: ProgramConfig;
   filters: OverviewFilterValue;
   onClearFilters?: () => void;
+  /** Exact campaign_type value — scopes the whole view to one campaign. */
+  campaign?: string | null;
+  /** Replace previous-period baseline with a state-average baseline. */
+  comparison?: {
+    mode: "state-average";
+    region: string | null;          // 'GZB' | 'KA' | null = all
+    label: string;                  // e.g. "vs GZB avg"
+  };
 }
 
-export function ProgramAnalytics({ config, filters, onClearFilters }: ProgramAnalyticsProps) {
+export function ProgramAnalytics({
+  config,
+  filters,
+  onClearFilters,
+  campaign,
+  comparison,
+}: ProgramAnalyticsProps) {
   const isDkb = config.id === "dkb";
-  const query = useProgramAggregates(config, filters);
-  const dropAnalysisQuery = useKkbDropAnalysis(isDkb ? undefined : filters);
+  const scopedFilters = campaign ? { ...filters, campaign } : filters;
+  const query = useProgramAggregates(config, scopedFilters);
+  const dropAnalysisQuery = useKkbDropAnalysis(isDkb ? undefined : scopedFilters);
   const data = query.data;
 
+  // Previous-period baseline (default behavior, used only when no comparison override).
   const prevFilters = (() => {
+    if (comparison) return null;
     if (!filters.dateFrom || !filters.dateTo) return null;
     const from = new Date(filters.dateFrom);
     const to = new Date(filters.dateTo);
@@ -83,7 +100,23 @@ export function ProgramAnalytics({ config, filters, onClearFilters }: ProgramAna
       campaignType: filters.campaignType,
     },
   );
-  const prevMetrics = prevFilters ? prevQuery.data?.metrics : undefined;
+
+  // State-average baseline (Campaign Review).
+  const stateAvgFilters = comparison
+    ? {
+        state: comparison.region ?? "all",
+        dateFrom: null,
+        dateTo: null,
+        campaignType: "all",
+      }
+    : { state: "all", dateFrom: null, dateTo: null, campaignType: "all" };
+  const stateAvgQuery = useProgramAggregates(config, stateAvgFilters);
+
+  const prevMetrics = comparison
+    ? stateAvgQuery.data?.metrics
+    : prevFilters
+    ? prevQuery.data?.metrics
+    : undefined;
 
   const perDay = data?.aggregates?.perDay ?? [];
   const perDayRollup = useMemo(() => {
@@ -121,7 +154,11 @@ export function ProgramAnalytics({ config, filters, onClearFilters }: ProgramAna
     data.aggregates;
   const metrics = data.metrics ?? {};
   const hasMetrics = Object.keys(metrics).length > 0;
-  const prevKpis = prevFilters ? prevQuery.data?.aggregates?.kpis : undefined;
+  const prevKpis = comparison
+    ? stateAvgQuery.data?.aggregates?.kpis
+    : prevFilters
+    ? prevQuery.data?.aggregates?.kpis
+    : undefined;
 
   return (
     <div className="space-y-6">
