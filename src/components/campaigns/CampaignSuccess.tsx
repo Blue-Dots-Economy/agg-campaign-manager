@@ -122,13 +122,11 @@ export function CampaignSuccess({
     ? "text-emerald-700 dark:text-emerald-300"
     : "text-rose-700 dark:text-rose-300";
 
-  const langLabel = language ?? "—";
-
   const c1Detail = !c1Applicable
     ? "No earlier campaign to compare"
     : c1Pass
-      ? `Beat the previous campaign (${langLabel} · Day ${prevDayN})`
-      : `Below the previous campaign (${langLabel} · Day ${prevDayN})`;
+      ? `Beat the previous campaign (${humanizeCampaignType(prevEntry!.campaignType)})`
+      : `Below the previous campaign (${humanizeCampaignType(prevEntry!.campaignType)})`;
   const c2Detail = c2Pass
     ? `Above the ${region} average`
     : `Below the ${region} average`;
