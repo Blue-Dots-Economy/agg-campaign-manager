@@ -7,6 +7,7 @@ import {
   type OverviewFilters,
 } from "@/programs/useProgramAggregates";
 import type { KkbMetrics } from "@/components/metrics/program-overviews";
+import { humanizeCampaignType } from "@/lib/campaign-name";
 
 interface Props {
   campaign: string;
@@ -65,20 +66,16 @@ export function CampaignSuccess({
   });
   const list = useCampaignList(config, {});
 
-  const { prevEntry, prevDayN } = useMemo(() => {
+  const prevEntry = useMemo(() => {
     const items = list.data ?? [];
-    if (!language || !campaignDate) return { prevEntry: null, prevDayN: null };
+    if (!language || !campaignDate) return null;
     const sameLang = items
-      .filter(
-        (c) => (c.language ?? null) === language && !!c.campaignDate,
-      )
+      .filter((c) => (c.language ?? null) === language && !!c.campaignDate)
       .slice()
       .sort((a, b) => (a.campaignDate ?? "").localeCompare(b.campaignDate ?? ""));
     const earlier = sameLang.filter((c) => (c.campaignDate ?? "") < campaignDate);
-    if (earlier.length === 0) return { prevEntry: null, prevDayN: null };
-    const prev = earlier[earlier.length - 1];
-    const idx = sameLang.findIndex((c) => c.campaignType === prev.campaignType);
-    return { prevEntry: prev, prevDayN: idx + 1 };
+    if (earlier.length === 0) return null;
+    return earlier[earlier.length - 1];
   }, [list.data, language, campaignDate]);
 
   const prevAgg = useProgramAggregates(config, {
@@ -125,13 +122,11 @@ export function CampaignSuccess({
     ? "text-emerald-700 dark:text-emerald-300"
     : "text-rose-700 dark:text-rose-300";
 
-  const langLabel = language ?? "—";
-
   const c1Detail = !c1Applicable
     ? "No earlier campaign to compare"
     : c1Pass
-      ? `Beat the previous campaign (${langLabel} · Day ${prevDayN})`
-      : `Below the previous campaign (${langLabel} · Day ${prevDayN})`;
+      ? `Beat the previous campaign (${humanizeCampaignType(prevEntry!.campaignType)})`
+      : `Below the previous campaign (${humanizeCampaignType(prevEntry!.campaignType)})`;
   const c2Detail = c2Pass
     ? `Above the ${region} average`
     : `Below the ${region} average`;
