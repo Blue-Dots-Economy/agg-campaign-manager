@@ -6,6 +6,7 @@ import { useProgram } from "@/programs/context";
 import { useCampaignList } from "@/programs/useProgramAggregates";
 import { ProgramAnalytics } from "@/components/metrics/ProgramAnalytics";
 import { CampaignVerdict } from "@/components/campaigns/CampaignVerdict";
+import { CampaignSuccess } from "@/components/campaigns/CampaignSuccess";
 import { humanizeCampaignType } from "@/lib/campaign-name";
 import { LoadingState, NoDataState } from "@/components/EmptyState";
 import {
@@ -107,11 +108,20 @@ function CampaignReviewDetail() {
       </div>
 
       {config.id === "kkb" && (
-        <CampaignVerdict
-          campaign={current.campaignType}
-          region={region}
-          filters={{ dateFrom: null, dateTo: null }}
-        />
+        <>
+          <CampaignSuccess
+            campaign={current.campaignType}
+            language={current.language ?? null}
+            region={region}
+            campaignDate={current.campaignDate ?? null}
+            filters={{ dateFrom: null, dateTo: null }}
+          />
+          <CampaignVerdict
+            campaign={current.campaignType}
+            region={region}
+            filters={{ dateFrom: null, dateTo: null }}
+          />
+        </>
       )}
 
       <ProgramAnalytics
