@@ -5,6 +5,7 @@ import { format } from "date-fns";
 import { useProgram } from "@/programs/context";
 import { useCampaignList } from "@/programs/useProgramAggregates";
 import { ProgramAnalytics } from "@/components/metrics/ProgramAnalytics";
+import { CampaignVerdict } from "@/components/campaigns/CampaignVerdict";
 import { humanizeCampaignType } from "@/lib/campaign-name";
 import { LoadingState, NoDataState } from "@/components/EmptyState";
 import {
@@ -104,6 +105,14 @@ function CampaignReviewDetail() {
           </Select>
         </div>
       </div>
+
+      {config.id === "kkb" && (
+        <CampaignVerdict
+          campaign={current.campaignType}
+          region={region}
+          filters={{ dateFrom: null, dateTo: null }}
+        />
+      )}
 
       <ProgramAnalytics
         config={config}
