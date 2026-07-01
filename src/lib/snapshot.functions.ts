@@ -771,3 +771,54 @@ export const fetchCampaignList = createServerFn({ method: "GET" })
       return [];
     }
   });
+
+export interface CampaignDropCausesPayload {
+  sampleCalls: number;
+  region: string | null;
+  highIntentNonApply: {
+    segment: number;
+    top: Array<{ phase: string; reason: string; count: number; pct: number }>;
+  };
+  phaseShare: Array<{
+    phaseKey: string;
+    phaseLabel: string;
+    campaignPct: number;
+    regionPct: number;
+  }>;
+}
+
+export const fetchCampaignDropCauses = createServerFn({ method: "GET" })
+  .inputValidator(
+    (d: { campaign: string; state?: string; dateFrom?: string | null; dateTo?: string | null }) => d,
+  )
+  .handler(async ({ data }): Promise<CampaignDropCausesPayload> => {
+    const empty: CampaignDropCausesPayload = {
+      sampleCalls: 0,
+      region: null,
+      highIntentNonApply: { segment: 0, top: [] },
+      phaseShare: [],
+    };
+    try {
+      const client = sb();
+      const { data: rpcData, error } = await client.rpc("get_campaign_drop_causes", {
+        _campaign: data.campaign,
+        _state: data.state && data.state !== "all" ? data.state : "all",
+        _date_from: data.dateFrom ?? null,
+        _date_to: data.dateTo ?? null,
+      });
+      if (error) throw new Error(error.message);
+      if (!rpcData || typeof rpcData !== "object") return empty;
+      const p = rpcData as CampaignDropCausesPayload;
+      return {
+        sampleCalls: Number(p.sampleCalls ?? 0) || 0,
+        region: p.region ?? null,
+        highIntentNonApply: {
+          segment: Number(p.highIntentNonApply?.segment ?? 0) || 0,
+          top: Array.isArray(p.highIntentNonApply?.top) ? p.highIntentNonApply.top : [],
+        },
+        phaseShare: Array.isArray(p.phaseShare) ? p.phaseShare : [],
+      };
+    } catch {
+      return empty;
+    }
+  });
