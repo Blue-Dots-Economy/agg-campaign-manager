@@ -108,11 +108,20 @@ function CampaignReviewDetail() {
       </div>
 
       {config.id === "kkb" && (
-        <CampaignVerdict
-          campaign={current.campaignType}
-          region={region}
-          filters={{ dateFrom: null, dateTo: null }}
-        />
+        <>
+          <CampaignSuccess
+            campaign={current.campaignType}
+            language={current.language ?? null}
+            region={region}
+            campaignDate={current.campaignDate ?? null}
+            filters={{ dateFrom: null, dateTo: null }}
+          />
+          <CampaignVerdict
+            campaign={current.campaignType}
+            region={region}
+            filters={{ dateFrom: null, dateTo: null }}
+          />
+        </>
       )}
 
       <ProgramAnalytics
