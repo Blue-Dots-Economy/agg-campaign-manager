@@ -7,6 +7,7 @@ import {
   type OverviewFilters,
 } from "@/programs/useProgramAggregates";
 import type { KkbMetrics } from "@/components/metrics/program-overviews";
+import { humanizeCampaignType } from "@/lib/campaign-name";
 
 interface Props {
   campaign: string;
