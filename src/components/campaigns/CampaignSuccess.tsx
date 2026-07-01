@@ -66,20 +66,16 @@ export function CampaignSuccess({
   });
   const list = useCampaignList(config, {});
 
-  const { prevEntry, prevDayN } = useMemo(() => {
+  const prevEntry = useMemo(() => {
     const items = list.data ?? [];
-    if (!language || !campaignDate) return { prevEntry: null, prevDayN: null };
+    if (!language || !campaignDate) return null;
     const sameLang = items
-      .filter(
-        (c) => (c.language ?? null) === language && !!c.campaignDate,
-      )
+      .filter((c) => (c.language ?? null) === language && !!c.campaignDate)
       .slice()
       .sort((a, b) => (a.campaignDate ?? "").localeCompare(b.campaignDate ?? ""));
     const earlier = sameLang.filter((c) => (c.campaignDate ?? "") < campaignDate);
-    if (earlier.length === 0) return { prevEntry: null, prevDayN: null };
-    const prev = earlier[earlier.length - 1];
-    const idx = sameLang.findIndex((c) => c.campaignType === prev.campaignType);
-    return { prevEntry: prev, prevDayN: idx + 1 };
+    if (earlier.length === 0) return null;
+    return earlier[earlier.length - 1];
   }, [list.data, language, campaignDate]);
 
   const prevAgg = useProgramAggregates(config, {
