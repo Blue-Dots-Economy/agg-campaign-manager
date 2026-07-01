@@ -106,6 +106,14 @@ function CampaignReviewDetail() {
         </div>
       </div>
 
+      {config.id === "kkb" && (
+        <CampaignVerdict
+          campaign={current.campaignType}
+          region={region}
+          filters={{ dateFrom: null, dateTo: null }}
+        />
+      )}
+
       <ProgramAnalytics
         config={config}
         filters={{ state: "all", dateFrom: null, dateTo: null, campaignType: "all" }}
