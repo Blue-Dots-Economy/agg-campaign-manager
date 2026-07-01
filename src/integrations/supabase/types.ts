@@ -426,6 +426,15 @@ export type Database = {
       }
     }
     Functions: {
+      get_campaign_drop_causes: {
+        Args: {
+          _campaign: string
+          _date_from?: string
+          _date_to?: string
+          _state?: string
+        }
+        Returns: Json
+      }
       get_campaign_list: {
         Args: {
           _date_from?: string
