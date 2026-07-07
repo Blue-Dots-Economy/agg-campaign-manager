@@ -851,3 +851,41 @@ export const fetchCampaignDropCauses = createServerFn({ method: "GET" })
       return empty;
     }
   });
+
+export interface DkbCampaignCausesPayload {
+  sampleCalls: number;
+  region: string | null;
+  phaseShare: Array<{
+    phaseKey: string;
+    phaseLabel: string;
+    campaignPct: number;
+    regionPct: number;
+  }>;
+}
+
+export const fetchDkbCampaignCauses = createServerFn({ method: "GET" })
+  .inputValidator(
+    (d: { campaign: string; state?: string; dateFrom?: string | null; dateTo?: string | null }) => d,
+  )
+  .handler(async ({ data }): Promise<DkbCampaignCausesPayload> => {
+    const empty: DkbCampaignCausesPayload = { sampleCalls: 0, region: null, phaseShare: [] };
+    try {
+      const client = sb();
+      const { data: rpcData, error } = await client.rpc("get_dkb_campaign_causes", {
+        _campaign: data.campaign,
+        _state: data.state && data.state !== "all" ? data.state : "all",
+        _date_from: data.dateFrom ?? null,
+        _date_to: data.dateTo ?? null,
+      });
+      if (error) throw new Error(error.message);
+      if (!rpcData || typeof rpcData !== "object") return empty;
+      const p = rpcData as DkbCampaignCausesPayload;
+      return {
+        sampleCalls: Number(p.sampleCalls ?? 0) || 0,
+        region: p.region ?? null,
+        phaseShare: Array.isArray(p.phaseShare) ? p.phaseShare : [],
+      };
+    } catch {
+      return empty;
+    }
+  });
