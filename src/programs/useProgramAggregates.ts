@@ -5,6 +5,7 @@ import {
   fetchProgramAggregates,
   syncProgramSnapshot,
   fetchKkbDropAnalysis,
+  fetchDkbDropAnalysis,
   fetchCampaignList,
   type AggregatePayload,
   type KkbDropAnalysisPayload,
