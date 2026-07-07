@@ -152,6 +152,7 @@ function CampaignCard({
     <Link
       to="/campaign-review/$campaign"
       params={{ campaign: campaign.campaignType }}
+      search={{ date: campaign.campaignDate ?? undefined }}
       className={cn(
         "group block rounded-xl border bg-card p-5 transition-colors hover:bg-muted/40",
         highlighted ? "border-primary border-2 shadow-sm" : "border-border",
