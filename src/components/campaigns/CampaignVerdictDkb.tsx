@@ -71,6 +71,10 @@ export function CampaignVerdictDkb({ campaign, region, filters }: Props) {
   const dateFrom = filters?.dateFrom ?? null;
   const dateTo = filters?.dateTo ?? null;
 
+  const baselineState = region ?? "all";
+  const regionLabel = region ?? "program";
+  const scopeWord = region ? "region" : "program";
+
   const campaignAgg = useProgramAggregates(config, {
     state: "all",
     dateFrom,
@@ -79,7 +83,7 @@ export function CampaignVerdictDkb({ campaign, region, filters }: Props) {
     campaign,
   });
   const regionAgg = useProgramAggregates(config, {
-    state: region ?? "all",
+    state: baselineState,
     dateFrom,
     dateTo,
     campaignType: "all",
