@@ -118,7 +118,6 @@ export function CampaignVerdictDkb({ campaign, region, filters }: Props) {
     };
   }, [campaignAgg.data, regionAgg.data, causes.data]);
 
-  if (!region) return null;
   if (!campaignAgg.data || !regionAgg.data) return null;
 
   const worstPhaseGap = (): { label: string; camp: number; reg: number } | null => {
