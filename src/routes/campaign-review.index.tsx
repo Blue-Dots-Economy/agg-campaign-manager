@@ -85,7 +85,7 @@ function CampaignReviewList() {
               <div className="grid gap-3 md:grid-cols-2">
                 {recent.map((c) => (
                   <CampaignCard
-                    key={c.campaignType}
+                    key={`${c.campaignType}__${c.campaignDate ?? "nodate"}`}
                     campaign={c}
                     successLabel={successLabel}
                     highlighted
