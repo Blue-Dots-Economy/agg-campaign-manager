@@ -107,7 +107,7 @@ function CampaignReviewList() {
                   </li>
                 ) : (
                   all.map((c) => (
-                    <CampaignRow key={c.campaignType} campaign={c} successLabel={successLabel} />
+                    <CampaignRow key={`${c.campaignType}__${c.campaignDate ?? "nodate"}`} campaign={c} successLabel={successLabel} />
                   ))
                 )}
               </ul>
