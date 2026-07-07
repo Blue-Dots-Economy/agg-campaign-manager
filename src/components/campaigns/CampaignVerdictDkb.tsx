@@ -71,6 +71,10 @@ export function CampaignVerdictDkb({ campaign, region, filters }: Props) {
   const dateFrom = filters?.dateFrom ?? null;
   const dateTo = filters?.dateTo ?? null;
 
+  const baselineState = region ?? "all";
+  const regionLabel = region ?? "program";
+  const scopeWord = region ? "region" : "program";
+
   const campaignAgg = useProgramAggregates(config, {
     state: "all",
     dateFrom,
@@ -79,7 +83,7 @@ export function CampaignVerdictDkb({ campaign, region, filters }: Props) {
     campaign,
   });
   const regionAgg = useProgramAggregates(config, {
-    state: region ?? "all",
+    state: baselineState,
     dateFrom,
     dateTo,
     campaignType: "all",
@@ -114,7 +118,6 @@ export function CampaignVerdictDkb({ campaign, region, filters }: Props) {
     };
   }, [campaignAgg.data, regionAgg.data, causes.data]);
 
-  if (!region) return null;
   if (!campaignAgg.data || !regionAgg.data) return null;
 
   const worstPhaseGap = (): { label: string; camp: number; reg: number } | null => {
@@ -140,11 +143,11 @@ export function CampaignVerdictDkb({ campaign, region, filters }: Props) {
     if (side === "didnt") {
       const p = worstPhaseGap();
       if (!p) return null;
-      return `${Math.round(p.camp)}% dropped at ${p.label} vs ${Math.round(p.reg)}% in region.`;
+      return `${Math.round(p.camp)}% dropped at ${p.label} vs ${Math.round(p.reg)}% in ${scopeWord}.`;
     }
     const p = bestPhaseGap();
     if (!p) return null;
-    return `only ${Math.round(p.camp)}% dropped at ${p.label} vs ${Math.round(p.reg)}% in region.`;
+    return `only ${Math.round(p.camp)}% dropped at ${p.label} vs ${Math.round(p.reg)}% in ${scopeWord}.`;
   };
 
   return (
@@ -164,7 +167,7 @@ export function CampaignVerdictDkb({ campaign, region, filters }: Props) {
         />
       </div>
       <p className="text-[11px] text-muted-foreground">
-        Based on {sampleCalls.toLocaleString()} calls · compared to {region} average.
+        Based on {sampleCalls.toLocaleString()} calls · compared to {regionLabel} average.
       </p>
     </div>
   );
