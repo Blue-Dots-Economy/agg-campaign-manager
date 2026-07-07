@@ -5,6 +5,7 @@ import {
   fetchProgramAggregates,
   syncProgramSnapshot,
   fetchKkbDropAnalysis,
+  fetchDkbDropAnalysis,
   fetchCampaignList,
   type AggregatePayload,
   type KkbDropAnalysisPayload,
@@ -55,6 +56,27 @@ export function useKkbDropAnalysis(filters?: OverviewFilters) {
   const campaign = filters?.campaign ?? null;
   return useQuery<KkbDropAnalysisPayload>({
     queryKey: ["kkb-drop-analysis", state, dateFrom, dateTo, campaignType, campaign],
+    queryFn: () => fn({ data: { state, dateFrom, dateTo, campaignType, campaign } }),
+    staleTime: 5 * 60_000,
+    gcTime: 30 * 60_000,
+    placeholderData: keepPreviousData,
+    refetchOnWindowFocus: false,
+    refetchOnReconnect: false,
+    refetchOnMount: false,
+    retry: 1,
+    retryDelay: 1500,
+  });
+}
+
+export function useDkbDropAnalysis(filters?: OverviewFilters) {
+  const fn = useServerFn(fetchDkbDropAnalysis);
+  const state = filters?.state ?? "all";
+  const dateFrom = filters?.dateFrom ?? null;
+  const dateTo = filters?.dateTo ?? null;
+  const campaignType = filters?.campaignType ?? "all";
+  const campaign = filters?.campaign ?? null;
+  return useQuery<KkbDropAnalysisPayload>({
+    queryKey: ["dkb-drop-analysis", state, dateFrom, dateTo, campaignType, campaign],
     queryFn: () => fn({ data: { state, dateFrom, dateTo, campaignType, campaign } }),
     staleTime: 5 * 60_000,
     gcTime: 30 * 60_000,

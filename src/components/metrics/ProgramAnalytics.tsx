@@ -14,7 +14,7 @@ import {
   Bar,
   Legend,
 } from "recharts";
-import { useProgramAggregates, useKkbDropAnalysis } from "@/programs/useProgramAggregates";
+import { useProgramAggregates, useKkbDropAnalysis, useDkbDropAnalysis } from "@/programs/useProgramAggregates";
 import type { ProgramConfig } from "@/programs/registry";
 import { KpiCard } from "@/components/KpiCard";
 import {
@@ -71,6 +71,7 @@ export function ProgramAnalytics({
   const scopedFilters = campaign ? { ...filters, campaign } : filters;
   const query = useProgramAggregates(config, scopedFilters);
   const dropAnalysisQuery = useKkbDropAnalysis(isDkb ? undefined : scopedFilters);
+  const dkbDropAnalysisQuery = useDkbDropAnalysis(isDkb ? scopedFilters : undefined);
   const data = query.data;
 
   // Previous-period baseline (default behavior, used only when no comparison override).
@@ -243,6 +244,15 @@ export function ProgramAnalytics({
               </div>
             </Panel>
           </div>
+
+          <Panel
+            title="Drop analysis — where providers drop off and why"
+            description="Normalized drop reasons across each conversation phase. Click a row to see the raw reasons inside it."
+          >
+            <DropAnalysisHeatmap data={dkbDropAnalysisQuery.data} />
+          </Panel>
+
+
 
           <div className="grid gap-4 lg:grid-cols-3">
             <Panel title="Job status" description="Verification outcome per posting">

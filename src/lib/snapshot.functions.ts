@@ -725,6 +725,35 @@ export const fetchKkbDropAnalysis = createServerFn({ method: "GET" })
     }
   });
 
+export const fetchDkbDropAnalysis = createServerFn({ method: "GET" })
+  .inputValidator(
+    (d: { state?: string; dateFrom?: string | null; dateTo?: string | null; campaignType?: string; campaign?: string | null }) => d,
+  )
+  .handler(async ({ data }): Promise<KkbDropAnalysisPayload> => {
+    const empty: KkbDropAnalysisPayload = { stages: [], buckets: [], maxCell: 0, grandTotal: 0 };
+    try {
+      const client = sb();
+      const { data: rpcData, error } = await client.rpc("get_dkb_drop_analysis", {
+        _state: data.state && data.state !== "all" ? data.state : "all",
+        _date_from: data.dateFrom ?? null,
+        _date_to: data.dateTo ?? null,
+        _campaign_type: data.campaignType ?? "all",
+        _campaign: data.campaign ?? null,
+      });
+      if (error) throw new Error(error.message);
+      if (!rpcData || typeof rpcData !== "object") return empty;
+      const p = rpcData as KkbDropAnalysisPayload;
+      return {
+        stages: Array.isArray(p.stages) ? p.stages : [],
+        buckets: Array.isArray(p.buckets) ? p.buckets : [],
+        maxCell: Number(p.maxCell ?? 0) || 0,
+        grandTotal: Number(p.grandTotal ?? 0) || 0,
+      };
+    } catch {
+      return empty;
+    }
+  });
+
 export interface CampaignListItem {
   campaignType: string;
   campaignDate: string | null;
