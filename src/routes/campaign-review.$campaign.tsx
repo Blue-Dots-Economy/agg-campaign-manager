@@ -7,6 +7,8 @@ import { useCampaignList } from "@/programs/useProgramAggregates";
 import { ProgramAnalytics } from "@/components/metrics/ProgramAnalytics";
 import { CampaignVerdict } from "@/components/campaigns/CampaignVerdict";
 import { CampaignSuccess } from "@/components/campaigns/CampaignSuccess";
+import { CampaignVerdictDkb } from "@/components/campaigns/CampaignVerdictDkb";
+import { CampaignSuccessDkb } from "@/components/campaigns/CampaignSuccessDkb";
 import { humanizeCampaignType } from "@/lib/campaign-name";
 import { LoadingState, NoDataState } from "@/components/EmptyState";
 import {
