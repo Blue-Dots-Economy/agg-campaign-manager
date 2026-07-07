@@ -93,7 +93,6 @@ export function CampaignSuccessDkb({
   const regionM = regionAgg.data?.metrics as Partial<DkbMetrics> | undefined;
   const prevM = prevEntry ? (prevAgg.data?.metrics as Partial<DkbMetrics> | undefined) : undefined;
 
-  if (!region) return null;
   if (!thisM || !thisM.totalCalls) return null;
 
   const thisScore = score(thisM);
