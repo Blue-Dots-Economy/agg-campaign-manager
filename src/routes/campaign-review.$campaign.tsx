@@ -126,6 +126,24 @@ function CampaignReviewDetail() {
         </>
       )}
 
+      {config.id === "dkb" && (
+        <>
+          <CampaignSuccessDkb
+            campaign={current.campaignType}
+            language={current.language ?? null}
+            region={region}
+            campaignDate={current.campaignDate ?? null}
+            filters={{ dateFrom: null, dateTo: null }}
+          />
+          <CampaignVerdictDkb
+            campaign={current.campaignType}
+            region={region}
+            filters={{ dateFrom: null, dateTo: null }}
+          />
+        </>
+      )}
+
+
       <ProgramAnalytics
         config={config}
         filters={{ state: "all", dateFrom: null, dateTo: null, campaignType: "all" }}
