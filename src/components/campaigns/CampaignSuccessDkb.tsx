@@ -59,8 +59,10 @@ export function CampaignSuccessDkb({
     campaignType: "all",
     campaign,
   });
+  const baselineState = region ?? "all";
+  const regionLabel = region ?? "program";
   const regionAgg = useProgramAggregates(config, {
-    state: region ?? "all",
+    state: baselineState,
     dateFrom,
     dateTo,
     campaignType: "all",
