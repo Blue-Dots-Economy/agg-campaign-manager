@@ -128,7 +128,7 @@ export function CampaignSuccessDkb({
     : c1Pass
       ? `Beat the previous campaign (${humanizeCampaignType(prevEntry!.campaignType)})`
       : `Below the previous campaign (${humanizeCampaignType(prevEntry!.campaignType)})`;
-  const c2Detail = c2Pass ? `Above the ${region} average` : `Below the ${region} average`;
+  const c2Detail = c2Pass ? `Above the ${regionLabel} average` : `Below the ${regionLabel} average`;
   const c3Detail = c3Pass
     ? `Significant outcome (${newJobs.toLocaleString()} new jobs + ${active.toLocaleString()} refreshed)`
     : `Weak outcome (${newJobs.toLocaleString()} new jobs + ${active.toLocaleString()} refreshed)`;
