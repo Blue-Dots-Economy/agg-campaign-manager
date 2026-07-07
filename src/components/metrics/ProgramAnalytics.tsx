@@ -245,6 +245,15 @@ export function ProgramAnalytics({
             </Panel>
           </div>
 
+          <Panel
+            title="Drop analysis — where providers drop off and why"
+            description="Normalized drop reasons across each conversation phase. Click a row to see the raw reasons inside it."
+          >
+            <DropAnalysisHeatmap data={dkbDropAnalysisQuery.data} />
+          </Panel>
+
+
+
           <div className="grid gap-4 lg:grid-cols-3">
             <Panel title="Job status" description="Verification outcome per posting">
               <div className="h-64">
