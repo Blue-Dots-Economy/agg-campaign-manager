@@ -143,11 +143,11 @@ export function CampaignVerdictDkb({ campaign, region, filters }: Props) {
     if (side === "didnt") {
       const p = worstPhaseGap();
       if (!p) return null;
-      return `${Math.round(p.camp)}% dropped at ${p.label} vs ${Math.round(p.reg)}% in region.`;
+      return `${Math.round(p.camp)}% dropped at ${p.label} vs ${Math.round(p.reg)}% in ${scopeWord}.`;
     }
     const p = bestPhaseGap();
     if (!p) return null;
-    return `only ${Math.round(p.camp)}% dropped at ${p.label} vs ${Math.round(p.reg)}% in region.`;
+    return `only ${Math.round(p.camp)}% dropped at ${p.label} vs ${Math.round(p.reg)}% in ${scopeWord}.`;
   };
 
   return (
