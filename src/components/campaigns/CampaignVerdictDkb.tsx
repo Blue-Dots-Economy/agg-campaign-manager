@@ -167,7 +167,7 @@ export function CampaignVerdictDkb({ campaign, region, filters }: Props) {
         />
       </div>
       <p className="text-[11px] text-muted-foreground">
-        Based on {sampleCalls.toLocaleString()} calls · compared to {region} average.
+        Based on {sampleCalls.toLocaleString()} calls · compared to {regionLabel} average.
       </p>
     </div>
   );
