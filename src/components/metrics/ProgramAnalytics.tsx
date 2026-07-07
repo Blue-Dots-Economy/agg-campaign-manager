@@ -71,6 +71,7 @@ export function ProgramAnalytics({
   const scopedFilters = campaign ? { ...filters, campaign } : filters;
   const query = useProgramAggregates(config, scopedFilters);
   const dropAnalysisQuery = useKkbDropAnalysis(isDkb ? undefined : scopedFilters);
+  const dkbDropAnalysisQuery = useDkbDropAnalysis(isDkb ? scopedFilters : undefined);
   const data = query.data;
 
   // Previous-period baseline (default behavior, used only when no comparison override).
