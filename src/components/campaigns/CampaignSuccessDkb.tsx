@@ -71,20 +71,20 @@ export function CampaignSuccessDkb({
 
   const prevEntry = useMemo(() => {
     const items = list.data ?? [];
-    if (!language || !campaignDate) return null;
-    const sameLang = items
-      .filter((c) => (c.language ?? null) === language && !!c.campaignDate)
+    if (!campaignDate) return null;
+    const sameType = items
+      .filter((c) => c.campaignType === campaign && !!c.campaignDate)
       .slice()
       .sort((a, b) => (a.campaignDate ?? "").localeCompare(b.campaignDate ?? ""));
-    const earlier = sameLang.filter((c) => (c.campaignDate ?? "") < campaignDate);
+    const earlier = sameType.filter((c) => (c.campaignDate ?? "") < campaignDate);
     if (earlier.length === 0) return null;
     return earlier[earlier.length - 1];
-  }, [list.data, language, campaignDate]);
+  }, [list.data, campaign, campaignDate]);
 
   const prevAgg = useProgramAggregates(config, {
     state: "all",
-    dateFrom: null,
-    dateTo: null,
+    dateFrom: prevEntry?.campaignDate ?? null,
+    dateTo: prevEntry?.campaignDate ?? null,
     campaignType: "all",
     campaign: prevEntry?.campaignType ?? null,
   });

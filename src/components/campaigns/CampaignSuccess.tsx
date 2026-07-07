@@ -80,8 +80,8 @@ export function CampaignSuccess({
 
   const prevAgg = useProgramAggregates(config, {
     state: "all",
-    dateFrom: null,
-    dateTo: null,
+    dateFrom: prevEntry?.campaignDate ?? null,
+    dateTo: prevEntry?.campaignDate ?? null,
     campaignType: "all",
     campaign: prevEntry?.campaignType ?? null,
   });

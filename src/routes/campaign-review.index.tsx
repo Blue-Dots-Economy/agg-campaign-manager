@@ -85,7 +85,7 @@ function CampaignReviewList() {
               <div className="grid gap-3 md:grid-cols-2">
                 {recent.map((c) => (
                   <CampaignCard
-                    key={c.campaignType}
+                    key={`${c.campaignType}__${c.campaignDate ?? "nodate"}`}
                     campaign={c}
                     successLabel={successLabel}
                     highlighted
@@ -107,7 +107,7 @@ function CampaignReviewList() {
                   </li>
                 ) : (
                   all.map((c) => (
-                    <CampaignRow key={c.campaignType} campaign={c} successLabel={successLabel} />
+                    <CampaignRow key={`${c.campaignType}__${c.campaignDate ?? "nodate"}`} campaign={c} successLabel={successLabel} />
                   ))
                 )}
               </ul>
@@ -152,6 +152,7 @@ function CampaignCard({
     <Link
       to="/campaign-review/$campaign"
       params={{ campaign: campaign.campaignType }}
+      search={{ date: campaign.campaignDate ?? undefined }}
       className={cn(
         "group block rounded-xl border bg-card p-5 transition-colors hover:bg-muted/40",
         highlighted ? "border-primary border-2 shadow-sm" : "border-border",
@@ -193,6 +194,7 @@ function CampaignRow({ campaign, successLabel }: { campaign: CampaignLike; succe
       <Link
         to="/campaign-review/$campaign"
         params={{ campaign: campaign.campaignType }}
+        search={{ date: campaign.campaignDate ?? undefined }}
         className="group flex items-center gap-4 py-3 px-1 hover:bg-muted/40 rounded-md transition-colors"
       >
         <div className="min-w-0 flex-1">

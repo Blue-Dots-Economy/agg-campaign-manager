@@ -20,6 +20,9 @@ import {
 } from "@/components/ui/select";
 
 export const Route = createFileRoute("/campaign-review/$campaign")({
+  validateSearch: (s: Record<string, unknown>) => ({
+    date: typeof s.date === "string" ? s.date : undefined,
+  }),
   component: CampaignReviewDetail,
 });
 
@@ -32,6 +35,7 @@ function parseDate(s: string | null): Date | null {
 
 function CampaignReviewDetail() {
   const { campaign: rawCampaign } = Route.useParams();
+  const { date } = Route.useSearch();
   const navigate = useNavigate();
   const { config } = useProgram();
   const { data: campaigns, isLoading } = useCampaignList(config, {});
@@ -43,7 +47,10 @@ function CampaignReviewDetail() {
         .sort((a, b) => (b.campaignDate ?? "").localeCompare(a.campaignDate ?? "")),
     [campaigns],
   );
-  const current = sorted.find((c) => c.campaignType === rawCampaign);
+  const current =
+    sorted.find(
+      (c) => c.campaignType === rawCampaign && (date ? c.campaignDate === date : true),
+    ) ?? sorted.find((c) => c.campaignType === rawCampaign);
 
   if (isLoading && !campaigns) return <LoadingState />;
 
@@ -62,11 +69,14 @@ function CampaignReviewDetail() {
   }
 
   const region = current.region ?? null;
+  const scopeDate = current.campaignDate ?? null;
+  const detailFilters = { dateFrom: scopeDate, dateTo: scopeDate };
   const dateLabel = (() => {
     const d = parseDate(current.campaignDate);
     return d ? format(d, "MMM d, yyyy") : "—";
   })();
   const label = region ?? "all";
+  const currentComposite = `${current.campaignType} ${current.campaignDate ?? ""}`;
 
   return (
     <div className="space-y-6">
@@ -88,10 +98,17 @@ function CampaignReviewDetail() {
         </div>
         <div className="w-72 max-w-full">
           <Select
-            value={current.campaignType}
-            onValueChange={(v) =>
-              navigate({ to: "/campaign-review/$campaign", params: { campaign: v } })
-            }
+            value={currentComposite}
+            onValueChange={(v) => {
+              const idx = v.indexOf(" ");
+              const type = idx === -1 ? v : v.slice(0, idx);
+              const d = idx === -1 ? "" : v.slice(idx + 1);
+              navigate({
+                to: "/campaign-review/$campaign",
+                params: { campaign: type },
+                search: { date: d || undefined },
+              });
+            }}
           >
             <SelectTrigger className="h-9">
               <SelectValue placeholder="Switch campaign" />
@@ -99,7 +116,10 @@ function CampaignReviewDetail() {
             </SelectTrigger>
             <SelectContent className="max-h-80">
               {sorted.map((c) => (
-                <SelectItem key={c.campaignType} value={c.campaignType}>
+                <SelectItem
+                  key={`${c.campaignType}__${c.campaignDate ?? "nodate"}`}
+                  value={`${c.campaignType} ${c.campaignDate ?? ""}`}
+                >
                   {humanizeCampaignType(c.campaignType)}
                   {c.campaignDate ? ` · ${c.campaignDate}` : ""}
                 </SelectItem>
@@ -116,12 +136,12 @@ function CampaignReviewDetail() {
             language={current.language ?? null}
             region={region}
             campaignDate={current.campaignDate ?? null}
-            filters={{ dateFrom: null, dateTo: null }}
+            filters={detailFilters}
           />
           <CampaignVerdict
             campaign={current.campaignType}
             region={region}
-            filters={{ dateFrom: null, dateTo: null }}
+            filters={detailFilters}
           />
         </>
       )}
@@ -133,12 +153,12 @@ function CampaignReviewDetail() {
             language={current.language ?? null}
             region={region}
             campaignDate={current.campaignDate ?? null}
-            filters={{ dateFrom: null, dateTo: null }}
+            filters={detailFilters}
           />
           <CampaignVerdictDkb
             campaign={current.campaignType}
             region={region}
-            filters={{ dateFrom: null, dateTo: null }}
+            filters={detailFilters}
           />
         </>
       )}
@@ -146,7 +166,7 @@ function CampaignReviewDetail() {
 
       <ProgramAnalytics
         config={config}
-        filters={{ state: "all", dateFrom: null, dateTo: null, campaignType: "all" }}
+        filters={{ state: "all", dateFrom: scopeDate, dateTo: scopeDate, campaignType: "all" }}
         campaign={current.campaignType}
         comparison={{ mode: "state-average", region, label }}
       />
