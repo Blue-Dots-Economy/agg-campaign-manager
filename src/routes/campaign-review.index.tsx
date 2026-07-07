@@ -194,6 +194,7 @@ function CampaignRow({ campaign, successLabel }: { campaign: CampaignLike; succe
       <Link
         to="/campaign-review/$campaign"
         params={{ campaign: campaign.campaignType }}
+        search={{ date: campaign.campaignDate ?? undefined }}
         className="group flex items-center gap-4 py-3 px-1 hover:bg-muted/40 rounded-md transition-colors"
       >
         <div className="min-w-0 flex-1">
