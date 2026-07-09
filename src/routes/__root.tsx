@@ -120,17 +120,40 @@ function RootShell({ children }: { children: ReactNode }) {
 
 import { ProgramProvider } from "../programs/context";
 import { AppShell } from "../components/layout/AppShell";
+import { AuthProvider, useAuth } from "../auth/context";
+import { useNavigate, useRouterState } from "@tanstack/react-router";
+
+function AuthGate({ children }: { children: ReactNode }) {
+  const pathname = useRouterState({ select: (s) => s.location.pathname });
+  const { isAuthenticated, hydrated } = useAuth();
+  const navigate = useNavigate();
+  const isLogin = pathname === "/login";
+
+  useEffect(() => {
+    if (!hydrated) return;
+    if (!isAuthenticated && !isLogin) navigate({ to: "/login" });
+    else if (isAuthenticated && isLogin) navigate({ to: "/" });
+  }, [hydrated, isAuthenticated, isLogin, navigate]);
+
+  if (!hydrated) return null;
+  if (isLogin) return <>{children}</>;
+  if (!isAuthenticated) return null;
+  return <AppShell>{children}</AppShell>;
+}
 
 function RootComponent() {
   const { queryClient } = Route.useRouteContext();
 
   return (
     <QueryClientProvider client={queryClient}>
-      <ProgramProvider>
-        <AppShell>
-          <Outlet />
-        </AppShell>
-      </ProgramProvider>
+      <AuthProvider>
+        <ProgramProvider>
+          <AuthGate>
+            <Outlet />
+          </AuthGate>
+        </ProgramProvider>
+      </AuthProvider>
     </QueryClientProvider>
   );
 }
+
