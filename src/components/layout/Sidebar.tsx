@@ -39,6 +39,8 @@ const NAV = [
 export function Sidebar() {
   const { config, programId, setProgramId } = useProgram();
   const pathname = useRouterState({ select: (s) => s.location.pathname });
+  const navigate = useNavigate();
+  const { logout } = useAuth();
   const listFn = useServerFn(listConnections);
   const { data: conns } = useQuery({
     queryKey: ["connections", programId],
@@ -46,6 +48,7 @@ export function Sidebar() {
   });
   const enabled = (conns ?? []).filter((c) => c.enabled);
   const allConnected = enabled.length > 0 && enabled.every((c) => c.status === "connected");
+
 
 
   return (
@@ -101,19 +104,29 @@ export function Sidebar() {
         })}
       </nav>
 
-      <div className="mt-auto px-5 py-4 border-t border-sidebar-border text-[11px] opacity-85">
-        {enabled.length === 0 ? (
-          <>No sheets connected · <Link to="/connections" className="underline">add one</Link></>
-        ) : (
-          <>
-            {enabled.length} sheet{enabled.length === 1 ? "" : "s"} ·{" "}
-            <span className="inline-flex items-center gap-1">
-              <span className={cn("h-1.5 w-1.5 rounded-full", allConnected ? "bg-emerald-300" : "bg-amber-300")} />
-              {allConnected ? "connected" : "check status"}
-            </span>
-          </>
-        )}
+      <div className="mt-auto px-5 py-4 border-t border-sidebar-border text-[11px] opacity-85 space-y-2">
+        <div>
+          {enabled.length === 0 ? (
+            <>No sheets connected · <Link to="/connections" className="underline">add one</Link></>
+          ) : (
+            <>
+              {enabled.length} sheet{enabled.length === 1 ? "" : "s"} ·{" "}
+              <span className="inline-flex items-center gap-1">
+                <span className={cn("h-1.5 w-1.5 rounded-full", allConnected ? "bg-emerald-300" : "bg-amber-300")} />
+                {allConnected ? "connected" : "check status"}
+              </span>
+            </>
+          )}
+        </div>
+        <button
+          onClick={() => { logout(); navigate({ to: "/login" }); }}
+          className="inline-flex items-center gap-1.5 text-sidebar-foreground/70 hover:text-sidebar-foreground transition-colors"
+        >
+          <LogOut className="h-3 w-3" />
+          Sign out
+        </button>
       </div>
     </aside>
   );
+
 }
