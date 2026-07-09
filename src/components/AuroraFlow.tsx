@@ -9,6 +9,7 @@ const FRAG = `
 precision highp float;
 uniform vec2 u_res;
 uniform float u_time;
+uniform vec2 u_mouse;
 float hash(vec2 p){ p = fract(p*vec2(123.34,345.45)); p += dot(p,p+34.345); return fract(p.x*p.y); }
 float noise(vec2 p){
   vec2 i=floor(p), f=fract(p);
@@ -25,17 +26,22 @@ void main(){
   vec2 uv = gl_FragCoord.xy / u_res.xy;
   float aspect = u_res.x / u_res.y;
   vec2 p = vec2(uv.x*aspect, uv.y) * 2.2;
+  vec2 mp = vec2(u_mouse.x*aspect, u_mouse.y) * 2.2;
+  float d = distance(p, mp);
+  float infl = exp(-d*d*1.2);
   float t = u_time * 0.045;
+  p += normalize(p - mp + vec2(0.0001)) * infl * 0.35;
   vec2 q = vec2(fbm(p + vec2(0.0, t)), fbm(p + vec2(5.2, 1.3) - t));
   vec2 r = vec2(fbm(p + 3.5*q + vec2(1.7, 9.2)), fbm(p + 3.5*q + vec2(8.3, 2.8)));
   float f = fbm(p + 3.5*r);
+  f += infl * 0.12;
   vec3 deep  = vec3(0.031, 0.271, 0.204);
   vec3 mid   = vec3(0.086, 0.529, 0.400);
   vec3 light = vec3(0.573, 0.855, 0.752);
   vec3 col = mix(deep, mid, clamp(f*1.5, 0.0, 1.0));
   col = mix(col, light, clamp((f-0.45)*1.3, 0.0, 1.0));
   vec3 bg = vec3(0.965, 0.976, 0.972);
-  col = mix(bg, col, 0.40);
+  col = mix(bg, col, 0.40 + infl*0.10);
   gl_FragColor = vec4(col, 1.0);
 }
 `;
@@ -71,6 +77,15 @@ export function AuroraFlow() {
 
     const uRes = gl.getUniformLocation(prog, "u_res");
     const uTime = gl.getUniformLocation(prog, "u_time");
+    const uMouse = gl.getUniformLocation(prog, "u_mouse");
+
+    const target = { x: 0.5, y: 0.5 };
+    const smooth = { x: 0.5, y: 0.5 };
+    const onMove = (e: PointerEvent) => {
+      target.x = e.clientX / window.innerWidth;
+      target.y = 1 - e.clientY / window.innerHeight;
+    };
+    window.addEventListener("pointermove", onMove, { passive: true });
 
     const dpr = Math.min(window.devicePixelRatio || 1, 1.5);
     const resize = () => {
@@ -85,12 +100,16 @@ export function AuroraFlow() {
     const start = performance.now();
     const draw = (now: number) => {
       resize();
+      smooth.x += (target.x - smooth.x) * 0.05;
+      smooth.y += (target.y - smooth.y) * 0.05;
+      gl.uniform2f(uMouse, smooth.x, smooth.y);
       gl.uniform1f(uTime, (now - start) / 1000);
       gl.drawArrays(gl.TRIANGLES, 0, 3);
       raf = requestAnimationFrame(draw);
     };
     resize();
     if (reduce) {
+      gl.uniform2f(uMouse, 0.5, 0.5);
       gl.uniform1f(uTime, 12.0);
       gl.drawArrays(gl.TRIANGLES, 0, 3);
     } else {
@@ -101,6 +120,7 @@ export function AuroraFlow() {
     return () => {
       cancelAnimationFrame(raf);
       window.removeEventListener("resize", onResize);
+      window.removeEventListener("pointermove", onMove);
     };
   }, []);
 
