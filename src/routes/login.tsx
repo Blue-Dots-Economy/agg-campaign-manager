@@ -4,6 +4,8 @@ import { Briefcase } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/auth/context";
+import { AuroraFlow } from "@/components/AuroraFlow";
+
 
 export const Route = createFileRoute("/login")({
   component: LoginPage,
@@ -31,7 +33,9 @@ function LoginPage() {
         <div className="rozgar-blob rozgar-anim-a" style={{ top: "-10%", left: "-5%", width: "420px", height: "420px", background: "radial-gradient(circle at center, rgba(21,94,72,0.40), transparent 70%)" }} />
         <div className="rozgar-blob rozgar-anim-b" style={{ bottom: "-15%", right: "-10%", width: "480px", height: "480px", background: "radial-gradient(circle at center, rgba(16,185,129,0.40), transparent 70%)" }} />
         <div className="rozgar-blob rozgar-anim-c" style={{ top: "30%", right: "20%", width: "360px", height: "360px", background: "radial-gradient(circle at center, rgba(45,212,191,0.30), transparent 70%)" }} />
+        <AuroraFlow />
       </div>
+
       <div className="relative z-10 w-full max-w-sm rounded-2xl border border-border bg-card/90 backdrop-blur-sm p-8 shadow-sm">
 
         <div className="flex flex-col items-center text-center">
