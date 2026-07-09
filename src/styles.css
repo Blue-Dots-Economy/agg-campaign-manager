@@ -140,3 +140,26 @@
     -webkit-font-smoothing: antialiased;
   }
 }
+
+@keyframes rozgar-drift-a {
+  0%   { transform: translate(0px, 0px) scale(1); }
+  50%  { transform: translate(40px, -30px) scale(1.15); }
+  100% { transform: translate(0px, 0px) scale(1); }
+}
+@keyframes rozgar-drift-b {
+  0%   { transform: translate(0px, 0px) scale(1.1); }
+  50%  { transform: translate(-50px, 25px) scale(0.95); }
+  100% { transform: translate(0px, 0px) scale(1.1); }
+}
+@keyframes rozgar-drift-c {
+  0%   { transform: translate(0px, 0px) scale(1); }
+  50%  { transform: translate(30px, 40px) scale(1.2); }
+  100% { transform: translate(0px, 0px) scale(1); }
+}
+.rozgar-blob { position: absolute; border-radius: 9999px; filter: blur(80px); will-change: transform; }
+.rozgar-anim-a { animation: rozgar-drift-a 26s ease-in-out infinite; }
+.rozgar-anim-b { animation: rozgar-drift-b 32s ease-in-out infinite; }
+.rozgar-anim-c { animation: rozgar-drift-c 29s ease-in-out infinite; }
+@media (prefers-reduced-motion: reduce) {
+  .rozgar-anim-a, .rozgar-anim-b, .rozgar-anim-c { animation: none; }
+}
