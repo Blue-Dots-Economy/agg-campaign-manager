@@ -20,10 +20,8 @@ import { listConnections } from "@/lib/connections.functions";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/auth/context";
 
-import { useServerFn } from "@tanstack/react-start";
-import { useProgram } from "@/programs/context";
-import { listConnections } from "@/lib/connections.functions";
-import { cn } from "@/lib/utils";
+
+
 
 const NAV = [
   { to: "/", label: "Overview", icon: LayoutDashboard },
