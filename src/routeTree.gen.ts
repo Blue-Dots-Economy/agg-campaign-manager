@@ -11,6 +11,7 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as SettingsRouteImport } from './routes/settings'
 import { Route as ScheduleRouteImport } from './routes/schedule'
+import { Route as LoginRouteImport } from './routes/login'
 import { Route as LaunchRouteImport } from './routes/launch'
 import { Route as DataRouteImport } from './routes/data'
 import { Route as ConnectionsRouteImport } from './routes/connections'
@@ -31,6 +32,11 @@ const SettingsRoute = SettingsRouteImport.update({
 const ScheduleRoute = ScheduleRouteImport.update({
   id: '/schedule',
   path: '/schedule',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const LoginRoute = LoginRouteImport.update({
+  id: '/login',
+  path: '/login',
   getParentRoute: () => rootRouteImport,
 } as any)
 const LaunchRoute = LaunchRouteImport.update({
@@ -99,6 +105,7 @@ export interface FileRoutesByFullPath {
   '/connections': typeof ConnectionsRoute
   '/data': typeof DataRoute
   '/launch': typeof LaunchRoute
+  '/login': typeof LoginRoute
   '/schedule': typeof ScheduleRoute
   '/settings': typeof SettingsRoute
   '/campaign-review/$campaign': typeof CampaignReviewCampaignRoute
@@ -113,6 +120,7 @@ export interface FileRoutesByTo {
   '/connections': typeof ConnectionsRoute
   '/data': typeof DataRoute
   '/launch': typeof LaunchRoute
+  '/login': typeof LoginRoute
   '/schedule': typeof ScheduleRoute
   '/settings': typeof SettingsRoute
   '/campaign-review/$campaign': typeof CampaignReviewCampaignRoute
@@ -129,6 +137,7 @@ export interface FileRoutesById {
   '/connections': typeof ConnectionsRoute
   '/data': typeof DataRoute
   '/launch': typeof LaunchRoute
+  '/login': typeof LoginRoute
   '/schedule': typeof ScheduleRoute
   '/settings': typeof SettingsRoute
   '/campaign-review/$campaign': typeof CampaignReviewCampaignRoute
@@ -146,6 +155,7 @@ export interface FileRouteTypes {
     | '/connections'
     | '/data'
     | '/launch'
+    | '/login'
     | '/schedule'
     | '/settings'
     | '/campaign-review/$campaign'
@@ -160,6 +170,7 @@ export interface FileRouteTypes {
     | '/connections'
     | '/data'
     | '/launch'
+    | '/login'
     | '/schedule'
     | '/settings'
     | '/campaign-review/$campaign'
@@ -175,6 +186,7 @@ export interface FileRouteTypes {
     | '/connections'
     | '/data'
     | '/launch'
+    | '/login'
     | '/schedule'
     | '/settings'
     | '/campaign-review/$campaign'
@@ -191,6 +203,7 @@ export interface RootRouteChildren {
   ConnectionsRoute: typeof ConnectionsRoute
   DataRoute: typeof DataRoute
   LaunchRoute: typeof LaunchRoute
+  LoginRoute: typeof LoginRoute
   ScheduleRoute: typeof ScheduleRoute
   SettingsRoute: typeof SettingsRoute
   ApiPublicHooksSyncSnapshotsRoute: typeof ApiPublicHooksSyncSnapshotsRoute
@@ -210,6 +223,13 @@ declare module '@tanstack/react-router' {
       path: '/schedule'
       fullPath: '/schedule'
       preLoaderRoute: typeof ScheduleRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/login': {
+      id: '/login'
+      path: '/login'
+      fullPath: '/login'
+      preLoaderRoute: typeof LoginRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/launch': {
@@ -315,6 +335,7 @@ const rootRouteChildren: RootRouteChildren = {
   ConnectionsRoute: ConnectionsRoute,
   DataRoute: DataRoute,
   LaunchRoute: LaunchRoute,
+  LoginRoute: LoginRoute,
   ScheduleRoute: ScheduleRoute,
   SettingsRoute: SettingsRoute,
   ApiPublicHooksSyncSnapshotsRoute: ApiPublicHooksSyncSnapshotsRoute,
@@ -322,13 +343,3 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
-
-import type { getRouter } from './router.tsx'
-import type { startInstance } from './start.ts'
-declare module '@tanstack/react-start' {
-  interface Register {
-    ssr: true
-    router: Awaited<ReturnType<typeof getRouter>>
-    config: Awaited<ReturnType<typeof startInstance.getOptions>>
-  }
-}

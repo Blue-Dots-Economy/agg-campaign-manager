@@ -1,4 +1,4 @@
-import { Link, useRouterState } from "@tanstack/react-router";
+import { Link, useRouterState, useNavigate } from "@tanstack/react-router";
 import {
   LayoutDashboard,
   Megaphone,
@@ -11,8 +11,15 @@ import {
   Plug,
   Bot,
   ClipboardCheck,
+  LogOut,
 } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
+import { useServerFn } from "@tanstack/react-start";
+import { useProgram } from "@/programs/context";
+import { listConnections } from "@/lib/connections.functions";
+import { cn } from "@/lib/utils";
+import { useAuth } from "@/auth/context";
+
 import { useServerFn } from "@tanstack/react-start";
 import { useProgram } from "@/programs/context";
 import { listConnections } from "@/lib/connections.functions";
