@@ -55,12 +55,14 @@ export function VerticalFunnel({
   stages,
   fill = false,
   pickedUpKey,
+  onStageClick,
 }: {
   title?: string;
   stages: VerticalFunnelStage[];
   fill?: boolean;
   /** Key of the stage to use as a secondary "% of picked up" baseline. Shown in blue on later stages. */
   pickedUpKey?: string;
+  onStageClick?: (key: string) => void;
 }) {
   const baseline = stages[0]?.value ?? 0;
   const pickedUpIdx = pickedUpKey ? stages.findIndex((s) => s.key === pickedUpKey) : -1;
@@ -79,14 +81,39 @@ export function VerticalFunnel({
         {stages.map((s, i) => {
           const pct = baseline > 0 ? Math.min(100, Math.max(0, (s.value / baseline) * 100)) : 0;
           const width = visualWidth(s.value);
+          const interactive = !!onStageClick;
           return (
             <React.Fragment key={s.key}>
               <div className="flex justify-center">
                 <div
-                  className={`relative overflow-hidden rounded-xl ${TINT[s.color]} px-4 py-4 shadow-sm transition-[width] duration-500`}
+                  className={`group relative overflow-hidden rounded-xl ${TINT[s.color]} px-4 py-4 shadow-sm transition-[width,box-shadow] duration-500 ${
+                    interactive
+                      ? "cursor-pointer hover:ring-2 hover:ring-primary/40 hover:shadow-md focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/60"
+                      : ""
+                  }`}
                   style={{ width: `${width}%` }}
+                  {...(interactive
+                    ? {
+                        role: "button",
+                        tabIndex: 0,
+                        title: `Copy call IDs that reached ${s.label}`,
+                        onClick: () => onStageClick!(s.key),
+                        onKeyDown: (e: React.KeyboardEvent<HTMLDivElement>) => {
+                          if (e.key === "Enter" || e.key === " ") {
+                            e.preventDefault();
+                            onStageClick!(s.key);
+                          }
+                        },
+                      }
+                    : {})}
                 >
                   <span className={`absolute inset-x-0 top-0 h-1 ${BAR[s.color]}`} aria-hidden />
+                  {interactive ? (
+                    <Copy
+                      className="pointer-events-none absolute right-2 top-2 h-3.5 w-3.5 text-muted-foreground opacity-0 transition-opacity group-hover:opacity-100"
+                      aria-hidden
+                    />
+                  ) : null}
                   <div className="flex items-center justify-between gap-4">
                     <div className="min-w-0">
                       <p className="text-sm font-semibold text-foreground">{s.label}</p>
