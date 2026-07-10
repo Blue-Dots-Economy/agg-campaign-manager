@@ -16,7 +16,7 @@ import {
   Bar,
   Legend,
 } from "recharts";
-import { useProgramAggregates, useKkbDropAnalysis, useDkbDropAnalysis } from "@/programs/useProgramAggregates";
+import { useProgramAggregates, useKkbDropAnalysis, useDkbDropAnalysis, useFunnelDurations } from "@/programs/useProgramAggregates";
 import type { ProgramConfig } from "@/programs/registry";
 import { KpiCard } from "@/components/KpiCard";
 import {
