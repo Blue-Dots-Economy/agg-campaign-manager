@@ -1,4 +1,6 @@
 import { useMemo } from "react";
+import { toast } from "sonner";
+import { useServerFn } from "@tanstack/react-start";
 import {
   LineChart,
   Line,
@@ -26,7 +28,33 @@ import {
 import { Panel } from "@/components/Panel";
 import { NoDataState, LoadingState } from "@/components/EmptyState";
 import { DropAnalysisHeatmap } from "@/components/metrics/DropAnalysisHeatmap";
+import { fetchFunnelCallIds } from "@/lib/snapshot.functions";
 import type { OverviewFilterValue } from "@/components/metrics/OverviewFilters";
+
+async function copyText(text: string): Promise<boolean> {
+  try {
+    if (navigator.clipboard && window.isSecureContext) {
+      await navigator.clipboard.writeText(text);
+      return true;
+    }
+  } catch {
+    /* fall through */
+  }
+  try {
+    const ta = document.createElement("textarea");
+    ta.value = text;
+    ta.style.position = "fixed";
+    ta.style.opacity = "0";
+    document.body.appendChild(ta);
+    ta.focus();
+    ta.select();
+    const ok = document.execCommand("copy");
+    document.body.removeChild(ta);
+    return ok;
+  } catch {
+    return false;
+  }
+}
 
 const PIE_COLORS = [
   "var(--color-chart-1)",
