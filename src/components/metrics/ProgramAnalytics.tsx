@@ -193,7 +193,6 @@ export function ProgramAnalytics({
 
   const comparisonLabel = comparison ? `vs ${comparison.label} avg` : undefined;
 
-  const fetchIds = useServerFn(fetchFunnelCallIds);
   const handleStageClick = async (stage: string) => {
     try {
       const res = await fetchIds({
