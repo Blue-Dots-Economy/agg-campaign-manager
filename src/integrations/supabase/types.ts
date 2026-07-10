@@ -475,6 +475,17 @@ export type Database = {
         }
         Returns: Json
       }
+      get_funnel_durations: {
+        Args: {
+          _campaign?: string
+          _campaign_type?: string
+          _date_from?: string
+          _date_to?: string
+          _program: string
+          _state?: string
+        }
+        Returns: Json
+      }
       get_kkb_drop_analysis: {
         Args: {
           _campaign?: string
