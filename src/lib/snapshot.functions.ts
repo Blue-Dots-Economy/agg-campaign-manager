@@ -925,3 +925,38 @@ export const fetchFunnelCallIds = createServerFn({ method: "GET" })
       return { count: 0, ids: [] };
     }
   });
+
+export const fetchFunnelDurations = createServerFn({ method: "GET" })
+  .inputValidator(
+    (d: {
+      program: ProgramId;
+      state?: string;
+      dateFrom?: string | null;
+      dateTo?: string | null;
+      campaignType?: string;
+      campaign?: string | null;
+    }) => d,
+  )
+  .handler(async ({ data }): Promise<Record<string, number>> => {
+    try {
+      const client = sb();
+      const { data: rpcData, error } = await client.rpc("get_funnel_durations", {
+        _program: data.program,
+        _state: data.state && data.state !== "all" ? data.state : "all",
+        _date_from: data.dateFrom ?? null,
+        _date_to: data.dateTo ?? null,
+        _campaign_type: data.campaignType ?? "all",
+        _campaign: data.campaign ?? null,
+      });
+      if (error) throw new Error(error.message);
+      if (!rpcData || typeof rpcData !== "object") return {};
+      const out: Record<string, number> = {};
+      for (const [k, v] of Object.entries(rpcData as Record<string, unknown>)) {
+        const n = Number(v);
+        if (Number.isFinite(n)) out[k] = n;
+      }
+      return out;
+    } catch {
+      return {};
+    }
+  });
