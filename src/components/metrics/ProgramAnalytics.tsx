@@ -1,4 +1,6 @@
 import { useMemo } from "react";
+import { toast } from "sonner";
+import { useServerFn } from "@tanstack/react-start";
 import {
   LineChart,
   Line,
@@ -26,7 +28,33 @@ import {
 import { Panel } from "@/components/Panel";
 import { NoDataState, LoadingState } from "@/components/EmptyState";
 import { DropAnalysisHeatmap } from "@/components/metrics/DropAnalysisHeatmap";
+import { fetchFunnelCallIds } from "@/lib/snapshot.functions";
 import type { OverviewFilterValue } from "@/components/metrics/OverviewFilters";
+
+async function copyText(text: string): Promise<boolean> {
+  try {
+    if (navigator.clipboard && window.isSecureContext) {
+      await navigator.clipboard.writeText(text);
+      return true;
+    }
+  } catch {
+    /* fall through */
+  }
+  try {
+    const ta = document.createElement("textarea");
+    ta.value = text;
+    ta.style.position = "fixed";
+    ta.style.opacity = "0";
+    document.body.appendChild(ta);
+    ta.focus();
+    ta.select();
+    const ok = document.execCommand("copy");
+    document.body.removeChild(ta);
+    return ok;
+  } catch {
+    return false;
+  }
+}
 
 const PIE_COLORS = [
   "var(--color-chart-1)",
@@ -132,6 +160,8 @@ export function ProgramAnalytics({
     return [...m.values()].sort((a, b) => (a.date || "").localeCompare(b.date || ""));
   }, [perDay]);
 
+  const fetchIds = useServerFn(fetchFunnelCallIds);
+
   if (query.isLoading && !data) return <LoadingState />;
 
   const hasActiveFilters =
@@ -163,6 +193,38 @@ export function ProgramAnalytics({
 
   const comparisonLabel = comparison ? `vs ${comparison.label} avg` : undefined;
 
+  const handleStageClick = async (stage: string) => {
+    try {
+      const res = await fetchIds({
+        data: {
+          program: config.id,
+          state: filters.state,
+          dateFrom: filters.dateFrom,
+          dateTo: filters.dateTo,
+          campaignType: filters.campaignType,
+          campaign: campaign ?? null,
+          stage,
+        },
+      });
+      const ids: string[] = res?.ids ?? [];
+      if (!ids.length) {
+        toast.message("No call IDs for this stage");
+        return;
+      }
+      const ok = await copyText(ids.join(", "));
+      if (ok) {
+        toast.success(
+          `Copied ${ids.length.toLocaleString()} call ID${ids.length === 1 ? "" : "s"}`,
+          { description: "Paste into the review hub." },
+        );
+      } else {
+        toast.error("Couldn't copy to clipboard");
+      }
+    } catch {
+      toast.error("Couldn't fetch call IDs");
+    }
+  };
+
   return (
     <div className="space-y-6">
       {comparison && (
@@ -177,6 +239,7 @@ export function ProgramAnalytics({
             previous={prevMetrics as unknown as DkbMetrics | undefined}
             perDay={perDayRollup}
             comparisonLabel={comparisonLabel}
+            onFunnelStageClick={handleStageClick}
           />
         ) : (
           <KkbOverviewMetrics
@@ -184,6 +247,7 @@ export function ProgramAnalytics({
             previous={prevMetrics as unknown as KkbMetrics | undefined}
             perDay={perDayRollup}
             comparisonLabel={comparisonLabel}
+            onFunnelStageClick={handleStageClick}
           />
         )
       ) : (

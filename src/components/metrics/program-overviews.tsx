@@ -78,11 +78,13 @@ export function KkbOverviewMetrics({
   previous,
   perDay,
   comparisonLabel,
+  onFunnelStageClick,
 }: {
   m: KkbMetrics;
   previous?: KkbMetrics;
   perDay?: DailyPoint[];
   comparisonLabel?: string;
+  onFunnelStageClick?: (key: string) => void;
 }) {
   const appRate = m.answeredSeekers > 0 ? (m.appliedSeekers / m.answeredSeekers) * 100 : 0;
   const productivePct = m.totalCalls > 0 ? (m.productiveCalls / m.totalCalls) * 100 : 0;
@@ -166,7 +168,7 @@ export function KkbOverviewMetrics({
       <MetricSection title="Outcome metrics" subtitle="Funnel from calls made to applications">
         <div className="grid items-stretch gap-4 lg:grid-cols-5">
           <div className="lg:col-span-3">
-            <VerticalFunnel stages={stages} fill pickedUpKey="picked" />
+            <VerticalFunnel stages={stages} fill pickedUpKey="picked" onStageClick={onFunnelStageClick} />
           </div>
 
           <div className="grid gap-3 lg:col-span-2 lg:grid-cols-1">
@@ -212,11 +214,13 @@ export function DkbOverviewMetrics({
   previous,
   perDay,
   comparisonLabel,
+  onFunnelStageClick,
 }: {
   m: DkbMetrics;
   previous?: DkbMetrics;
   perDay?: DailyPoint[];
   comparisonLabel?: string;
+  onFunnelStageClick?: (key: string) => void;
 }) {
   const pickupPct = m.totalCalls > 0 ? (m.answeredCalls / m.totalCalls) * 100 : 0;
   const productiveDenom = m.totalCalls;
@@ -263,7 +267,7 @@ export function DkbOverviewMetrics({
         <div className="grid items-stretch gap-4 lg:grid-cols-5">
           <div className="lg:col-span-3">
             {funnelStages.length > 0 ? (
-              <VerticalFunnel stages={funnelStages} fill pickedUpKey="picked" />
+              <VerticalFunnel stages={funnelStages} fill pickedUpKey="picked" onStageClick={onFunnelStageClick} />
             ) : (
               <div className="rounded-xl border bg-card p-5 text-sm text-muted-foreground">
                 No provider data available for the current filters.
