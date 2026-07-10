@@ -265,6 +265,7 @@ export function DkbOverviewMetrics({
           ? "100% of called"
           : `${ofCalled.toFixed(1)}% of called  ·  −${step.toFixed(1)}% step`,
       nextAnnotation: i < funnelData.length - 1 ? undefined : undefined,
+      avgDurationSec: stageDurations?.[s.key],
     };
   });
 
