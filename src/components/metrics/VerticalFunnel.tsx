@@ -1,6 +1,6 @@
 import * as React from "react";
 import { IconArrowNarrowDown } from "@tabler/icons-react";
-import { Copy, Clock } from "lucide-react";
+import { Copy, Phone } from "lucide-react";
 import type { Accent } from "./primitives";
 
 const TINT: Record<Accent | "coral" | "purple", string> = {
@@ -104,8 +104,8 @@ export function VerticalFunnel({
                       </div>
                       {dur ? (
                         <span className="inline-flex items-center gap-1 self-start rounded-full border border-border/60 bg-background/60 px-2 py-0.5 text-[10.5px] font-medium text-muted-foreground">
-                          <Clock className="h-3 w-3" aria-hidden />
-                          {dur} avg talk
+                          <Phone className="h-3 w-3" aria-hidden />
+                          {dur}
                         </span>
                       ) : null}
                     </div>
