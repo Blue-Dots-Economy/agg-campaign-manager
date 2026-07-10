@@ -7,6 +7,7 @@ import {
   fetchKkbDropAnalysis,
   fetchDkbDropAnalysis,
   fetchCampaignList,
+  fetchFunnelDurations,
   type AggregatePayload,
   type KkbDropAnalysisPayload,
   type CampaignListItem,
