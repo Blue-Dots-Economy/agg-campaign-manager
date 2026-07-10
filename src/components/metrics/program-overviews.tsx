@@ -214,11 +214,13 @@ export function DkbOverviewMetrics({
   previous,
   perDay,
   comparisonLabel,
+  onFunnelStageClick,
 }: {
   m: DkbMetrics;
   previous?: DkbMetrics;
   perDay?: DailyPoint[];
   comparisonLabel?: string;
+  onFunnelStageClick?: (key: string) => void;
 }) {
   const pickupPct = m.totalCalls > 0 ? (m.answeredCalls / m.totalCalls) * 100 : 0;
   const productiveDenom = m.totalCalls;
