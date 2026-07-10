@@ -4,7 +4,7 @@ import {
   Megaphone,
   Rocket,
   Calendar,
-  BarChart3,
+  
   Database,
   Settings,
   Briefcase,
@@ -29,7 +29,7 @@ const NAV = [
   { to: "/campaigns", label: "Campaigns", icon: Megaphone },
   { to: "/launch", label: "Launch", icon: Rocket },
   { to: "/schedule", label: "Schedule", icon: Calendar },
-  { to: "/analytics", label: "Analytics", icon: BarChart3 },
+  
   { to: "/data", label: "Data & uploads", icon: Database },
   { to: "/connections", label: "Connections", icon: Plug },
   { to: "/agents", label: "Agents", icon: Bot },
