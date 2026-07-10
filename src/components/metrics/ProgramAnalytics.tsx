@@ -242,6 +242,7 @@ export function ProgramAnalytics({
             perDay={perDayRollup}
             comparisonLabel={comparisonLabel}
             onFunnelStageClick={handleStageClick}
+            stageDurations={stageDurations}
           />
         ) : (
           <KkbOverviewMetrics
@@ -250,6 +251,7 @@ export function ProgramAnalytics({
             perDay={perDayRollup}
             comparisonLabel={comparisonLabel}
             onFunnelStageClick={handleStageClick}
+            stageDurations={stageDurations}
           />
         )
       ) : (
