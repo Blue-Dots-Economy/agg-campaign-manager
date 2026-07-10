@@ -889,3 +889,39 @@ export const fetchDkbCampaignCauses = createServerFn({ method: "GET" })
       return empty;
     }
   });
+
+export const fetchFunnelCallIds = createServerFn({ method: "GET" })
+  .inputValidator(
+    (d: {
+      program: ProgramId;
+      state?: string;
+      dateFrom?: string | null;
+      dateTo?: string | null;
+      campaignType?: string;
+      campaign?: string | null;
+      stage: string;
+    }) => d,
+  )
+  .handler(async ({ data }): Promise<{ count: number; ids: string[] }> => {
+    try {
+      const client = sb();
+      const { data: rpcData, error } = await client.rpc("get_funnel_call_ids", {
+        _program: data.program,
+        _state: data.state && data.state !== "all" ? data.state : "all",
+        _date_from: data.dateFrom ?? null,
+        _date_to: data.dateTo ?? null,
+        _campaign_type: data.campaignType ?? "all",
+        _campaign: data.campaign ?? null,
+        _stage: data.stage,
+      });
+      if (error) throw new Error(error.message);
+      const p = (rpcData && typeof rpcData === "object" ? rpcData : {}) as {
+        count?: number;
+        ids?: unknown;
+      };
+      const ids = Array.isArray(p.ids) ? p.ids.map((x) => String(x)) : [];
+      return { count: Number(p.count ?? ids.length) || ids.length, ids };
+    } catch {
+      return { count: 0, ids: [] };
+    }
+  });
