@@ -168,7 +168,7 @@ export function KkbOverviewMetrics({
       <MetricSection title="Outcome metrics" subtitle="Funnel from calls made to applications">
         <div className="grid items-stretch gap-4 lg:grid-cols-5">
           <div className="lg:col-span-3">
-            <VerticalFunnel stages={stages} fill pickedUpKey="picked" />
+            <VerticalFunnel stages={stages} fill pickedUpKey="picked" onStageClick={onFunnelStageClick} />
           </div>
 
           <div className="grid gap-3 lg:col-span-2 lg:grid-cols-1">
