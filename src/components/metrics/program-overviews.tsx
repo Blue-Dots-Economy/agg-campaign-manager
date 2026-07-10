@@ -79,12 +79,14 @@ export function KkbOverviewMetrics({
   perDay,
   comparisonLabel,
   onFunnelStageClick,
+  stageDurations,
 }: {
   m: KkbMetrics;
   previous?: KkbMetrics;
   perDay?: DailyPoint[];
   comparisonLabel?: string;
   onFunnelStageClick?: (key: string) => void;
+  stageDurations?: Record<string, number>;
 }) {
   const appRate = m.answeredSeekers > 0 ? (m.appliedSeekers / m.answeredSeekers) * 100 : 0;
   const productivePct = m.totalCalls > 0 ? (m.productiveCalls / m.totalCalls) * 100 : 0;
