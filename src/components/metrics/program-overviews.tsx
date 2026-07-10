@@ -111,6 +111,7 @@ export function KkbOverviewMetrics({
       color: "blue",
       sub: "100.0%",
       nextAnnotation: `-${dropPct(m.answeredCalls, m.totalCalls).toFixed(1)}% no pickup`,
+      avgDurationSec: stageDurations?.["calls"],
     },
     {
       key: "picked",
@@ -119,6 +120,7 @@ export function KkbOverviewMetrics({
       value: m.answeredCalls,
       color: "green",
       nextAnnotation: `-${dropPct(m.engagedCalls, m.answeredCalls).toFixed(1)}% drop after pickup`,
+      avgDurationSec: stageDurations?.["picked"],
     },
     {
       key: "engaged",
@@ -127,6 +129,7 @@ export function KkbOverviewMetrics({
       value: m.engagedCalls,
       color: "green",
       nextAnnotation: `-${dropPct(m.jobsShownCalls, m.engagedCalls).toFixed(1)}% don't reach jobs`,
+      avgDurationSec: stageDurations?.["engaged"],
     },
     {
       key: "jobs",
@@ -135,6 +138,7 @@ export function KkbOverviewMetrics({
       value: m.jobsShownCalls,
       color: "amber",
       nextAnnotation: "High-intent subset",
+      avgDurationSec: stageDurations?.["jobs"],
     },
     {
       key: "intent",
@@ -143,6 +147,7 @@ export function KkbOverviewMetrics({
       value: m.highIntentCalls,
       color: "coral",
       nextAnnotation: `-${dropPct(m.applicationsTotal, m.highIntentCalls).toFixed(1)}% never apply`,
+      avgDurationSec: stageDurations?.["intent"],
     },
     {
       key: "apps",
@@ -153,6 +158,7 @@ export function KkbOverviewMetrics({
       nextAnnotation: m.hasInterviewData
         ? `${pct(m.interviewCount, m.applicationsTotal).toFixed(1)}% → interview`
         : undefined,
+      avgDurationSec: stageDurations?.["apps"],
     },
   ];
   if (m.hasInterviewData) {
