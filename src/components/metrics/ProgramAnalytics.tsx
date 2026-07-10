@@ -191,6 +191,39 @@ export function ProgramAnalytics({
 
   const comparisonLabel = comparison ? `vs ${comparison.label} avg` : undefined;
 
+  const fetchIds = useServerFn(fetchFunnelCallIds);
+  const handleStageClick = async (stage: string) => {
+    try {
+      const res = await fetchIds({
+        data: {
+          program: config.id,
+          state: filters.state,
+          dateFrom: filters.dateFrom,
+          dateTo: filters.dateTo,
+          campaignType: filters.campaignType,
+          campaign: campaign ?? null,
+          stage,
+        },
+      });
+      const ids: string[] = res?.ids ?? [];
+      if (!ids.length) {
+        toast.message("No call IDs for this stage");
+        return;
+      }
+      const ok = await copyText(ids.join(", "));
+      if (ok) {
+        toast.success(
+          `Copied ${ids.length.toLocaleString()} call ID${ids.length === 1 ? "" : "s"}`,
+          { description: "Paste into the review hub." },
+        );
+      } else {
+        toast.error("Couldn't copy to clipboard");
+      }
+    } catch {
+      toast.error("Couldn't fetch call IDs");
+    }
+  };
+
   return (
     <div className="space-y-6">
       {comparison && (
@@ -205,6 +238,7 @@ export function ProgramAnalytics({
             previous={prevMetrics as unknown as DkbMetrics | undefined}
             perDay={perDayRollup}
             comparisonLabel={comparisonLabel}
+            onFunnelStageClick={handleStageClick}
           />
         ) : (
           <KkbOverviewMetrics
@@ -212,6 +246,7 @@ export function ProgramAnalytics({
             previous={prevMetrics as unknown as KkbMetrics | undefined}
             perDay={perDayRollup}
             comparisonLabel={comparisonLabel}
+            onFunnelStageClick={handleStageClick}
           />
         )
       ) : (
