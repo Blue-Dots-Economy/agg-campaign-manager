@@ -160,6 +160,8 @@ export function ProgramAnalytics({
     return [...m.values()].sort((a, b) => (a.date || "").localeCompare(b.date || ""));
   }, [perDay]);
 
+  const fetchIds = useServerFn(fetchFunnelCallIds);
+
   if (query.isLoading && !data) return <LoadingState />;
 
   const hasActiveFilters =
