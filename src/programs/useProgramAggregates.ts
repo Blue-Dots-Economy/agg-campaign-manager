@@ -7,6 +7,7 @@ import {
   fetchKkbDropAnalysis,
   fetchDkbDropAnalysis,
   fetchCampaignList,
+  fetchFunnelDurations,
   type AggregatePayload,
   type KkbDropAnalysisPayload,
   type CampaignListItem,
@@ -57,6 +58,27 @@ export function useKkbDropAnalysis(filters?: OverviewFilters) {
   return useQuery<KkbDropAnalysisPayload>({
     queryKey: ["kkb-drop-analysis", state, dateFrom, dateTo, campaignType, campaign],
     queryFn: () => fn({ data: { state, dateFrom, dateTo, campaignType, campaign } }),
+    staleTime: 5 * 60_000,
+    gcTime: 30 * 60_000,
+    placeholderData: keepPreviousData,
+    refetchOnWindowFocus: false,
+    refetchOnReconnect: false,
+    refetchOnMount: false,
+    retry: 1,
+    retryDelay: 1500,
+  });
+}
+
+export function useFunnelDurations(config: ProgramConfig, filters?: OverviewFilters) {
+  const fn = useServerFn(fetchFunnelDurations);
+  const state = filters?.state ?? "all";
+  const dateFrom = filters?.dateFrom ?? null;
+  const dateTo = filters?.dateTo ?? null;
+  const campaignType = filters?.campaignType ?? "all";
+  const campaign = filters?.campaign ?? null;
+  return useQuery<Record<string, number>>({
+    queryKey: ["funnel-durations", config.id, state, dateFrom, dateTo, campaignType, campaign],
+    queryFn: () => fn({ data: { program: config.id, state, dateFrom, dateTo, campaignType, campaign } }),
     staleTime: 5 * 60_000,
     gcTime: 30 * 60_000,
     placeholderData: keepPreviousData,

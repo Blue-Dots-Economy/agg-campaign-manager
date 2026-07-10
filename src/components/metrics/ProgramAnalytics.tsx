@@ -16,7 +16,7 @@ import {
   Bar,
   Legend,
 } from "recharts";
-import { useProgramAggregates, useKkbDropAnalysis, useDkbDropAnalysis } from "@/programs/useProgramAggregates";
+import { useProgramAggregates, useKkbDropAnalysis, useDkbDropAnalysis, useFunnelDurations } from "@/programs/useProgramAggregates";
 import type { ProgramConfig } from "@/programs/registry";
 import { KpiCard } from "@/components/KpiCard";
 import {
@@ -100,6 +100,8 @@ export function ProgramAnalytics({
   const query = useProgramAggregates(config, scopedFilters);
   const dropAnalysisQuery = useKkbDropAnalysis(isDkb ? undefined : scopedFilters);
   const dkbDropAnalysisQuery = useDkbDropAnalysis(isDkb ? scopedFilters : undefined);
+  const durationsQuery = useFunnelDurations(config, scopedFilters);
+  const stageDurations = durationsQuery.data ?? {};
   const data = query.data;
 
   // Previous-period baseline (default behavior, used only when no comparison override).
@@ -240,6 +242,7 @@ export function ProgramAnalytics({
             perDay={perDayRollup}
             comparisonLabel={comparisonLabel}
             onFunnelStageClick={handleStageClick}
+            stageDurations={stageDurations}
           />
         ) : (
           <KkbOverviewMetrics
@@ -248,6 +251,7 @@ export function ProgramAnalytics({
             perDay={perDayRollup}
             comparisonLabel={comparisonLabel}
             onFunnelStageClick={handleStageClick}
+            stageDurations={stageDurations}
           />
         )
       ) : (
