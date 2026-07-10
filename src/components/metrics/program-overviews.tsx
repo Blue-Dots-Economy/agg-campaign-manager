@@ -267,7 +267,7 @@ export function DkbOverviewMetrics({
         <div className="grid items-stretch gap-4 lg:grid-cols-5">
           <div className="lg:col-span-3">
             {funnelStages.length > 0 ? (
-              <VerticalFunnel stages={funnelStages} fill pickedUpKey="picked" />
+              <VerticalFunnel stages={funnelStages} fill pickedUpKey="picked" onStageClick={onFunnelStageClick} />
             ) : (
               <div className="rounded-xl border bg-card p-5 text-sm text-muted-foreground">
                 No provider data available for the current filters.
