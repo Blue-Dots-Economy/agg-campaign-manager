@@ -182,3 +182,66 @@ export function useAutoFreshness(programId: ProgramId, lastSyncedAt: string | nu
   }, [programId, lastSyncedAt]);
   return sync;
 }
+
+export function useReviewCalls(dataset: ReviewDataset) {
+  const fn = useServerFn(fetchReviewCalls);
+  return useQuery<Array<Record<string, string>>>({
+    queryKey: ["review-calls", dataset],
+    queryFn: () => fn({ data: { dataset } }),
+    staleTime: 60_000,
+    gcTime: 5 * 60_000,
+    placeholderData: keepPreviousData,
+    refetchOnWindowFocus: false,
+    refetchOnReconnect: false,
+    refetchOnMount: false,
+    retry: 1,
+    retryDelay: 1500,
+  });
+}
+
+export function useReviewMap() {
+  const fn = useServerFn(fetchReviewMap);
+  return useQuery<
+    Array<{ call_id: string | null; job_id: string | null; reviewer_email: string | null }>
+  >({
+    queryKey: ["review-map"],
+    queryFn: () => fn({}),
+    staleTime: 60_000,
+    gcTime: 5 * 60_000,
+    placeholderData: keepPreviousData,
+    refetchOnWindowFocus: false,
+    refetchOnReconnect: false,
+    refetchOnMount: false,
+    retry: 1,
+    retryDelay: 1500,
+  });
+}
+
+export function useExistingReviews(callId?: string | null, jobId?: string | null) {
+  const fn = useServerFn(fetchExistingReviews);
+  const enabled = Boolean((callId ?? "").trim() || (jobId ?? "").trim());
+  return useQuery<
+    Array<{
+      reviewer_email: string | null;
+      reviewer_name: string | null;
+      overall_rating: number | null;
+      quantitative_issues: string | null;
+      reviewer_notes: string | null;
+      turn_flags: string | null;
+      created_at: string;
+    }>
+  >({
+    queryKey: ["existing-reviews", callId ?? null, jobId ?? null],
+    queryFn: () => fn({ data: { callId: callId ?? null, jobId: jobId ?? null } }),
+    enabled,
+    staleTime: 60_000,
+    gcTime: 5 * 60_000,
+    placeholderData: keepPreviousData,
+    refetchOnWindowFocus: false,
+    refetchOnReconnect: false,
+    refetchOnMount: false,
+    retry: 1,
+    retryDelay: 1500,
+  });
+}
+
