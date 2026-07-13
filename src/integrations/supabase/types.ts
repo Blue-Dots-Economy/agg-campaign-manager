@@ -284,6 +284,21 @@ export type Database = {
         }
         Relationships: []
       }
+      reviewers: {
+        Row: {
+          added_at: string
+          email: string
+        }
+        Insert: {
+          added_at?: string
+          email: string
+        }
+        Update: {
+          added_at?: string
+          email?: string
+        }
+        Relationships: []
+      }
       sheet_connections: {
         Row: {
           created_at: string

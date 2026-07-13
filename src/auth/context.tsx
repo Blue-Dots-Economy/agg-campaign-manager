@@ -1,45 +1,48 @@
 import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
+import { useServerFn } from "@tanstack/react-start";
+import { resolveLogin } from "@/lib/reviewers.functions";
 
-const AUTH_EMAIL = "admin@bluedots.com";
-const AUTH_PASSWORD = "456789";
 const STORAGE_KEY = "rozgar-auth";
+export type Role = "admin" | "user";
+export type Session = { email: string; role: Role };
 
 type AuthContextValue = {
+  session: Session | null;
   isAuthenticated: boolean;
+  isAdmin: boolean;
   hydrated: boolean;
-  login: (email: string, password: string) => boolean;
+  login: (email: string, password: string) => Promise<boolean>;
   logout: () => void;
 };
 
 const AuthContext = createContext<AuthContextValue | null>(null);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [session, setSession] = useState<Session | null>(null);
   const [hydrated, setHydrated] = useState(false);
+  const resolve = useServerFn(resolveLogin);
 
   useEffect(() => {
     if (typeof window !== "undefined") {
       try {
-        setIsAuthenticated(window.localStorage.getItem(STORAGE_KEY) === "1");
-      } catch {
-        // ignore
-      }
+        const raw = window.localStorage.getItem(STORAGE_KEY);
+        if (raw) {
+          const parsed = JSON.parse(raw);
+          if (parsed?.email && (parsed.role === "admin" || parsed.role === "user")) setSession(parsed);
+        }
+      } catch { /* ignore */ }
     }
     setHydrated(true);
   }, []);
 
-  const login = (email: string, password: string) => {
-    const emailOk = email.trim().toLowerCase() === AUTH_EMAIL.toLowerCase();
-    const passOk = password === AUTH_PASSWORD;
-    if (emailOk && passOk) {
+  const login = async (email: string, password: string) => {
+    const res = await resolve({ data: { email, password } });
+    if (res?.role) {
+      const s: Session = { email: email.trim().toLowerCase(), role: res.role };
       if (typeof window !== "undefined") {
-        try {
-          window.localStorage.setItem(STORAGE_KEY, "1");
-        } catch {
-          // ignore
-        }
+        try { window.localStorage.setItem(STORAGE_KEY, JSON.stringify(s)); } catch { /* ignore */ }
       }
-      setIsAuthenticated(true);
+      setSession(s);
       return true;
     }
     return false;
@@ -47,17 +50,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const logout = () => {
     if (typeof window !== "undefined") {
-      try {
-        window.localStorage.removeItem(STORAGE_KEY);
-      } catch {
-        // ignore
-      }
+      try { window.localStorage.removeItem(STORAGE_KEY); } catch { /* ignore */ }
     }
-    setIsAuthenticated(false);
+    setSession(null);
   };
 
   return (
-    <AuthContext.Provider value={{ isAuthenticated, hydrated, login, logout }}>
+    <AuthContext.Provider value={{ session, isAuthenticated: !!session, isAdmin: session?.role === "admin", hydrated, login, logout }}>
       {children}
     </AuthContext.Provider>
   );

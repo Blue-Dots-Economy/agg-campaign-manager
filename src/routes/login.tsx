@@ -18,13 +18,11 @@ function LoginPage() {
   const [password, setPassword] = useState("");
   const [error, setError] = useState(false);
 
-  const onSubmit = (e: FormEvent<HTMLFormElement>) => {
+  const onSubmit = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    if (login(email, password)) {
-      navigate({ to: "/" });
-    } else {
-      setError(true);
-    }
+    const ok = await login(email, password);
+    if (ok) navigate({ to: "/" });
+    else setError(true);
   };
 
   return (
@@ -59,20 +57,20 @@ function LoginPage() {
             />
           </div>
           <div className="space-y-1.5">
-            <label className="text-xs font-medium text-foreground" htmlFor="password">Password</label>
+            <label className="text-xs font-medium text-foreground" htmlFor="password">Password (admin only)</label>
             <Input
               id="password"
               type="password"
               autoComplete="current-password"
               value={password}
               onChange={(e) => { setPassword(e.target.value); setError(false); }}
-              required
             />
           </div>
           {error && (
-            <p className="text-xs text-rose-600">Incorrect email or password.</p>
+            <p className="text-xs text-rose-600">Not an authorised email, or wrong admin password.</p>
           )}
           <Button type="submit" className="w-full">Sign in</Button>
+          <p className="text-xs text-muted-foreground text-center">Reviewers sign in with your email. Admins also enter a password.</p>
         </form>
       </div>
     </div>
