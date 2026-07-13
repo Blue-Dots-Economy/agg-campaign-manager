@@ -7,7 +7,7 @@ import { useReviewCalls, useReviewMap } from "@/programs/useProgramAggregates";
 import { buildStatusMap, getReviewKey, type ReviewCall } from "@/lib/review-ui";
 import { CallCard } from "@/components/review/CallCard";
 import { Input } from "@/components/ui/input";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Select, SelectContent, SelectItem, SelectTrigger } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/review/")({
