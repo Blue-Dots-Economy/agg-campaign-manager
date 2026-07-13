@@ -299,7 +299,9 @@ async function readSheetForTab(
   tab: string,
   startRow: number = 2,
   pageSize: number = 200000,
+  excludeSet: Set<string> = HEAVY_HEADERS_NORM,
 ): Promise<SheetReadResult> {
+
   const tabPrefix = quoteTab(tab);
   const headerUrl = `https://sheets.googleapis.com/v4/spreadsheets/${sheetId}/values/${tabPrefix}A1:ZZ1`;
   const headerRes = await fetch(headerUrl, { headers: { authorization: `Bearer ${token}` } });
@@ -313,8 +315,9 @@ async function readSheetForTab(
 
   const keep: number[] = [];
   allHeaders.forEach((h, i) => {
-    if (!HEAVY_HEADERS_NORM.has(normalizeHeader(h))) keep.push(i);
+    if (!excludeSet.has(normalizeHeader(h))) keep.push(i);
   });
+
   const groups: Array<[number, number]> = [];
   for (const i of keep) {
     const last = groups[groups.length - 1];
@@ -399,6 +402,38 @@ export async function readSheet(
   if (tabs.length === 0) throw new Error("Spreadsheet has no tabs");
   return await readSheetForTab(sheetId, token, tabs[0], startRow, pageSize);
 }
+
+// For the review queue: exclude only the very large transcript/summary
+// columns, but KEEP call_recording_url so the queue can filter to calls
+// that have a Raya recording.
+const REVIEW_EXCLUDE_NORM = new Set(["call_transcript", "final_summary"]);
+
+/**
+ * Same as readSheet, but keeps call_recording_url in the returned rows.
+ */
+export async function readSheetForReview(
+  sheetId: string,
+  tabName?: string,
+  startRow: number = 2,
+  pageSize: number = 200000,
+): Promise<SheetReadResult> {
+  const token = await getAccessToken();
+  const trimmed = (tabName ?? "").trim();
+
+  if (trimmed) {
+    try {
+      return await readSheetForTab(sheetId, token, trimmed, startRow, pageSize, REVIEW_EXCLUDE_NORM);
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      if (!isRangeParseError(msg)) throw err;
+    }
+  }
+
+  const tabs = await listSheetTabs(sheetId);
+  if (tabs.length === 0) throw new Error("Spreadsheet has no tabs");
+  return await readSheetForTab(sheetId, token, tabs[0], startRow, pageSize, REVIEW_EXCLUDE_NORM);
+}
+
 
 
 export interface CallDetail {

@@ -341,6 +341,84 @@ export type Database = {
         }
         Relationships: []
       }
+      transcript_reviews: {
+        Row: {
+          call_id: string | null
+          call_outcome: string | null
+          campaign_day: string | null
+          campaign_type: string | null
+          city_campaign: string | null
+          company_name: string | null
+          contact_phone: string | null
+          created_at: string
+          dataset: string | null
+          id: string
+          job_id: string | null
+          job_status_correct: string | null
+          job_status_in_master: string | null
+          language: string | null
+          output_fields_accurate: string | null
+          overall_rating: number | null
+          quantitative_issues: string | null
+          review_type: string | null
+          reviewer_email: string | null
+          reviewer_name: string | null
+          reviewer_notes: string | null
+          summary_match: string | null
+          turn_flags: string | null
+        }
+        Insert: {
+          call_id?: string | null
+          call_outcome?: string | null
+          campaign_day?: string | null
+          campaign_type?: string | null
+          city_campaign?: string | null
+          company_name?: string | null
+          contact_phone?: string | null
+          created_at?: string
+          dataset?: string | null
+          id?: string
+          job_id?: string | null
+          job_status_correct?: string | null
+          job_status_in_master?: string | null
+          language?: string | null
+          output_fields_accurate?: string | null
+          overall_rating?: number | null
+          quantitative_issues?: string | null
+          review_type?: string | null
+          reviewer_email?: string | null
+          reviewer_name?: string | null
+          reviewer_notes?: string | null
+          summary_match?: string | null
+          turn_flags?: string | null
+        }
+        Update: {
+          call_id?: string | null
+          call_outcome?: string | null
+          campaign_day?: string | null
+          campaign_type?: string | null
+          city_campaign?: string | null
+          company_name?: string | null
+          contact_phone?: string | null
+          created_at?: string
+          dataset?: string | null
+          id?: string
+          job_id?: string | null
+          job_status_correct?: string | null
+          job_status_in_master?: string | null
+          language?: string | null
+          output_fields_accurate?: string | null
+          overall_rating?: number | null
+          quantitative_issues?: string | null
+          review_type?: string | null
+          reviewer_email?: string | null
+          reviewer_name?: string | null
+          reviewer_notes?: string | null
+          summary_match?: string | null
+          turn_flags?: string | null
+        }
+        Relationships: []
+      }
     }
     Views: {
       kkb_grid: {
