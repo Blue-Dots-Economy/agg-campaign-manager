@@ -7,7 +7,7 @@ import { useReviewCalls, useReviewMap } from "@/programs/useProgramAggregates";
 import { buildStatusMap, getReviewKey, type ReviewCall } from "@/lib/review-ui";
 import { CallCard } from "@/components/review/CallCard";
 import { Input } from "@/components/ui/input";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Select, SelectContent, SelectItem, SelectTrigger } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/review/")({
@@ -190,7 +190,12 @@ function ReviewHub() {
 
   const SelectFilter = ({ value, onChange, options, placeholder }: { value: string; onChange: (v: string) => void; options: string[]; placeholder: string }) => (
     <Select value={value} onValueChange={onChange}>
-      <SelectTrigger className="h-9 w-full"><SelectValue placeholder={placeholder} /></SelectTrigger>
+      <SelectTrigger className="h-9 w-full">
+        <span className="truncate text-sm">
+          <span className="text-muted-foreground">{placeholder}: </span>
+          <span className="font-medium text-foreground">{value}</span>
+        </span>
+      </SelectTrigger>
       <SelectContent>
         {options.map((o) => <SelectItem key={o} value={o}>{o}</SelectItem>)}
       </SelectContent>
