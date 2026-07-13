@@ -173,7 +173,7 @@ const FEEDBACK_COLUMNS = [
 export const submitReview = createServerFn({ method: "POST" })
   .inputValidator((data: { review: ReviewInput }) => data)
   .handler(async ({ data }) => {
-    const review: ReviewInput = { review_type: "transcript", ...data.review };
+    const review: ReviewInput = { review_type: "transcript", ...data.review, company_name: "" };
     const client = sb();
     const { error } = await client
       .from("transcript_reviews")
