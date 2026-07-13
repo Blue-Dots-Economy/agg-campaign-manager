@@ -106,10 +106,7 @@ function ReviewHub() {
   }, [calls]);
 
   const baseSet = useMemo(() => {
-    return (calls ?? []).filter((c) =>
-      String(c.call_recording_url || "").startsWith("https://api.getraya.app/call_recording/") &&
-      (c.call_outcome === "Completed" || c.call_outcome === "Early Disconnect")
-    );
+    return (calls ?? []).filter((c) => c.call_outcome === "Completed" || c.call_outcome === "Early Disconnect");
   }, [calls]);
 
   const searchTokens = useMemo(() =>
