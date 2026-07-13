@@ -95,17 +95,16 @@ function ReviewHub() {
   }, [filters]);
   const set = <K extends keyof Filters>(k: K, v: Filters[K]) => setFilters((f) => ({ ...f, [k]: v }));
 
-  const { prefill } = Route.useSearch();
   useEffect(() => {
-    if (prefill === "1") {
-      try {
-        const ids = window.sessionStorage.getItem("review_prefill_ids");
-        if (ids) setFilters((f) => ({ ...f, search: ids, tab: "all" }));
+    try {
+      const ids = window.sessionStorage.getItem("review_prefill_ids");
+      if (ids) {
+        setFilters((f) => ({ ...f, search: ids, tab: "all" }));
         window.sessionStorage.removeItem("review_prefill_ids");
-      } catch { /* ignore */ }
-    }
+      }
+    } catch { /* ignore */ }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [prefill]);
+  }, []);
 
   const options = useMemo(() => {
     const list = calls ?? [];
