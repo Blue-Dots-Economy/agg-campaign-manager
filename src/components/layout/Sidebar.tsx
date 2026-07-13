@@ -11,6 +11,7 @@ import {
   Plug,
   Bot,
   ClipboardCheck,
+  Headphones,
   LogOut,
 } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
@@ -26,6 +27,7 @@ import { useAuth } from "@/auth/context";
 const NAV = [
   { to: "/", label: "Overview", icon: LayoutDashboard },
   { to: "/campaign-review", label: "Campaign review", icon: ClipboardCheck },
+  { to: "/review", label: "Review hub", icon: Headphones },
   { to: "/campaigns", label: "Campaigns", icon: Megaphone },
   { to: "/launch", label: "Launch", icon: Rocket },
   { to: "/schedule", label: "Schedule", icon: Calendar },
