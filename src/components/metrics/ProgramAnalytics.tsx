@@ -97,6 +97,7 @@ export function ProgramAnalytics({
   comparison,
 }: ProgramAnalyticsProps) {
   const isDkb = config.id === "dkb";
+  const navigate = useNavigate();
   const scopedFilters = campaign ? { ...filters, campaign } : filters;
   const query = useProgramAggregates(config, scopedFilters);
   const dropAnalysisQuery = useKkbDropAnalysis(isDkb ? undefined : scopedFilters);
