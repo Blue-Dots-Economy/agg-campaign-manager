@@ -253,7 +253,7 @@ function TranscriptReview() {
         </section>
 
         {/* feedback */}
-        <aside className="space-y-3 lg:col-span-2">
+        <aside className="space-y-3 lg:col-span-2 lg:h-full lg:overflow-y-auto lg:pr-1">
           <Collapsible open={infoOpen} onOpenChange={setInfoOpen}>
             <div className="rounded-xl border border-border bg-card">
               <CollapsibleTrigger className="flex w-full items-center justify-between px-4 py-3 text-left"><span className="text-sm font-semibold">Call Info</span><ChevronDown className={cn("h-4 w-4 transition-transform", infoOpen && "rotate-180")} /></CollapsibleTrigger>
