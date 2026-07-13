@@ -18,6 +18,7 @@ import {
   fetchExistingReviews,
   type ReviewDataset,
 } from "@/lib/review.functions";
+import { listReviewers } from "@/lib/reviewers.functions";
 import type { ProgramConfig, ProgramId } from "./registry";
 import { toast } from "sonner";
 
