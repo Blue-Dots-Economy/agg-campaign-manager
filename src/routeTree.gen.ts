@@ -11,6 +11,7 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as SettingsRouteImport } from './routes/settings'
 import { Route as ScheduleRouteImport } from './routes/schedule'
+import { Route as ReviewRouteImport } from './routes/review'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as LaunchRouteImport } from './routes/launch'
 import { Route as DataRouteImport } from './routes/data'
@@ -33,6 +34,11 @@ const SettingsRoute = SettingsRouteImport.update({
 const ScheduleRoute = ScheduleRouteImport.update({
   id: '/schedule',
   path: '/schedule',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ReviewRoute = ReviewRouteImport.update({
+  id: '/review',
+  path: '/review',
   getParentRoute: () => rootRouteImport,
 } as any)
 const LoginRoute = LoginRouteImport.update({
@@ -76,9 +82,9 @@ const IndexRoute = IndexRouteImport.update({
   getParentRoute: () => rootRouteImport,
 } as any)
 const ReviewIndexRoute = ReviewIndexRouteImport.update({
-  id: '/review/',
-  path: '/review/',
-  getParentRoute: () => rootRouteImport,
+  id: '/',
+  path: '/',
+  getParentRoute: () => ReviewRoute,
 } as any)
 const CampaignReviewIndexRoute = CampaignReviewIndexRouteImport.update({
   id: '/',
@@ -86,9 +92,9 @@ const CampaignReviewIndexRoute = CampaignReviewIndexRouteImport.update({
   getParentRoute: () => CampaignReviewRoute,
 } as any)
 const ReviewCallIdRoute = ReviewCallIdRouteImport.update({
-  id: '/review/$callId',
-  path: '/review/$callId',
-  getParentRoute: () => rootRouteImport,
+  id: '/$callId',
+  path: '/$callId',
+  getParentRoute: () => ReviewRoute,
 } as any)
 const CampaignReviewCampaignRoute = CampaignReviewCampaignRouteImport.update({
   id: '/$campaign',
@@ -111,6 +117,7 @@ export interface FileRoutesByFullPath {
   '/data': typeof DataRoute
   '/launch': typeof LaunchRoute
   '/login': typeof LoginRoute
+  '/review': typeof ReviewRouteWithChildren
   '/schedule': typeof ScheduleRoute
   '/settings': typeof SettingsRoute
   '/campaign-review/$campaign': typeof CampaignReviewCampaignRoute
@@ -145,6 +152,7 @@ export interface FileRoutesById {
   '/data': typeof DataRoute
   '/launch': typeof LaunchRoute
   '/login': typeof LoginRoute
+  '/review': typeof ReviewRouteWithChildren
   '/schedule': typeof ScheduleRoute
   '/settings': typeof SettingsRoute
   '/campaign-review/$campaign': typeof CampaignReviewCampaignRoute
@@ -164,6 +172,7 @@ export interface FileRouteTypes {
     | '/data'
     | '/launch'
     | '/login'
+    | '/review'
     | '/schedule'
     | '/settings'
     | '/campaign-review/$campaign'
@@ -197,6 +206,7 @@ export interface FileRouteTypes {
     | '/data'
     | '/launch'
     | '/login'
+    | '/review'
     | '/schedule'
     | '/settings'
     | '/campaign-review/$campaign'
@@ -215,10 +225,9 @@ export interface RootRouteChildren {
   DataRoute: typeof DataRoute
   LaunchRoute: typeof LaunchRoute
   LoginRoute: typeof LoginRoute
+  ReviewRoute: typeof ReviewRouteWithChildren
   ScheduleRoute: typeof ScheduleRoute
   SettingsRoute: typeof SettingsRoute
-  ReviewCallIdRoute: typeof ReviewCallIdRoute
-  ReviewIndexRoute: typeof ReviewIndexRoute
   ApiPublicHooksSyncSnapshotsRoute: typeof ApiPublicHooksSyncSnapshotsRoute
 }
 
@@ -236,6 +245,13 @@ declare module '@tanstack/react-router' {
       path: '/schedule'
       fullPath: '/schedule'
       preLoaderRoute: typeof ScheduleRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/review': {
+      id: '/review'
+      path: '/review'
+      fullPath: '/review'
+      preLoaderRoute: typeof ReviewRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/login': {
@@ -296,10 +312,10 @@ declare module '@tanstack/react-router' {
     }
     '/review/': {
       id: '/review/'
-      path: '/review'
+      path: '/'
       fullPath: '/review/'
       preLoaderRoute: typeof ReviewIndexRouteImport
-      parentRoute: typeof rootRouteImport
+      parentRoute: typeof ReviewRoute
     }
     '/campaign-review/': {
       id: '/campaign-review/'
@@ -310,10 +326,10 @@ declare module '@tanstack/react-router' {
     }
     '/review/$callId': {
       id: '/review/$callId'
-      path: '/review/$callId'
+      path: '/$callId'
       fullPath: '/review/$callId'
       preLoaderRoute: typeof ReviewCallIdRouteImport
-      parentRoute: typeof rootRouteImport
+      parentRoute: typeof ReviewRoute
     }
     '/campaign-review/$campaign': {
       id: '/campaign-review/$campaign'
@@ -346,6 +362,19 @@ const CampaignReviewRouteWithChildren = CampaignReviewRoute._addFileChildren(
   CampaignReviewRouteChildren,
 )
 
+interface ReviewRouteChildren {
+  ReviewCallIdRoute: typeof ReviewCallIdRoute
+  ReviewIndexRoute: typeof ReviewIndexRoute
+}
+
+const ReviewRouteChildren: ReviewRouteChildren = {
+  ReviewCallIdRoute: ReviewCallIdRoute,
+  ReviewIndexRoute: ReviewIndexRoute,
+}
+
+const ReviewRouteWithChildren =
+  ReviewRoute._addFileChildren(ReviewRouteChildren)
+
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AgentsRoute: AgentsRoute,
@@ -355,10 +384,9 @@ const rootRouteChildren: RootRouteChildren = {
   DataRoute: DataRoute,
   LaunchRoute: LaunchRoute,
   LoginRoute: LoginRoute,
+  ReviewRoute: ReviewRouteWithChildren,
   ScheduleRoute: ScheduleRoute,
   SettingsRoute: SettingsRoute,
-  ReviewCallIdRoute: ReviewCallIdRoute,
-  ReviewIndexRoute: ReviewIndexRoute,
   ApiPublicHooksSyncSnapshotsRoute: ApiPublicHooksSyncSnapshotsRoute,
 }
 export const routeTree = rootRouteImport
