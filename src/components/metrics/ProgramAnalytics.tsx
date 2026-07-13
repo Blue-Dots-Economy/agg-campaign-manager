@@ -1,6 +1,7 @@
 import { useMemo } from "react";
 import { toast } from "sonner";
 import { useServerFn } from "@tanstack/react-start";
+import { useNavigate } from "@tanstack/react-router";
 import {
   LineChart,
   Line,
@@ -96,6 +97,7 @@ export function ProgramAnalytics({
   comparison,
 }: ProgramAnalyticsProps) {
   const isDkb = config.id === "dkb";
+  const navigate = useNavigate();
   const scopedFilters = campaign ? { ...filters, campaign } : filters;
   const query = useProgramAggregates(config, scopedFilters);
   const dropAnalysisQuery = useKkbDropAnalysis(isDkb ? undefined : scopedFilters);
@@ -217,7 +219,16 @@ export function ProgramAnalytics({
       if (ok) {
         toast.success(
           `Copied ${ids.length.toLocaleString()} call ID${ids.length === 1 ? "" : "s"}`,
-          { description: "Paste into the review hub." },
+          {
+            description: "Paste into the review hub, or open it now.",
+            action: {
+              label: "Open Review hub",
+              onClick: () => {
+                try { window.sessionStorage.setItem("review_prefill_ids", ids.join(" ")); } catch { /* ignore */ }
+                navigate({ to: "/review", search: { prefill: "1" } });
+              },
+            },
+          },
         );
       } else {
         toast.error("Couldn't copy to clipboard");
