@@ -246,3 +246,19 @@ export function useExistingReviews(callId?: string | null, jobId?: string | null
   });
 }
 
+
+export function useReviewers() {
+  const fn = useServerFn(listReviewers);
+  return useQuery<string[]>({
+    queryKey: ["reviewers"],
+    queryFn: () => fn({}),
+    staleTime: 60_000,
+    gcTime: 5 * 60_000,
+    placeholderData: keepPreviousData,
+    refetchOnWindowFocus: false,
+    refetchOnReconnect: false,
+    refetchOnMount: false,
+    retry: 1,
+    retryDelay: 1500,
+  });
+}
