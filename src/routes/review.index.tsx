@@ -11,6 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger } from "@/components/u
 import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/review/")({
+  validateSearch: (s: Record<string, unknown>) => ({ prefill: typeof s.prefill === "string" ? s.prefill : undefined }),
   component: ReviewHub,
 });
 
