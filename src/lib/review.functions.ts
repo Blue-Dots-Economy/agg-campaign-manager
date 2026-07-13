@@ -37,46 +37,44 @@ async function resolveSheet(
   return { sheet_id: row.sheet_id as string, tab_name: (row.tab_name as string | null) ?? null };
 }
 
-// --- Review call queue (per-dataset cache) ---
-
-type ReviewRow = Record<string, string>;
-const CACHE_TTL_MS = 60_000;
-const cache = new Map<ReviewDataset, { at: number; rows: ReviewRow[] }>();
-const inflight = new Map<ReviewDataset, Promise<ReviewRow[]>>();
-
-async function loadReviewCalls(dataset: ReviewDataset): Promise<ReviewRow[]> {
-  const now = Date.now();
-  const cached = cache.get(dataset);
-  if (cached && now - cached.at < CACHE_TTL_MS) return cached.rows;
-  const existing = inflight.get(dataset);
-  if (existing) return existing;
-
-  const p = (async () => {
-    const { sheet_id, tab_name } = await resolveSheet(dataset);
-    const { headers, rows } = await readSheetForReview(sheet_id, tab_name ?? undefined);
-    const normHeaders = headers.map(normKey);
-    const out: ReviewRow[] = rows.map((r) => {
-      const o: ReviewRow = {};
-      for (let i = 0; i < normHeaders.length; i++) {
-        o[normHeaders[i]] = r[i] ?? "";
-      }
-      return o;
-    });
-    cache.set(dataset, { at: Date.now(), rows: out });
-    return out;
-  })();
-  inflight.set(dataset, p);
-  try {
-    return await p;
-  } finally {
-    inflight.delete(dataset);
-  }
-}
-
 export const fetchReviewCalls = createServerFn({ method: "GET" })
   .inputValidator((data: { dataset: ReviewDataset }) => data)
-  .handler(async ({ data }) => {
-    return await loadReviewCalls(data.dataset);
+  .handler(async ({ data }): Promise<Array<Record<string, string>>> => {
+    const client = sb();
+    const { data: rows, error } = await client
+      .from("call_rows")
+      .select("call_id, campaign_day, campaign_date, campaign_type, language, city_campaign, call_outcome, call_duration_seconds, intent_score, drop_reason, job_status, phone, data")
+      .eq("program", data.dataset)
+      .limit(50000);
+    if (error) throw new Error(error.message);
+    return (rows ?? []).map((r: Record<string, unknown>) => {
+      const d = (r.data ?? {}) as Record<string, unknown>;
+      const raw = (d.raw ?? {}) as Record<string, unknown>;
+      const pick = (...keys: string[]) => {
+        for (const k of keys) {
+          const v = (d as Record<string, unknown>)[k] ?? (raw as Record<string, unknown>)[k];
+          if (v !== undefined && v !== null && String(v) !== "") return String(v);
+        }
+        return "";
+      };
+      return {
+        call_id: r.call_id != null ? String(r.call_id) : "",
+        job_id: pick("job_id"),
+        company_name: pick("company_name", "seeker_name"),
+        campaign_day: r.campaign_day != null ? String(r.campaign_day) : "",
+        campaign_date: r.campaign_date != null ? String(r.campaign_date) : "",
+        campaign_type: r.campaign_type != null ? String(r.campaign_type) : "",
+        language: r.language != null ? String(r.language) : "",
+        city_campaign: r.city_campaign != null ? String(r.city_campaign) : "",
+        call_outcome: r.call_outcome != null ? String(r.call_outcome) : "",
+        call_duration_seconds: r.call_duration_seconds != null ? String(r.call_duration_seconds) : "",
+        call_datetime_ist: pick("call_datetime_ist"),
+        intent_score: r.intent_score != null ? String(r.intent_score) : "",
+        drop_reason: r.drop_reason != null ? String(r.drop_reason) : "",
+        job_status: r.job_status != null ? String(r.job_status) : "",
+        call_recording_url: "",
+      } as Record<string, string>;
+    });
   });
 
 export const fetchCallDetail = createServerFn({ method: "GET" })
