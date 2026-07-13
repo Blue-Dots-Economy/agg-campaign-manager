@@ -403,6 +403,38 @@ export async function readSheet(
   return await readSheetForTab(sheetId, token, tabs[0], startRow, pageSize);
 }
 
+// For the review queue: exclude only the very large transcript/summary
+// columns, but KEEP call_recording_url so the queue can filter to calls
+// that have a Raya recording.
+const REVIEW_EXCLUDE_NORM = new Set(["call_transcript", "final_summary"]);
+
+/**
+ * Same as readSheet, but keeps call_recording_url in the returned rows.
+ */
+export async function readSheetForReview(
+  sheetId: string,
+  tabName?: string,
+  startRow: number = 2,
+  pageSize: number = 200000,
+): Promise<SheetReadResult> {
+  const token = await getAccessToken();
+  const trimmed = (tabName ?? "").trim();
+
+  if (trimmed) {
+    try {
+      return await readSheetForTab(sheetId, token, trimmed, startRow, pageSize, REVIEW_EXCLUDE_NORM);
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      if (!isRangeParseError(msg)) throw err;
+    }
+  }
+
+  const tabs = await listSheetTabs(sheetId);
+  if (tabs.length === 0) throw new Error("Spreadsheet has no tabs");
+  return await readSheetForTab(sheetId, token, tabs[0], startRow, pageSize, REVIEW_EXCLUDE_NORM);
+}
+
+
 
 export interface CallDetail {
   call_transcript: string;
