@@ -18,13 +18,11 @@ function LoginPage() {
   const [password, setPassword] = useState("");
   const [error, setError] = useState(false);
 
-  const onSubmit = (e: FormEvent<HTMLFormElement>) => {
+  const onSubmit = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    if (login(email, password)) {
-      navigate({ to: "/" });
-    } else {
-      setError(true);
-    }
+    const ok = await login(email, password);
+    if (ok) navigate({ to: "/" });
+    else setError(true);
   };
 
   return (
