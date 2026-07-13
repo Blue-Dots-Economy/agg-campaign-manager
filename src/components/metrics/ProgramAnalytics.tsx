@@ -218,7 +218,16 @@ export function ProgramAnalytics({
       if (ok) {
         toast.success(
           `Copied ${ids.length.toLocaleString()} call ID${ids.length === 1 ? "" : "s"}`,
-          { description: "Paste into the review hub." },
+          {
+            description: "Paste into the review hub, or open it now.",
+            action: {
+              label: "Open Review hub",
+              onClick: () => {
+                try { window.sessionStorage.setItem("review_prefill_ids", ids.join(" ")); } catch { /* ignore */ }
+                navigate({ to: "/review", search: { prefill: "1" } });
+              },
+            },
+          },
         );
       } else {
         toast.error("Couldn't copy to clipboard");
