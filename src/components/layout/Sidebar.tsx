@@ -36,6 +36,7 @@ const NAV = [
   { to: "/data", label: "Data & uploads", icon: Database },
   { to: "/connections", label: "Connections", icon: Plug },
   { to: "/agents", label: "Agents", icon: Bot },
+  { to: "/reviewers", label: "Reviewers", icon: UserCog, adminOnly: true },
   { to: "/settings", label: "Settings", icon: Settings },
 ] as const;
 
