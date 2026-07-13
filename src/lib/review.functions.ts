@@ -60,7 +60,7 @@ export const fetchReviewCalls = createServerFn({ method: "GET" })
       return {
         call_id: r.call_id != null ? String(r.call_id) : "",
         job_id: pick("job_id"),
-        company_name: pick("company_name", "seeker_name"),
+        
         campaign_day: r.campaign_day != null ? String(r.campaign_day) : "",
         campaign_date: r.campaign_date != null ? String(r.campaign_date) : "",
         campaign_type: r.campaign_type != null ? String(r.campaign_type) : "",
