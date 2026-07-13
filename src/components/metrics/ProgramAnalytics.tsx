@@ -1,6 +1,7 @@
 import { useMemo } from "react";
 import { toast } from "sonner";
 import { useServerFn } from "@tanstack/react-start";
+import { useNavigate } from "@tanstack/react-router";
 import {
   LineChart,
   Line,
