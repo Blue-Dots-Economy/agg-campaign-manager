@@ -221,12 +221,12 @@ function TranscriptReview() {
         )}
       </div>
 
-      <div className="grid gap-4 lg:grid-cols-5">
+      <div className="grid gap-4 lg:grid-cols-5 lg:h-[calc(100vh-11rem)] lg:overflow-hidden">
         {/* transcript */}
-        <section className="lg:col-span-3">
-          <div className="flex flex-col rounded-2xl border border-border bg-card">
+        <section className="lg:col-span-3 lg:h-full lg:min-h-0">
+          <div className="flex h-full flex-col rounded-2xl border border-border bg-card">
             <div className="border-b border-border px-4 py-3"><h2 className="text-sm font-semibold">Transcript</h2><p className="text-xs text-muted-foreground">{detailQuery.isLoading ? "Loading…" : `${transcript.length} turns`}</p></div>
-            <div className="space-y-2 overflow-y-auto p-4" style={{ maxHeight: "60vh" }}>
+            <div className="flex-1 min-h-0 space-y-2 overflow-y-auto p-4 max-h-[60vh] lg:max-h-none">
               {detailQuery.isLoading ? (
                 <div className="flex justify-center py-10"><Loader2 className="h-5 w-5 animate-spin text-muted-foreground" /></div>
               ) : transcript.length === 0 ? (
@@ -253,7 +253,7 @@ function TranscriptReview() {
         </section>
 
         {/* feedback */}
-        <aside className="space-y-3 lg:col-span-2">
+        <aside className="space-y-3 lg:col-span-2 lg:h-full lg:overflow-y-auto lg:pr-1">
           <Collapsible open={infoOpen} onOpenChange={setInfoOpen}>
             <div className="rounded-xl border border-border bg-card">
               <CollapsibleTrigger className="flex w-full items-center justify-between px-4 py-3 text-left"><span className="text-sm font-semibold">Call Info</span><ChevronDown className={cn("h-4 w-4 transition-transform", infoOpen && "rotate-180")} /></CollapsibleTrigger>
