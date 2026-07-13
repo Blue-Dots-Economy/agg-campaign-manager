@@ -299,7 +299,9 @@ async function readSheetForTab(
   tab: string,
   startRow: number = 2,
   pageSize: number = 200000,
+  excludeSet: Set<string> = HEAVY_HEADERS_NORM,
 ): Promise<SheetReadResult> {
+
   const tabPrefix = quoteTab(tab);
   const headerUrl = `https://sheets.googleapis.com/v4/spreadsheets/${sheetId}/values/${tabPrefix}A1:ZZ1`;
   const headerRes = await fetch(headerUrl, { headers: { authorization: `Bearer ${token}` } });
