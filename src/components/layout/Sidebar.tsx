@@ -12,6 +12,7 @@ import {
   Bot,
   ClipboardCheck,
   Headphones,
+  UserCog,
   LogOut,
 } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
@@ -35,6 +36,7 @@ const NAV = [
   { to: "/data", label: "Data & uploads", icon: Database },
   { to: "/connections", label: "Connections", icon: Plug },
   { to: "/agents", label: "Agents", icon: Bot },
+  { to: "/reviewers", label: "Reviewers", icon: UserCog, adminOnly: true },
   { to: "/settings", label: "Settings", icon: Settings },
 ] as const;
 
@@ -42,7 +44,7 @@ export function Sidebar() {
   const { config, programId, setProgramId } = useProgram();
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const navigate = useNavigate();
-  const { logout } = useAuth();
+  const { logout, isAdmin } = useAuth();
   const listFn = useServerFn(listConnections);
   const { data: conns } = useQuery({
     queryKey: ["connections", programId],
@@ -85,7 +87,7 @@ export function Sidebar() {
       </div>
 
       <nav className="px-3 py-2 space-y-0.5">
-        {NAV.map((item) => {
+        {NAV.filter((item) => !("adminOnly" in item && item.adminOnly) || isAdmin).map((item) => {
           const active = item.to === "/" ? pathname === "/" : pathname.startsWith(item.to);
           const Icon = item.icon;
           return (
