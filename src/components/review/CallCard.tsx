@@ -22,7 +22,7 @@ export function CallCard({ call, reviewStatus }: { call: ReviewCall; reviewStatu
       <div className="flex w-full items-start justify-between gap-4 p-4 sm:p-5">
         <div className="min-w-0 flex-1 space-y-2">
           <div className="flex flex-wrap items-center gap-2">
-            <span className="font-semibold text-foreground">{call.company_name || call.call_id || call.job_id}</span>
+            <span className="font-semibold text-foreground">{call.call_id || call.job_id}</span>
             <StatusChip status={call.job_status} />
             <OutcomeChip outcome={call.call_outcome} />
             <ReviewerChip status={reviewStatus} />

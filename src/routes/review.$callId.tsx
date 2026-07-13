@@ -210,7 +210,7 @@ function TranscriptReview() {
       <div className="flex items-center gap-3">
         <button onClick={() => navigate({ to: "/review" })} className="inline-flex items-center gap-1.5 rounded-full border border-border px-3 py-1.5 text-sm font-medium hover:bg-muted"><ArrowLeft className="h-4 w-4" /> Back</button>
         <div className="min-w-0">
-          <h1 className="truncate text-lg font-semibold">{call.company_name || call.call_id}</h1>
+          <h1 className="truncate text-lg font-semibold">{call.call_id || call.job_id}</h1>
           <p className="truncate text-xs text-muted-foreground">{call.campaign_day} · {call.language} · {call.city_campaign} · {call.call_datetime_ist}</p>
         </div>
         {bulkInfo && (
@@ -247,7 +247,7 @@ function TranscriptReview() {
               })}
             </div>
             <div className="border-t border-border p-4">
-              <AudioPlayer src={typeof recordingUrl === "string" && recordingUrl.startsWith("https://api.getraya.app/call_recording/") ? recordingUrl : undefined} companyName={call.company_name} duration={Number(call.call_duration_seconds) || 0} datetime={call.call_datetime_ist} />
+              <AudioPlayer src={typeof recordingUrl === "string" && recordingUrl.startsWith("https://api.getraya.app/call_recording/") ? recordingUrl : undefined} companyName={call.call_id || call.job_id} duration={Number(call.call_duration_seconds) || 0} datetime={call.call_datetime_ist} />
             </div>
           </div>
         </section>
