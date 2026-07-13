@@ -221,7 +221,7 @@ function TranscriptReview() {
         )}
       </div>
 
-      <div className="grid gap-4 lg:grid-cols-5">
+      <div className="grid gap-4 lg:grid-cols-5 lg:h-[calc(100vh-11rem)] lg:overflow-hidden">
         {/* transcript */}
         <section className="lg:col-span-3">
           <div className="flex flex-col rounded-2xl border border-border bg-card">
