@@ -95,10 +95,54 @@ function MetricTile({
 }
 
 function UserLevelAnalysis() {
-  const { data: seekers, refetch, isFetching } = useSuspenseQuery(seekersQuery);
+  const initial = useMemo(() => loadSeekers(), []);
+  const [seekers, setSeekers] = useState<Seeker[]>(initial.seekers);
+  const [meta, setMeta] = useState<CsvMeta>(initial.meta);
+  const [isFetching, setIsFetching] = useState(false);
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [selected, setSelected] = useState<Seeker | null>(null);
+  const fileRef = useRef<HTMLInputElement | null>(null);
+
+  // Hydrate from localStorage after mount (SSR-safe)
+  useEffect(() => {
+    const { seekers: s, meta: m } = loadSeekers();
+    setSeekers(s);
+    setMeta(m);
+  }, []);
+
+  const refetch = () => {
+    setIsFetching(true);
+    const { seekers: s, meta: m } = loadSeekers();
+    setSeekers(s);
+    setMeta(m);
+    setTimeout(() => setIsFetching(false), 300);
+  };
+
+  const handleUploadClick = () => fileRef.current?.click();
+
+  const handleFileChosen = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const text = await file.text();
+    try {
+      const { seekers: s, meta: m } = saveUploadedCsv(file.name, text);
+      setSeekers(s);
+      setMeta(m);
+    } catch (err) {
+      alert("Failed to parse CSV: " + (err instanceof Error ? err.message : String(err)));
+    } finally {
+      if (fileRef.current) fileRef.current.value = "";
+    }
+  };
+
+  const handleReset = () => {
+    const { seekers: s, meta: m } = resetToBundled();
+    setSeekers(s);
+    setMeta(m);
+  };
+
+
 
 
   const stats = useMemo(() => {
