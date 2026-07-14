@@ -227,6 +227,11 @@ function UserLevelAnalysis() {
         count: fieldPassCounts[i],
         pct: total ? Math.round((fieldPassCounts[i] / total) * 100) : 0,
       })),
+      emailPct: total ? Math.round((emailCount / total) * 100) : 0,
+      emailCount,
+      phonePct: total ? Math.round((phoneCount / total) * 100) : 0,
+      phoneCount,
+
 
       newLast7,
       appliedCounts: {
