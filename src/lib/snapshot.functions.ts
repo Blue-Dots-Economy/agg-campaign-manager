@@ -195,6 +195,7 @@ export async function performSync(program: ProgramId, opts?: { force?: boolean }
     type UpsertRow = {
       program: ProgramId;
       connection_id: string;
+      channel: string;
       call_id: string;
       campaign_day: string;
       intent_score: number | null;
