@@ -162,7 +162,7 @@ function UserLevelAnalysis() {
       {/* Header */}
       <div className="flex items-start justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">My Purple Dots</h1>
+          <h1 className="text-3xl font-bold tracking-tight">My Bluedots</h1>
           <p className="text-sm text-muted-foreground mt-1">
             Discovery &amp; services network for People with Disabilities
           </p>
