@@ -1,7 +1,9 @@
 import { createServerFn } from "@tanstack/react-start";
 import { createClient } from "@supabase/supabase-js";
+import { createHash } from "crypto";
 import type { CallRow } from "@/programs/data";
 import type { ProgramId } from "@/programs/registry";
+
 
 function sb() {
   return createClient(
