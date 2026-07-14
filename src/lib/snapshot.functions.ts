@@ -946,6 +946,7 @@ export const fetchFunnelDurations = createServerFn({ method: "GET" })
       dateTo?: string | null;
       campaignType?: string;
       campaign?: string | null;
+      channel?: string;
     }) => d,
   )
   .handler(async ({ data }): Promise<Record<string, number>> => {
@@ -958,6 +959,7 @@ export const fetchFunnelDurations = createServerFn({ method: "GET" })
         _date_to: data.dateTo ?? null,
         _campaign_type: data.campaignType ?? "all",
         _campaign: data.campaign ?? null,
+        _channel: data.channel ?? "all",
       });
       if (error) throw new Error(error.message);
       if (!rpcData || typeof rpcData !== "object") return {};
