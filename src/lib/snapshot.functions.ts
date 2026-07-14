@@ -257,6 +257,7 @@ export async function performSync(program: ProgramId, opts?: { force?: boolean }
                 pageRows.push({
                   program,
                   connection_id: c.id,
+                  channel: c.channel ?? "outbound",
                   call_id: callId,
                   campaign_day: mapped.campaign_day || "",
                   intent_score: Number.isFinite(mapped["Intent Score"]) ? mapped["Intent Score"] : null,
