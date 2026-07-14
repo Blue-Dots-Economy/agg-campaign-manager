@@ -1,7 +1,9 @@
 import { createServerFn } from "@tanstack/react-start";
 import { createClient } from "@supabase/supabase-js";
+import { createHash } from "crypto";
 import type { CallRow } from "@/programs/data";
 import type { ProgramId } from "@/programs/registry";
+
 
 function sb() {
   return createClient(
@@ -218,8 +220,15 @@ export async function performSync(program: ProgramId, opts?: { force?: boolean }
       call_duration_seconds: number | null;
       applications_count: number | null;
       data: CallRow;
+      row_hash: string;
       synced_at: string;
     };
+
+    // Stable content hash — excludes synced_at (always changes) and row_hash itself.
+    function computeRowHash(r: Omit<UpsertRow, "row_hash" | "synced_at">): string {
+      return createHash("sha1").update(JSON.stringify(r)).digest("hex");
+    }
+
 
 
     const BATCH = 500;
@@ -249,12 +258,13 @@ export async function performSync(program: ProgramId, opts?: { force?: boolean }
               if (rows.length === 0) break;
 
               const pageRows: UpsertRow[] = [];
+              const nowIso = new Date().toISOString();
               for (let i = 0; i < rows.length; i++) {
                 const mapped = mapRow(headers, rows[i]);
                 const callId = mapped.call_id?.trim() || `${c.id}:${pageStart - 2 + i}`;
                 if (seen.has(callId)) continue;
                 seen.add(callId);
-                pageRows.push({
+                const base = {
                   program,
                   connection_id: c.id,
                   channel: c.channel ?? "outbound",
@@ -280,13 +290,44 @@ export async function performSync(program: ProgramId, opts?: { force?: boolean }
                   call_duration_seconds: Number.isFinite(mapped.call_duration_seconds) ? mapped.call_duration_seconds : null,
                   applications_count: Number.isFinite(mapped.applications_count) ? mapped.applications_count : null,
                   data: mapped,
-                  synced_at: new Date().toISOString(),
-                });
+                };
+                pageRows.push({ ...base, row_hash: computeRowHash(base), synced_at: nowIso });
+              }
+
+              // Incremental: fetch existing hashes for these call_ids and skip
+              // rows whose content hasn't changed. Only upsert the diff.
+              const callIds = pageRows.map((r) => r.call_id);
+              const existingHashes = new Map<string, string | null>();
+              for (let i = 0; i < callIds.length; i += 1000) {
+                const slice = callIds.slice(i, i + 1000);
+                const { data: existing, error: exErr } = await client
+                  .from("call_rows")
+                  .select("call_id, row_hash")
+                  .eq("program", program)
+                  .in("call_id", slice);
+                if (exErr) {
+                  errors.push({ id: "_hash_lookup", name: "snapshot", message: exErr.message });
+                  break;
+                }
+                for (const row of existing ?? []) {
+                  existingHashes.set(row.call_id as string, (row.row_hash as string | null) ?? null);
+                }
+              }
+
+              const toUpsert: UpsertRow[] = [];
+              const unchangedIds: string[] = [];
+              for (const r of pageRows) {
+                const prev = existingHashes.get(r.call_id);
+                if (prev !== undefined && prev === r.row_hash) {
+                  unchangedIds.push(r.call_id);
+                } else {
+                  toUpsert.push(r);
+                }
               }
 
               let pageUpsertFailed = false;
-              for (let i = 0; i < pageRows.length; i += BATCH) {
-                const slice = pageRows.slice(i, i + BATCH);
+              for (let i = 0; i < toUpsert.length; i += BATCH) {
+                const slice = toUpsert.slice(i, i + BATCH);
                 const { error } = await client
                   .from("call_rows")
                   .upsert(slice, { onConflict: "program,call_id" });
@@ -299,6 +340,23 @@ export async function performSync(program: ProgramId, opts?: { force?: boolean }
               }
               if (pageUpsertFailed) break;
 
+              // Bump synced_at on unchanged rows so the reconcile-delete below
+              // doesn't drop them. Narrow single-column update — much lighter
+              // than re-upserting the full JSONB row.
+              for (let i = 0; i < unchangedIds.length; i += 1000) {
+                const slice = unchangedIds.slice(i, i + 1000);
+                const { error: touchErr } = await client
+                  .from("call_rows")
+                  .update({ synced_at: nowIso })
+                  .eq("program", program)
+                  .in("call_id", slice);
+                if (touchErr) {
+                  errors.push({ id: "_touch", name: "snapshot", message: touchErr.message });
+                  break;
+                }
+                completedRows += slice.length;
+              }
+
               // Heartbeat so the stale-lock guard sees fresh updated_at.
               await client
                 .from("program_sync_state")
@@ -309,6 +367,7 @@ export async function performSync(program: ProgramId, opts?: { force?: boolean }
               if (rows.length < PAGE) break;
               pageStart += PAGE;
             }
+
 
             const patch: Record<string, unknown> = {
               status: "connected",
