@@ -909,6 +909,7 @@ export const fetchFunnelCallIds = createServerFn({ method: "GET" })
       campaignType?: string;
       campaign?: string | null;
       stage: string;
+      channel?: string;
     }) => d,
   )
   .handler(async ({ data }): Promise<{ count: number; ids: string[] }> => {
@@ -922,6 +923,7 @@ export const fetchFunnelCallIds = createServerFn({ method: "GET" })
         _campaign_type: data.campaignType ?? "all",
         _campaign: data.campaign ?? null,
         _stage: data.stage,
+        _channel: data.channel ?? "all",
       });
       if (error) throw new Error(error.message);
       const p = (rpcData && typeof rpcData === "object" ? rpcData : {}) as {
