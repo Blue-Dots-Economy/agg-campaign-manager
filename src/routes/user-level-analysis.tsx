@@ -462,7 +462,19 @@ function UserLevelAnalysis() {
               <TableRow className="bg-muted/40 hover:bg-muted/40">
                 <TableHead rowSpan={2} className="align-middle">Seeker</TableHead>
                 <TableHead rowSpan={2} className="align-middle">Joined</TableHead>
-                <TableHead rowSpan={2} className="align-middle">Profile Status</TableHead>
+                <TableHead rowSpan={2} className="align-middle">
+                  <span className="inline-flex items-center gap-1">
+                    Profile Status
+                    <button
+                      type="button"
+                      onClick={() => setProfileInfoOpen(true)}
+                      className="text-muted-foreground hover:text-foreground transition"
+                      aria-label="About profile status"
+                    >
+                      <Info className="h-3.5 w-3.5" />
+                    </button>
+                  </span>
+                </TableHead>
                 <TableHead colSpan={4} className="text-center border-l">Applied</TableHead>
                 <TableHead colSpan={4} className="text-center border-l">Pre-shortlisted</TableHead>
                 <TableHead rowSpan={2} className="align-middle border-l">User Status</TableHead>
