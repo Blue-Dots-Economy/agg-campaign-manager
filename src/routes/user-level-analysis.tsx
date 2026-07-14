@@ -215,7 +215,13 @@ function UserLevelAnalysis() {
       usersWithAppsCount: usersWithApps.size,
       pctUsersWithApps: uniqueUsers ? Math.round((usersWithApps.size / uniqueUsers) * 100) : 0,
       avgAppsPerSeeker: total ? (totalApps / total).toFixed(2) : "0",
-      avgCompletion: total ? Math.round(totalCompletion / total) : 0,
+      avgCompletion: total ? Math.round((complete / total) * 100) : 0,
+      fieldCompletion: PROFILE_FIELD_LABELS.map((label, i) => ({
+        label,
+        count: fieldPassCounts[i],
+        pct: total ? Math.round((fieldPassCounts[i] / total) * 100) : 0,
+      })),
+
       newLast7,
       appliedCounts: {
         total0,
