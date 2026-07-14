@@ -43,7 +43,7 @@ export const fetchReviewCalls = createServerFn({ method: "GET" })
     const client = sb();
     const { data: rows, error } = await client
       .from("call_rows")
-      .select("call_id, campaign_day, campaign_date, campaign_type, language, city_campaign, call_outcome, call_duration_seconds, intent_score, drop_reason, job_status, phone, data")
+      .select("call_id, campaign_day, campaign_date, campaign_type, language, city_campaign, call_outcome, call_duration_seconds, intent_score, drop_reason, job_status, phone, channel, data")
       .eq("program", data.dataset)
       .limit(50000);
     if (error) throw new Error(error.message);
@@ -72,6 +72,7 @@ export const fetchReviewCalls = createServerFn({ method: "GET" })
         intent_score: r.intent_score != null ? String(r.intent_score) : "",
         drop_reason: r.drop_reason != null ? String(r.drop_reason) : "",
         job_status: r.job_status != null ? String(r.job_status) : "",
+        channel: r.channel != null ? String(r.channel) : "outbound",
         call_recording_url: "",
       } as Record<string, string>;
     });

@@ -608,7 +608,7 @@ function normalizeMetricGroups(value: unknown): MetricGroup[] {
 }
 
 export const fetchProgramAggregates = createServerFn({ method: "GET" })
-  .inputValidator((d: { program: ProgramId; state?: string; dateFrom?: string | null; dateTo?: string | null; campaignType?: string; campaign?: string | null }) => d)
+  .inputValidator((d: { program: ProgramId; state?: string; dateFrom?: string | null; dateTo?: string | null; campaignType?: string; campaign?: string | null; channel?: string }) => d)
   .handler(async ({ data }): Promise<AggregatePayload> => {
     const program = data.program;
     const state = data.state && data.state !== "all" ? data.state : "all";
@@ -627,6 +627,7 @@ export const fetchProgramAggregates = createServerFn({ method: "GET" })
           _date_to: dateTo,
           _campaign_type: campaignType,
           _campaign: campaign,
+          _channel: data.channel ?? "all",
         });
         if (error) throw new Error(error.message);
         payload = (rpcData && typeof rpcData === "object" ? rpcData : {}) as AggregateRpcPayload;
@@ -701,7 +702,7 @@ export interface KkbDropAnalysisPayload {
 
 export const fetchKkbDropAnalysis = createServerFn({ method: "GET" })
   .inputValidator(
-    (d: { state?: string; dateFrom?: string | null; dateTo?: string | null; campaignType?: string; campaign?: string | null }) => d,
+    (d: { state?: string; dateFrom?: string | null; dateTo?: string | null; campaignType?: string; campaign?: string | null; channel?: string }) => d,
   )
   .handler(async ({ data }): Promise<KkbDropAnalysisPayload> => {
     const empty: KkbDropAnalysisPayload = { stages: [], buckets: [], maxCell: 0, grandTotal: 0 };
@@ -713,6 +714,7 @@ export const fetchKkbDropAnalysis = createServerFn({ method: "GET" })
         _date_to: data.dateTo ?? null,
         _campaign_type: data.campaignType ?? "all",
         _campaign: data.campaign ?? null,
+        _channel: data.channel ?? "all",
       });
       if (error) throw new Error(error.message);
       if (!rpcData || typeof rpcData !== "object") return empty;
@@ -730,7 +732,7 @@ export const fetchKkbDropAnalysis = createServerFn({ method: "GET" })
 
 export const fetchDkbDropAnalysis = createServerFn({ method: "GET" })
   .inputValidator(
-    (d: { state?: string; dateFrom?: string | null; dateTo?: string | null; campaignType?: string; campaign?: string | null }) => d,
+    (d: { state?: string; dateFrom?: string | null; dateTo?: string | null; campaignType?: string; campaign?: string | null; channel?: string }) => d,
   )
   .handler(async ({ data }): Promise<KkbDropAnalysisPayload> => {
     const empty: KkbDropAnalysisPayload = { stages: [], buckets: [], maxCell: 0, grandTotal: 0 };
@@ -742,6 +744,7 @@ export const fetchDkbDropAnalysis = createServerFn({ method: "GET" })
         _date_to: data.dateTo ?? null,
         _campaign_type: data.campaignType ?? "all",
         _campaign: data.campaign ?? null,
+        _channel: data.channel ?? "all",
       });
       if (error) throw new Error(error.message);
       if (!rpcData || typeof rpcData !== "object") return empty;
@@ -771,7 +774,7 @@ export interface CampaignListItem {
 
 export const fetchCampaignList = createServerFn({ method: "GET" })
   .inputValidator(
-    (d: { program: ProgramId; state?: string; dateFrom?: string | null; dateTo?: string | null }) => d,
+    (d: { program: ProgramId; state?: string; dateFrom?: string | null; dateTo?: string | null; channel?: string }) => d,
   )
   .handler(async ({ data }): Promise<CampaignListItem[]> => {
     try {
@@ -781,6 +784,7 @@ export const fetchCampaignList = createServerFn({ method: "GET" })
         _state: data.state && data.state !== "all" ? data.state : "all",
         _date_from: data.dateFrom ?? null,
         _date_to: data.dateTo ?? null,
+        _channel: data.channel ?? "all",
       });
       if (error) throw new Error(error.message);
       if (!Array.isArray(rpcData)) return [];
@@ -821,7 +825,7 @@ export interface CampaignDropCausesPayload {
 
 export const fetchCampaignDropCauses = createServerFn({ method: "GET" })
   .inputValidator(
-    (d: { campaign: string; state?: string; dateFrom?: string | null; dateTo?: string | null }) => d,
+    (d: { campaign: string; state?: string; dateFrom?: string | null; dateTo?: string | null; channel?: string }) => d,
   )
   .handler(async ({ data }): Promise<CampaignDropCausesPayload> => {
     const empty: CampaignDropCausesPayload = {
@@ -837,6 +841,7 @@ export const fetchCampaignDropCauses = createServerFn({ method: "GET" })
         _state: data.state && data.state !== "all" ? data.state : "all",
         _date_from: data.dateFrom ?? null,
         _date_to: data.dateTo ?? null,
+        _channel: data.channel ?? "all",
       });
       if (error) throw new Error(error.message);
       if (!rpcData || typeof rpcData !== "object") return empty;
@@ -868,7 +873,7 @@ export interface DkbCampaignCausesPayload {
 
 export const fetchDkbCampaignCauses = createServerFn({ method: "GET" })
   .inputValidator(
-    (d: { campaign: string; state?: string; dateFrom?: string | null; dateTo?: string | null }) => d,
+    (d: { campaign: string; state?: string; dateFrom?: string | null; dateTo?: string | null; channel?: string }) => d,
   )
   .handler(async ({ data }): Promise<DkbCampaignCausesPayload> => {
     const empty: DkbCampaignCausesPayload = { sampleCalls: 0, region: null, phaseShare: [] };
@@ -879,6 +884,7 @@ export const fetchDkbCampaignCauses = createServerFn({ method: "GET" })
         _state: data.state && data.state !== "all" ? data.state : "all",
         _date_from: data.dateFrom ?? null,
         _date_to: data.dateTo ?? null,
+        _channel: data.channel ?? "all",
       });
       if (error) throw new Error(error.message);
       if (!rpcData || typeof rpcData !== "object") return empty;
@@ -903,6 +909,7 @@ export const fetchFunnelCallIds = createServerFn({ method: "GET" })
       campaignType?: string;
       campaign?: string | null;
       stage: string;
+      channel?: string;
     }) => d,
   )
   .handler(async ({ data }): Promise<{ count: number; ids: string[] }> => {
@@ -916,6 +923,7 @@ export const fetchFunnelCallIds = createServerFn({ method: "GET" })
         _campaign_type: data.campaignType ?? "all",
         _campaign: data.campaign ?? null,
         _stage: data.stage,
+        _channel: data.channel ?? "all",
       });
       if (error) throw new Error(error.message);
       const p = (rpcData && typeof rpcData === "object" ? rpcData : {}) as {
@@ -938,6 +946,7 @@ export const fetchFunnelDurations = createServerFn({ method: "GET" })
       dateTo?: string | null;
       campaignType?: string;
       campaign?: string | null;
+      channel?: string;
     }) => d,
   )
   .handler(async ({ data }): Promise<Record<string, number>> => {
@@ -950,6 +959,7 @@ export const fetchFunnelDurations = createServerFn({ method: "GET" })
         _date_to: data.dateTo ?? null,
         _campaign_type: data.campaignType ?? "all",
         _campaign: data.campaign ?? null,
+        _channel: data.channel ?? "all",
       });
       if (error) throw new Error(error.message);
       if (!rpcData || typeof rpcData !== "object") return {};

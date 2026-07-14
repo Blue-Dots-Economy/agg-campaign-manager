@@ -528,6 +528,7 @@ export type Database = {
       get_campaign_drop_causes: {
         Args: {
           _campaign: string
+          _channel?: string
           _date_from?: string
           _date_to?: string
           _state?: string
@@ -536,6 +537,7 @@ export type Database = {
       }
       get_campaign_list: {
         Args: {
+          _channel?: string
           _date_from?: string
           _date_to?: string
           _program: string
@@ -546,6 +548,7 @@ export type Database = {
       get_dkb_campaign_causes: {
         Args: {
           _campaign: string
+          _channel?: string
           _date_from?: string
           _date_to?: string
           _state?: string
@@ -556,6 +559,7 @@ export type Database = {
         Args: {
           _campaign?: string
           _campaign_type?: string
+          _channel?: string
           _date_from?: string
           _date_to?: string
           _state?: string
@@ -566,6 +570,7 @@ export type Database = {
         Args: {
           _campaign?: string
           _campaign_type?: string
+          _channel?: string
           _date_from?: string
           _date_to?: string
           _program: string
@@ -578,6 +583,7 @@ export type Database = {
         Args: {
           _campaign?: string
           _campaign_type?: string
+          _channel?: string
           _date_from?: string
           _date_to?: string
           _program: string
@@ -589,6 +595,7 @@ export type Database = {
         Args: {
           _campaign?: string
           _campaign_type?: string
+          _channel?: string
           _date_from?: string
           _date_to?: string
           _state?: string
@@ -599,6 +606,7 @@ export type Database = {
         Args: {
           _campaign?: string
           _campaign_type?: string
+          _channel?: string
           _date_from?: string
           _date_to?: string
           _program: string
