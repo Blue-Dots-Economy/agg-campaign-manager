@@ -206,7 +206,30 @@ function UserLevelAnalysis() {
     const q = search.trim().toLowerCase();
     return seekers.filter((s) => {
       if (statusFilter !== "all" && s.status.toLowerCase().replace(" ", "-") !== statusFilter) return false;
-      if (profileFilter !== "all" && s.profileStatus.toLowerCase() !== profileFilter) return false;
+      if (profileFilter.length > 0) {
+        const wantComplete = profileFilter.includes("complete");
+        const wantedFields = profileFilter.filter((f) => f !== "complete");
+        if (wantComplete && wantedFields.length === 0) {
+          if (s.profileStatus !== "Complete") return false;
+        } else if (!wantComplete && wantedFields.length > 0) {
+          // must be incomplete AND missing any of the selected fields
+          if (s.profileStatus === "Complete") return false;
+          const missing = new Set(
+            s.profileFieldChecks.filter((f) => !f.passed).map((f) => f.label),
+          );
+          if (!wantedFields.some((f) => missing.has(f))) return false;
+        } else if (wantComplete && wantedFields.length > 0) {
+          // complete OR incomplete-with-selected-missing-field
+          if (s.profileStatus === "Complete") {
+            // pass
+          } else {
+            const missing = new Set(
+              s.profileFieldChecks.filter((f) => !f.passed).map((f) => f.label),
+            );
+            if (!wantedFields.some((f) => missing.has(f))) return false;
+          }
+        }
+      }
       if (appliedFilter !== "all") {
         const pending = Math.max(0, s.applications - s.shortlisted - s.rejected);
         if (appliedFilter === "shortlisted" && s.shortlisted <= 0) return false;
