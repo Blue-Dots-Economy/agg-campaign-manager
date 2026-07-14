@@ -159,7 +159,8 @@ function UserLevelAnalysis() {
     let withApps = 0;
     let totalApps = 0;
     let totalCompletion = 0;
-    const uniqueUsers = new Set<string>();
+    const profilesPerUser = new Map<string, number>();
+    const usersWithApps = new Set<string>();
     let newLast7 = 0;
     for (const s of seekers) {
       byStatus[s.status]++;
@@ -167,9 +168,29 @@ function UserLevelAnalysis() {
       if (s.applications > 0) withApps++;
       totalApps += s.applications;
       totalCompletion += s.profileCompletion;
-      if (s.userId) uniqueUsers.add(s.userId);
+      if (s.userId) {
+        profilesPerUser.set(s.userId, (profilesPerUser.get(s.userId) ?? 0) + 1);
+        if (s.applications > 0) usersWithApps.add(s.userId);
+      }
       if (s.profileAge !== null && s.profileAge <= 7) newLast7++;
     }
+    const uniqueUsers = profilesPerUser.size;
+    let usersMulti = 0;
+    for (const count of profilesPerUser.values()) if (count > 1) usersMulti++;
+    return {
+      total,
+      byStatus,
+      complete,
+      completePct: total ? Math.round((complete / total) * 100) : 0,
+      withApps,
+      uniqueUsers,
+      pctUsersMultiProfile: uniqueUsers ? Math.round((usersMulti / uniqueUsers) * 100) : 0,
+      pctUsersWithApps: uniqueUsers ? Math.round((usersWithApps.size / uniqueUsers) * 100) : 0,
+      avgAppsPerSeeker: total ? (totalApps / total).toFixed(2) : "0",
+      avgCompletion: total ? Math.round(totalCompletion / total) : 0,
+      newLast7,
+    };
+  }, [seekers]);
     return {
       total,
       byStatus,
