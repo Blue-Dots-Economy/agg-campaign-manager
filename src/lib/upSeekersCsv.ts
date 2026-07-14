@@ -179,7 +179,66 @@ function norm(s: string | undefined): string {
   return (s ?? "").trim().toLowerCase().replace(/\s+/g, " ");
 }
 
-/** Location must be filled AND contain more than just the district/state (or their combination). */
+/** Normalize a location for blocklist comparison: lowercase, strip punctuation,
+ * collapse whitespace. */
+function normLoc(s: string | undefined): string {
+  return (s ?? "")
+    .toLowerCase()
+    .replace(/[.,()\-–—/\\]/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+/** Known-generic / non-meaningful location values that should count as incomplete.
+ * These are typically just a city, district, or state name (or a short
+ * ward/village label) with no street-level detail. */
+const INVALID_LOCATIONS = new Set(
+  [
+    "VaishaliHapur Rd, Near Petrol Pump, E Block, D-Block, Shastri Nagar, Ghaziabad, Uttar Pradesh 201002",
+    "Ghaziabad, Uttar Pradesh",
+    "Prayagraj, Uttar Pradesh",
+    "Gorakhpur, Uttar Pradesh",
+    "Lucknow, , ,,Uttar Pradesh",
+    "Muradnagar, Uttar Pradesh",
+    "MURADNAGAR GZB",
+    "GHAZIABAD",
+    "Dasna, Uttar Pradesh",
+    "Lucknow, LUCKNOW, ,,Uttar Pradesh",
+    "MURADNAGAR GHAZIABAD",
+    "Modinagar, Uttar Pradesh",
+    "Noida, Uttar Pradesh",
+    "MODINAGAR GZB",
+    "Naini Taluka Naini Dadari, Uttar Pradesh",
+    "Prayagraj, , ,,Uttar Pradesh",
+    "गाजियाबाद (नगर निगम), तहसील- गाजियाबाद, जनपद- गाजियाबाद, उत्तर प्रदेश",
+    "DASNA DEHAT",
+    "ARTHLA PAL ROAD- WARD NO.25",
+    "SUTHARI",
+    "Sirathu, Uttar Pradesh",
+    "GANAULI",
+    "SHAHZADPUR",
+    "MIRPUR HINDU",
+    "AURANGABAD FAZALGARH",
+    "MODINAGAR GHAZIABAD",
+    "RAGHUNATH PUR",
+    "SHAPUR BAMHATA - WARD NO.38",
+    "38 - ARTHLA",
+    "JHALAWA",
+    "PATTI",
+    "MUKIMPURA",
+    "TAUR",
+    "SHAMLI",
+    "JALALABAD",
+    "SAMAYPUR(17)",
+    "LAXMI GARDAN LONI",
+    "ASALAT NAGAR(14)",
+    "JAWAHAR NAGAR KESHAV NAGAR",
+    "9 - KADARABAD",
+  ].map((v) => normLoc(v)),
+);
+
+/** Location must be filled AND contain more than just the district/state (or their combination),
+ * and must not match a known-generic value from INVALID_LOCATIONS. */
 function isLocationMeaningful(location: string, district: string, state: string): boolean {
   const loc = norm(location);
   if (!loc) return false;
@@ -188,7 +247,9 @@ function isLocationMeaningful(location: string, district: string, state: string)
   const combos = new Set(
     [d, s, d && s ? `${d}, ${s}` : "", d && s ? `${s}, ${d}` : "", d && s ? `${d} ${s}` : "", d && s ? `${d},${s}` : ""].filter(Boolean),
   );
-  return !combos.has(loc);
+  if (combos.has(loc)) return false;
+  if (INVALID_LOCATIONS.has(normLoc(location))) return false;
+  return true;
 }
 
 const INVALID_NAMES = new Set(
