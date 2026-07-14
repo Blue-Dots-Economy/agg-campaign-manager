@@ -6,7 +6,6 @@ import {
   Settings,
   Briefcase,
   Headphones,
-  UserCog,
   LogOut,
 } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
@@ -24,7 +23,6 @@ const NAV = [
   { to: "/review", label: "Review hub", icon: Headphones },
   { to: "/campaigns", label: "Campaigns", icon: Megaphone },
   { to: "/launch", label: "Launch", icon: Rocket },
-  { to: "/reviewers", label: "Reviewers", icon: UserCog, adminOnly: true },
   { to: "/settings", label: "Settings", icon: Settings },
 ] as const;
 
