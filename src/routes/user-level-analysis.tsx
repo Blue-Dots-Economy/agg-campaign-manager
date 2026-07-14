@@ -199,8 +199,12 @@ function UserLevelAnalysis() {
     return seekers.filter((s) => {
       if (statusFilter !== "all" && s.status.toLowerCase().replace(" ", "-") !== statusFilter) return false;
       if (profileFilter !== "all" && s.profileStatus.toLowerCase() !== profileFilter) return false;
-      if (appliedFilter === "applied" && s.applications <= 0) return false;
-      if (appliedFilter === "not-applied" && s.applications > 0) return false;
+      if (appliedFilter !== "all") {
+        const pending = Math.max(0, s.applications - s.shortlisted - s.rejected);
+        if (appliedFilter === "shortlisted" && s.shortlisted <= 0) return false;
+        if (appliedFilter === "rejected" && s.rejected <= 0) return false;
+        if (appliedFilter === "pending" && pending <= 0) return false;
+      }
       if (q && !(s.id.toLowerCase().includes(q) || s.userId.toLowerCase().includes(q) || s.name.toLowerCase().includes(q))) return false;
       return true;
     });
