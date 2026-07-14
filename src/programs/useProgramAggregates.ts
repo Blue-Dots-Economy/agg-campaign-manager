@@ -29,6 +29,7 @@ export interface OverviewFilters {
   dateTo?: string | null;     // YYYY-MM-DD
   campaignType?: string;      // 'all' | 'normal' | 'higher_education'
   campaign?: string | null;   // exact campaign_type value (Campaign Review scope)
+  channel?: string;           // 'all' | 'outbound' | 'inbound'
 }
 
 const STALE_AFTER_MS = 15 * 60_000; // 15 minutes — on-load freshness trigger
