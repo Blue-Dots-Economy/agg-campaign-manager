@@ -99,7 +99,7 @@ export function Sidebar() {
       <div className="mt-auto px-5 py-4 border-t border-sidebar-border text-[11px] opacity-85 space-y-2">
         <div>
           {enabled.length === 0 ? (
-            <>No sheets connected · <Link to="/connections" className="underline">add one</Link></>
+            <>No sheets connected · <Link to="/settings" className="underline">add one</Link></>
           ) : (
             <>
               {enabled.length} sheet{enabled.length === 1 ? "" : "s"} ·{" "}
