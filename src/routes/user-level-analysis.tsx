@@ -828,10 +828,13 @@ function UserLevelAnalysis() {
           <DialogHeader>
             <DialogTitle>Profile Status</DialogTitle>
             <DialogDescription>
-              A profile is considered complete when all fields below pass. The
-              percentage is the share of these {PROFILE_FIELD_LABELS.length}{" "}
-              checks that pass.
+              A profile is considered complete only when all {PROFILE_FIELD_LABELS.length} checks
+              below pass for that profile. The % next to each field is the share of profiles
+              where just that one field passes — a field can be near 100% on its own while very
+              few profiles pass every check, because missing fields are spread across different
+              profiles.
             </DialogDescription>
+
           </DialogHeader>
           <div className="space-y-3">
             <ol className="list-decimal pl-5 space-y-1.5 text-sm">
@@ -850,9 +853,10 @@ function UserLevelAnalysis() {
                       <span className="font-medium">{f.label}</span> — {f.desc}
                     </span>
                     <span className="whitespace-nowrap text-muted-foreground tabular-nums">
-                      {fc ? `${fc.pct}%` : ""}
+                      {fc ? `${fc.count.toLocaleString()} (${fc.pct}%)` : ""}
                     </span>
                   </li>
+
                 );
               })}
             </ol>
