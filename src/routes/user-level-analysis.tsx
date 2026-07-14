@@ -859,17 +859,35 @@ function UserLevelAnalysis() {
               ].map((f) => {
                 const fc = stats.fieldCompletion.find((x) => x.label === f.label);
                 return (
-                  <li key={f.label} className="flex items-start justify-between gap-3">
-                    <span>
-                      <span className="font-medium">{f.label}</span> — {f.desc}
-                    </span>
-                    <span className="whitespace-nowrap text-muted-foreground tabular-nums">
-                      {fc ? `${fc.count.toLocaleString()} (${fc.pct}%)` : ""}
-                    </span>
+                  <li key={f.label}>
+                    <div className="flex items-start justify-between gap-3">
+                      <span>
+                        <span className="font-medium">{f.label}</span> — {f.desc}
+                      </span>
+                      <span className="whitespace-nowrap text-muted-foreground tabular-nums">
+                        {fc ? `${fc.count.toLocaleString()} (${fc.pct}%)` : ""}
+                      </span>
+                    </div>
+                    {f.label === "Email or Phone" && (
+                      <div className="mt-1 ml-1 space-y-0.5 text-xs text-muted-foreground">
+                        <div className="flex justify-between gap-3">
+                          <span>Email filled</span>
+                          <span className="tabular-nums">
+                            {stats.emailCount.toLocaleString()} ({stats.emailPct}%)
+                          </span>
+                        </div>
+                        <div className="flex justify-between gap-3">
+                          <span>Phone filled</span>
+                          <span className="tabular-nums">
+                            {stats.phoneCount.toLocaleString()} ({stats.phonePct}%)
+                          </span>
+                        </div>
+                      </div>
+                    )}
                   </li>
-
                 );
               })}
+
             </ol>
             <div className="rounded border bg-muted/30 px-3 py-2 text-sm">
               Profiles complete (all {PROFILE_FIELD_LABELS.length} checks pass):{" "}
