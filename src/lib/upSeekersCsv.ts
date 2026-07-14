@@ -300,6 +300,7 @@ export function parseSeekersCsv(text: string): Seeker[] {
       shortlisted: toInt(r[cShort]),
       rejected: toInt(r[cRej]),
       profileCompletion: completion,
+      profileFieldChecks: checks.fields,
       followUpFor: (r[cFollow] ?? "").trim(),
       status,
       profileStatus,
