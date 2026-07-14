@@ -614,39 +614,78 @@ export type Database = {
         }
         Returns: Json
       }
-      get_program_aggregates: {
-        Args: {
-          _campaign?: string
-          _campaign_type?: string
-          _date_from?: string
-          _date_to?: string
-          _program: string
-          _state?: string
-        }
-        Returns: Json
-      }
-      get_program_metric_groups: {
-        Args: {
-          _campaign?: string
-          _campaign_type?: string
-          _date_from?: string
-          _date_to?: string
-          _program: string
-          _state?: string
-        }
-        Returns: Json
-      }
-      get_program_metrics_raw: {
-        Args: {
-          _campaign?: string
-          _campaign_type?: string
-          _date_from?: string
-          _date_to?: string
-          _program: string
-          _state?: string
-        }
-        Returns: Json
-      }
+      get_program_aggregates:
+        | {
+            Args: {
+              _campaign?: string
+              _campaign_type?: string
+              _date_from?: string
+              _date_to?: string
+              _program: string
+              _state?: string
+            }
+            Returns: Json
+          }
+        | {
+            Args: {
+              _campaign?: string
+              _campaign_type?: string
+              _channel?: string
+              _date_from?: string
+              _date_to?: string
+              _program: string
+              _state?: string
+            }
+            Returns: Json
+          }
+      get_program_metric_groups:
+        | {
+            Args: {
+              _campaign?: string
+              _campaign_type?: string
+              _date_from?: string
+              _date_to?: string
+              _program: string
+              _state?: string
+            }
+            Returns: Json
+          }
+        | {
+            Args: {
+              _campaign?: string
+              _campaign_type?: string
+              _channel?: string
+              _date_from?: string
+              _date_to?: string
+              _program: string
+              _state?: string
+            }
+            Returns: Json
+          }
+      get_program_metrics_raw:
+        | {
+            Args: {
+              _campaign?: string
+              _campaign_type?: string
+              _date_from?: string
+              _date_to?: string
+              _program: string
+              _state?: string
+            }
+            Returns: Json
+          }
+        | {
+            Args: {
+              _campaign?: string
+              _campaign_type?: string
+              _channel?: string
+              _date_from?: string
+              _date_to?: string
+              _program: string
+              _state?: string
+            }
+            Returns: Json
+          }
     }
     Enums: {
       [_ in never]: never
