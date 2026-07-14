@@ -107,7 +107,7 @@ function UserLevelAnalysis() {
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [profileFilter, setProfileFilter] = useState<string[]>([]);
-  const [appliedFilter, setAppliedFilter] = useState<string>("all");
+  const [appliedFilters, setAppliedFilters] = useState<string[]>([]);
   const [selected, setSelected] = useState<Seeker | null>(null);
   const [profileInfoOpen, setProfileInfoOpen] = useState(false);
   const fileRef = useRef<HTMLInputElement | null>(null);
@@ -169,6 +169,14 @@ function UserLevelAnalysis() {
     const profilesPerUser = new Map<string, number>();
     const usersWithApps = new Set<string>();
     let newLast7 = 0;
+    let total0 = 0;
+    let totalGt0 = 0;
+    let shortlisted0 = 0;
+    let shortlistedGt0 = 0;
+    let rejected0 = 0;
+    let rejectedGt0 = 0;
+    let pending0 = 0;
+    let pendingGt0 = 0;
     for (const s of seekers) {
       byStatus[s.status]++;
       if (s.profileStatus === "Complete") complete++;
@@ -180,6 +188,11 @@ function UserLevelAnalysis() {
         if (s.applications > 0) usersWithApps.add(s.userId);
       }
       if (s.profileAge !== null && s.profileAge <= 7) newLast7++;
+      const pending = Math.max(0, s.applications - s.shortlisted - s.rejected);
+      if (s.applications === 0) total0++; else totalGt0++;
+      if (s.shortlisted === 0) shortlisted0++; else shortlistedGt0++;
+      if (s.rejected === 0) rejected0++; else rejectedGt0++;
+      if (pending === 0) pending0++; else pendingGt0++;
     }
     const uniqueUsers = profilesPerUser.size;
     let usersMulti = 0;
@@ -199,6 +212,16 @@ function UserLevelAnalysis() {
       avgAppsPerSeeker: total ? (totalApps / total).toFixed(2) : "0",
       avgCompletion: total ? Math.round(totalCompletion / total) : 0,
       newLast7,
+      appliedCounts: {
+        total0,
+        totalGt0,
+        shortlisted0,
+        shortlistedGt0,
+        rejected0,
+        rejectedGt0,
+        pending0,
+        pendingGt0,
+      },
     };
   }, [seekers]);
 
@@ -230,16 +253,23 @@ function UserLevelAnalysis() {
           }
         }
       }
-      if (appliedFilter !== "all") {
+      if (appliedFilters.length > 0) {
         const pending = Math.max(0, s.applications - s.shortlisted - s.rejected);
-        if (appliedFilter === "shortlisted" && s.shortlisted <= 0) return false;
-        if (appliedFilter === "rejected" && s.rejected <= 0) return false;
-        if (appliedFilter === "pending" && pending <= 0) return false;
+        const matches =
+          (appliedFilters.includes("total-0") && s.applications === 0) ||
+          (appliedFilters.includes("total-gt0") && s.applications > 0) ||
+          (appliedFilters.includes("shortlisted-0") && s.shortlisted === 0) ||
+          (appliedFilters.includes("shortlisted-gt0") && s.shortlisted > 0) ||
+          (appliedFilters.includes("rejected-0") && s.rejected === 0) ||
+          (appliedFilters.includes("rejected-gt0") && s.rejected > 0) ||
+          (appliedFilters.includes("pending-0") && pending === 0) ||
+          (appliedFilters.includes("pending-gt0") && pending > 0);
+        if (!matches) return false;
       }
       if (q && !(s.id.toLowerCase().includes(q) || s.userId.toLowerCase().includes(q) || s.name.toLowerCase().includes(q))) return false;
       return true;
     });
-  }, [seekers, search, statusFilter, profileFilter, appliedFilter]);
+  }, [seekers, search, statusFilter, profileFilter, appliedFilters]);
 
   const lifecycle = [
     {
@@ -492,17 +522,131 @@ function UserLevelAnalysis() {
               ))}
             </DropdownMenuContent>
           </DropdownMenu>
-          <Select value={appliedFilter} onValueChange={setAppliedFilter}>
-            <SelectTrigger className="w-[180px]">
-              <SelectValue placeholder="Applied Status" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">Applied: All</SelectItem>
-              <SelectItem value="shortlisted">Shortlisted &gt; 0</SelectItem>
-              <SelectItem value="rejected">Rejected &gt; 0</SelectItem>
-              <SelectItem value="pending">Pending &gt; 0</SelectItem>
-            </SelectContent>
-          </Select>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="outline" className="w-[210px] justify-between font-normal">
+                <span className="truncate">
+                  {appliedFilters.length === 0
+                    ? "Applied: All"
+                    : appliedFilters.length === 1
+                      ? appliedFilters[0].endsWith("-0")
+                        ? `Applied: ${appliedFilters[0].replace("-0", "")} 0`
+                        : `Applied: ${appliedFilters[0].replace("-gt0", "")} >0`
+                      : `Applied: ${appliedFilters.length} selected`}
+                </span>
+                <ChevronDown className="h-4 w-4 opacity-60" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="start" className="w-[260px]">
+              <DropdownMenuItem onSelect={(e) => { e.preventDefault(); setAppliedFilters([]); }}>
+                Clear (show all)
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuLabel className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+                Total applied
+              </DropdownMenuLabel>
+              <DropdownMenuCheckboxItem
+                checked={appliedFilters.includes("total-0")}
+                onCheckedChange={(checked) =>
+                  setAppliedFilters((prev) =>
+                    checked ? [...prev, "total-0"] : prev.filter((v) => v !== "total-0"),
+                  )
+                }
+                onSelect={(e) => e.preventDefault()}
+              >
+                0 <span className="ml-auto text-muted-foreground">({stats.appliedCounts.total0.toLocaleString()})</span>
+              </DropdownMenuCheckboxItem>
+              <DropdownMenuCheckboxItem
+                checked={appliedFilters.includes("total-gt0")}
+                onCheckedChange={(checked) =>
+                  setAppliedFilters((prev) =>
+                    checked ? [...prev, "total-gt0"] : prev.filter((v) => v !== "total-gt0"),
+                  )
+                }
+                onSelect={(e) => e.preventDefault()}
+              >
+                &gt;0 <span className="ml-auto text-muted-foreground">({stats.appliedCounts.totalGt0.toLocaleString()})</span>
+              </DropdownMenuCheckboxItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuLabel className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+                Shortlisted
+              </DropdownMenuLabel>
+              <DropdownMenuCheckboxItem
+                checked={appliedFilters.includes("shortlisted-0")}
+                onCheckedChange={(checked) =>
+                  setAppliedFilters((prev) =>
+                    checked ? [...prev, "shortlisted-0"] : prev.filter((v) => v !== "shortlisted-0"),
+                  )
+                }
+                onSelect={(e) => e.preventDefault()}
+              >
+                0 <span className="ml-auto text-muted-foreground">({stats.appliedCounts.shortlisted0.toLocaleString()})</span>
+              </DropdownMenuCheckboxItem>
+              <DropdownMenuCheckboxItem
+                checked={appliedFilters.includes("shortlisted-gt0")}
+                onCheckedChange={(checked) =>
+                  setAppliedFilters((prev) =>
+                    checked ? [...prev, "shortlisted-gt0"] : prev.filter((v) => v !== "shortlisted-gt0"),
+                  )
+                }
+                onSelect={(e) => e.preventDefault()}
+              >
+                &gt;0 <span className="ml-auto text-muted-foreground">({stats.appliedCounts.shortlistedGt0.toLocaleString()})</span>
+              </DropdownMenuCheckboxItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuLabel className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+                Rejected
+              </DropdownMenuLabel>
+              <DropdownMenuCheckboxItem
+                checked={appliedFilters.includes("rejected-0")}
+                onCheckedChange={(checked) =>
+                  setAppliedFilters((prev) =>
+                    checked ? [...prev, "rejected-0"] : prev.filter((v) => v !== "rejected-0"),
+                  )
+                }
+                onSelect={(e) => e.preventDefault()}
+              >
+                0 <span className="ml-auto text-muted-foreground">({stats.appliedCounts.rejected0.toLocaleString()})</span>
+              </DropdownMenuCheckboxItem>
+              <DropdownMenuCheckboxItem
+                checked={appliedFilters.includes("rejected-gt0")}
+                onCheckedChange={(checked) =>
+                  setAppliedFilters((prev) =>
+                    checked ? [...prev, "rejected-gt0"] : prev.filter((v) => v !== "rejected-gt0"),
+                  )
+                }
+                onSelect={(e) => e.preventDefault()}
+              >
+                &gt;0 <span className="ml-auto text-muted-foreground">({stats.appliedCounts.rejectedGt0.toLocaleString()})</span>
+              </DropdownMenuCheckboxItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuLabel className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+                Pending
+              </DropdownMenuLabel>
+              <DropdownMenuCheckboxItem
+                checked={appliedFilters.includes("pending-0")}
+                onCheckedChange={(checked) =>
+                  setAppliedFilters((prev) =>
+                    checked ? [...prev, "pending-0"] : prev.filter((v) => v !== "pending-0"),
+                  )
+                }
+                onSelect={(e) => e.preventDefault()}
+              >
+                0 <span className="ml-auto text-muted-foreground">({stats.appliedCounts.pending0.toLocaleString()})</span>
+              </DropdownMenuCheckboxItem>
+              <DropdownMenuCheckboxItem
+                checked={appliedFilters.includes("pending-gt0")}
+                onCheckedChange={(checked) =>
+                  setAppliedFilters((prev) =>
+                    checked ? [...prev, "pending-gt0"] : prev.filter((v) => v !== "pending-gt0"),
+                  )
+                }
+                onSelect={(e) => e.preventDefault()}
+              >
+                &gt;0 <span className="ml-auto text-muted-foreground">({stats.appliedCounts.pendingGt0.toLocaleString()})</span>
+              </DropdownMenuCheckboxItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
           <Select value={statusFilter} onValueChange={setStatusFilter}>
             <SelectTrigger className="w-[170px]">
               <SelectValue placeholder="User Status" />
