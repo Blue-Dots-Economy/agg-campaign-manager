@@ -326,6 +326,27 @@ export function loadSeekers(): { seekers: Seeker[]; meta: CsvMeta } {
 
 export async function loadSeekersAsync(): Promise<{ seekers: Seeker[]; meta: CsvMeta }> {
   if (typeof window === "undefined" || typeof indexedDB === "undefined") return bundledResult();
+
+  // 1) Try server-side stored CSV first (survives cache clears, cross-device).
+  try {
+    const { fetchStoredCsv } = await import("@/lib/upSeekersStorage.functions");
+    const remote = await fetchStoredCsv();
+    if (remote?.text) {
+      const seekers = parseSeekersCsv(remote.text);
+      const meta: CsvMeta = {
+        name: remote.meta?.name || "Uploaded CSV",
+        uploadedAt: remote.meta?.uploadedAt || "",
+        rows: remote.meta?.rows || seekers.length,
+      };
+      // Warm local cache for offline / faster subsequent loads.
+      try {
+        await idbSet(CSV_KEY, remote.text);
+        await idbSet(META_KEY_IDB, meta);
+      } catch { /* ignore quota */ }
+      return { seekers, meta };
+    }
+  } catch { /* fall through to local cache */ }
+
   try {
     // One-time migration from the old localStorage entries.
     try {
@@ -363,13 +384,20 @@ export async function saveUploadedCsv(
   const seekers = parseSeekersCsv(text);
   const meta: CsvMeta = { name, uploadedAt: new Date().toISOString(), rows: seekers.length };
   let persisted = false;
+
+  // Upload to server so all users/devices see the same CSV and survives cache clears.
+  try {
+    const { uploadStoredCsv } = await import("@/lib/upSeekersStorage.functions");
+    const res = await uploadStoredCsv({ data: { text, name, rows: seekers.length } });
+    if (res?.ok) persisted = true;
+  } catch { /* ignore, fall back to local */ }
+
   if (typeof window !== "undefined" && typeof indexedDB !== "undefined") {
     try {
       await idbSet(CSV_KEY, text);
       await idbSet(META_KEY_IDB, meta);
-      persisted = true;
+      persisted = persisted || true;
     } catch {
-      // Storage failed (quota or disabled). Keep the parsed data in-memory only.
       try {
         await idbDel(CSV_KEY);
         await idbDel(META_KEY_IDB);
@@ -390,6 +418,11 @@ export async function resetToBundled(): Promise<{ seekers: Seeker[]; meta: CsvMe
       /* ignore */
     }
   }
+  try {
+    const { clearStoredCsv } = await import("@/lib/upSeekersStorage.functions");
+    await clearStoredCsv();
+  } catch { /* ignore */ }
   return bundledResult();
 }
+
 

@@ -3,8 +3,27 @@ import { useServerFn } from "@tanstack/react-start";
 import { resolveLogin } from "@/lib/reviewers.functions";
 
 const STORAGE_KEY = "rozgar-auth";
+const COOKIE_KEY = "rozgar_auth";
+const COOKIE_MAX_AGE = 60 * 60 * 24 * 365; // 1 year
 export type Role = "admin" | "user";
 export type Session = { email: string; role: Role };
+
+function readCookie(name: string): string | null {
+  if (typeof document === "undefined") return null;
+  const match = document.cookie.split("; ").find((c) => c.startsWith(name + "="));
+  return match ? decodeURIComponent(match.split("=")[1] ?? "") : null;
+}
+
+function writeCookie(name: string, value: string) {
+  if (typeof document === "undefined") return;
+  const secure = window.location.protocol === "https:" ? "; Secure" : "";
+  document.cookie = `${name}=${encodeURIComponent(value)}; Path=/; Max-Age=${COOKIE_MAX_AGE}; SameSite=Lax${secure}`;
+}
+
+function clearCookie(name: string) {
+  if (typeof document === "undefined") return;
+  document.cookie = `${name}=; Path=/; Max-Age=0; SameSite=Lax`;
+}
 
 type AuthContextValue = {
   session: Session | null;
@@ -25,10 +44,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     if (typeof window !== "undefined") {
       try {
-        const raw = window.localStorage.getItem(STORAGE_KEY);
+        let raw = window.localStorage.getItem(STORAGE_KEY);
+        if (!raw) raw = readCookie(COOKIE_KEY);
         if (raw) {
           const parsed = JSON.parse(raw);
-          if (parsed?.email && (parsed.role === "admin" || parsed.role === "user")) setSession(parsed);
+          if (parsed?.email && (parsed.role === "admin" || parsed.role === "user")) {
+            setSession(parsed);
+            // Re-sync both stores so whichever was missing gets refilled.
+            try { window.localStorage.setItem(STORAGE_KEY, raw); } catch { /* ignore */ }
+            writeCookie(COOKIE_KEY, raw);
+          }
         }
       } catch { /* ignore */ }
     }
@@ -39,8 +64,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const res = await resolve({ data: { email, password } });
     if (res?.role) {
       const s: Session = { email: email.trim().toLowerCase(), role: res.role };
+      const raw = JSON.stringify(s);
       if (typeof window !== "undefined") {
-        try { window.localStorage.setItem(STORAGE_KEY, JSON.stringify(s)); } catch { /* ignore */ }
+        try { window.localStorage.setItem(STORAGE_KEY, raw); } catch { /* ignore */ }
+        writeCookie(COOKIE_KEY, raw);
       }
       setSession(s);
       return true;
@@ -51,9 +78,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const logout = () => {
     if (typeof window !== "undefined") {
       try { window.localStorage.removeItem(STORAGE_KEY); } catch { /* ignore */ }
+      clearCookie(COOKIE_KEY);
     }
     setSession(null);
   };
+
 
   return (
     <AuthContext.Provider value={{ session, isAuthenticated: !!session, isAdmin: session?.role === "admin", hydrated, login, logout }}>
