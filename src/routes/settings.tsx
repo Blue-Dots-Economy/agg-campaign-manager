@@ -23,27 +23,32 @@ import { CheckCircle2, AlertCircle, Gauge, ExternalLink, ShieldAlert } from "luc
 import { getConcurrencyCap, setConcurrencyCap, CONCURRENCY_CAP_DEFAULT } from "@/lib/concurrency-cap";
 import { ConnectionsSection } from "@/components/settings/ConnectionsSection";
 import { AgentsSection } from "@/components/settings/AgentsSection";
+import { ReviewersSection } from "@/components/settings/ReviewersSection";
+import { useAuth } from "@/auth/context";
 
 export const Route = createFileRoute("/settings")({
   component: Settings,
 });
 
 function Settings() {
+  const { isAdmin } = useAuth();
   return (
     <div className="space-y-6">
       <header>
         <h1 className="text-2xl font-semibold tracking-tight">Settings</h1>
-        <p className="text-sm text-muted-foreground mt-1">Connections, agents, and program configuration.</p>
+        <p className="text-sm text-muted-foreground mt-1">Connections, agents, reviewers, and program configuration.</p>
       </header>
       <Tabs defaultValue="connections">
         <TabsList>
           <TabsTrigger value="connections">Connections</TabsTrigger>
           <TabsTrigger value="agents">Agents</TabsTrigger>
+          {isAdmin && <TabsTrigger value="reviewers">Reviewers</TabsTrigger>}
           <TabsTrigger value="general">General</TabsTrigger>
           <TabsTrigger value="reference">Reference</TabsTrigger>
         </TabsList>
         <TabsContent value="connections" className="mt-4"><ConnectionsSection /></TabsContent>
         <TabsContent value="agents" className="mt-4"><AgentsSection /></TabsContent>
+        {isAdmin && <TabsContent value="reviewers" className="mt-4"><ReviewersSection /></TabsContent>}
         <TabsContent value="general" className="mt-4"><GeneralSettings /></TabsContent>
         <TabsContent value="reference" className="mt-4"><ReferenceSettings /></TabsContent>
       </Tabs>

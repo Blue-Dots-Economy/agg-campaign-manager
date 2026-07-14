@@ -1,38 +1,21 @@
-import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { toast } from "sonner";
-import { UserPlus, Trash2, ShieldAlert } from "lucide-react";
-import { useAuth } from "@/auth/context";
+import { UserPlus, Trash2 } from "lucide-react";
 import { useReviewers } from "@/programs/useProgramAggregates";
 import { addReviewer, removeReviewer } from "@/lib/reviewers.functions";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Panel } from "@/components/Panel";
 
-export const Route = createFileRoute("/reviewers")({ component: ReviewersAdminPage });
-
-function ReviewersAdminPage() {
-  const { isAdmin, hydrated } = useAuth();
-  const navigate = useNavigate();
+export function ReviewersSection() {
   const qc = useQueryClient();
   const { data: reviewers } = useReviewers();
   const addFn = useServerFn(addReviewer);
   const removeFn = useServerFn(removeReviewer);
   const [email, setEmail] = useState("");
   const [busy, setBusy] = useState(false);
-
-  useEffect(() => { if (hydrated && !isAdmin) navigate({ to: "/" }); }, [hydrated, isAdmin, navigate]);
-  if (!hydrated) return null;
-  if (!isAdmin) {
-    return (
-      <div className="flex flex-col items-center justify-center gap-2 py-24 text-center text-muted-foreground">
-        <ShieldAlert className="h-8 w-8" />
-        <p className="text-sm">Admins only.</p>
-      </div>
-    );
-  }
 
   const list = reviewers ?? [];
 
@@ -59,7 +42,7 @@ function ReviewersAdminPage() {
   return (
     <div className="space-y-6 max-w-2xl">
       <div>
-        <h1 className="text-2xl font-semibold">Reviewers</h1>
+        <h2 className="text-lg font-semibold">Reviewers</h2>
         <p className="text-sm text-muted-foreground mt-1">Manage who can sign in to review calls. Reviewers sign in with their email (no password); admins use the admin password.</p>
       </div>
 
