@@ -119,6 +119,10 @@ function TranscriptReview() {
   const [rating, setRating] = useState(0);
   const [submitting, setSubmitting] = useState(false);
   const [infoOpen, setInfoOpen] = useState(true);
+  const [sessionReviewed, setSessionReviewed] = useState<number>(() => {
+    if (typeof window === "undefined") return 0;
+    try { return Number(window.sessionStorage.getItem("reviews_done_session")) || 0; } catch { return 0; }
+  });
   const turnRefs = useRef<Record<number, HTMLDivElement | null>>({});
 
   useEffect(() => {
