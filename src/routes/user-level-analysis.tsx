@@ -199,8 +199,12 @@ function UserLevelAnalysis() {
     return seekers.filter((s) => {
       if (statusFilter !== "all" && s.status.toLowerCase().replace(" ", "-") !== statusFilter) return false;
       if (profileFilter !== "all" && s.profileStatus.toLowerCase() !== profileFilter) return false;
-      if (appliedFilter === "applied" && s.applications <= 0) return false;
-      if (appliedFilter === "not-applied" && s.applications > 0) return false;
+      if (appliedFilter !== "all") {
+        const pending = Math.max(0, s.applications - s.shortlisted - s.rejected);
+        if (appliedFilter === "shortlisted" && s.shortlisted <= 0) return false;
+        if (appliedFilter === "rejected" && s.rejected <= 0) return false;
+        if (appliedFilter === "pending" && pending <= 0) return false;
+      }
       if (q && !(s.id.toLowerCase().includes(q) || s.userId.toLowerCase().includes(q) || s.name.toLowerCase().includes(q))) return false;
       return true;
     });
@@ -404,31 +408,32 @@ function UserLevelAnalysis() {
             />
           </div>
           <Select value={profileFilter} onValueChange={setProfileFilter}>
-            <SelectTrigger className="w-[180px]">
-              <SelectValue />
+            <SelectTrigger className="w-[170px]">
+              <SelectValue placeholder="Profile Status" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="all">All profiles</SelectItem>
+              <SelectItem value="all">Profile: All</SelectItem>
               <SelectItem value="complete">Complete</SelectItem>
               <SelectItem value="incomplete">Incomplete</SelectItem>
             </SelectContent>
           </Select>
           <Select value={appliedFilter} onValueChange={setAppliedFilter}>
             <SelectTrigger className="w-[180px]">
-              <SelectValue />
+              <SelectValue placeholder="Applied Status" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="all">All applied</SelectItem>
-              <SelectItem value="applied">Applied</SelectItem>
-              <SelectItem value="not-applied">Not applied</SelectItem>
+              <SelectItem value="all">Applied: All</SelectItem>
+              <SelectItem value="shortlisted">Shortlisted &gt; 0</SelectItem>
+              <SelectItem value="rejected">Rejected &gt; 0</SelectItem>
+              <SelectItem value="pending">Pending &gt; 0</SelectItem>
             </SelectContent>
           </Select>
           <Select value={statusFilter} onValueChange={setStatusFilter}>
-            <SelectTrigger className="w-[180px]">
-              <SelectValue />
+            <SelectTrigger className="w-[170px]">
+              <SelectValue placeholder="User Status" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="all">All activity</SelectItem>
+              <SelectItem value="all">User: All</SelectItem>
               <SelectItem value="new">New</SelectItem>
               <SelectItem value="active">Active</SelectItem>
               <SelectItem value="at-risk">At Risk</SelectItem>
@@ -449,7 +454,7 @@ function UserLevelAnalysis() {
                 <TableHead rowSpan={2} className="align-middle">Profile Status</TableHead>
                 <TableHead colSpan={4} className="text-center border-l">Applied</TableHead>
                 <TableHead colSpan={4} className="text-center border-l">Pre-shortlisted</TableHead>
-                <TableHead rowSpan={2} className="align-middle border-l">Activity Status</TableHead>
+                <TableHead rowSpan={2} className="align-middle border-l">User Status</TableHead>
                 <TableHead rowSpan={2} className="align-middle">Recommended Action</TableHead>
               </TableRow>
               <TableRow className="bg-muted/40 hover:bg-muted/40">
