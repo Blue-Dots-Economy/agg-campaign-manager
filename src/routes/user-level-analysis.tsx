@@ -197,10 +197,11 @@ function UserLevelAnalysis() {
     const q = search.trim().toLowerCase();
     return seekers.filter((s) => {
       if (statusFilter !== "all" && s.status.toLowerCase().replace(" ", "-") !== statusFilter) return false;
+      if (profileFilter !== "all" && s.profileStatus.toLowerCase() !== profileFilter) return false;
       if (q && !(s.id.toLowerCase().includes(q) || s.userId.toLowerCase().includes(q) || s.name.toLowerCase().includes(q))) return false;
       return true;
     });
-  }, [seekers, search, statusFilter]);
+  }, [seekers, search, statusFilter, profileFilter]);
 
   const lifecycle = [
     {
