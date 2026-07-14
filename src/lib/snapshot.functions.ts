@@ -774,7 +774,7 @@ export interface CampaignListItem {
 
 export const fetchCampaignList = createServerFn({ method: "GET" })
   .inputValidator(
-    (d: { program: ProgramId; state?: string; dateFrom?: string | null; dateTo?: string | null }) => d,
+    (d: { program: ProgramId; state?: string; dateFrom?: string | null; dateTo?: string | null; channel?: string }) => d,
   )
   .handler(async ({ data }): Promise<CampaignListItem[]> => {
     try {
@@ -784,6 +784,7 @@ export const fetchCampaignList = createServerFn({ method: "GET" })
         _state: data.state && data.state !== "all" ? data.state : "all",
         _date_from: data.dateFrom ?? null,
         _date_to: data.dateTo ?? null,
+        _channel: data.channel ?? "all",
       });
       if (error) throw new Error(error.message);
       if (!Array.isArray(rpcData)) return [];
