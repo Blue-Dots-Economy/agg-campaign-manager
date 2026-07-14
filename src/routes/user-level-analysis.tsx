@@ -185,8 +185,11 @@ function UserLevelAnalysis() {
       complete,
       completePct: total ? Math.round((complete / total) * 100) : 0,
       withApps,
+      pctProfilesWithApps: total ? Math.round((withApps / total) * 100) : 0,
       uniqueUsers,
+      usersMultiProfileCount: usersMulti,
       pctUsersMultiProfile: uniqueUsers ? Math.round((usersMulti / uniqueUsers) * 100) : 0,
+      usersWithAppsCount: usersWithApps.size,
       pctUsersWithApps: uniqueUsers ? Math.round((usersWithApps.size / uniqueUsers) * 100) : 0,
       avgAppsPerSeeker: total ? (totalApps / total).toFixed(2) : "0",
       avgCompletion: total ? Math.round(totalCompletion / total) : 0,
@@ -370,25 +373,30 @@ function UserLevelAnalysis() {
             <MetricTile
               label="Applications"
               value={stats.withApps.toLocaleString()}
-              description="Profiles with applications"
+              description={`${stats.pctProfilesWithApps}% of all profiles`}
               Icon={Send}
             />
           </div>
         </div>
         <div>
-          <div className="text-xs font-semibold tracking-wider text-muted-foreground uppercase mb-3">Users</div>
+          <div className="text-xs font-semibold tracking-wider text-muted-foreground uppercase mb-3">
+            Users
+            <span className="ml-2 text-muted-foreground font-normal normal-case">
+              {stats.uniqueUsers.toLocaleString()} unique users
+            </span>
+          </div>
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
             <MetricTile label="Total Seekers" value={stats.uniqueUsers.toLocaleString()} description="Unique user IDs" Icon={Users} />
             <MetricTile
-              label="% Users > 1 Profile"
-              value={`${stats.pctUsersMultiProfile}%`}
-              description="Users managing multiple profiles"
+              label="Users > 1 Profile"
+              value={stats.usersMultiProfileCount.toLocaleString()}
+              description={`${stats.pctUsersMultiProfile}% of all users`}
               Icon={TrendingUp}
             />
             <MetricTile
-              label="% Users with ≥1 Application"
-              value={`${stats.pctUsersWithApps}%`}
-              description={`${stats.newLast7} new in last 7 days`}
+              label="Users with ≥1 Application"
+              value={stats.usersWithAppsCount.toLocaleString()}
+              description={`${stats.pctUsersWithApps}% of all users`}
               Icon={Activity}
             />
           </div>
