@@ -443,16 +443,55 @@ function UserLevelAnalysis() {
               onChange={(e) => setSearch(e.target.value)}
             />
           </div>
-          <Select value={profileFilter} onValueChange={setProfileFilter}>
-            <SelectTrigger className="w-[170px]">
-              <SelectValue placeholder="Profile Status" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">Profile: All</SelectItem>
-              <SelectItem value="complete">Complete</SelectItem>
-              <SelectItem value="incomplete">Incomplete</SelectItem>
-            </SelectContent>
-          </Select>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="outline" className="w-[210px] justify-between font-normal">
+                <span className="truncate">
+                  {profileFilter.length === 0
+                    ? "Profile: All"
+                    : profileFilter.length === 1
+                      ? `Profile: ${profileFilter[0] === "complete" ? "Complete" : `Missing ${profileFilter[0]}`}`
+                      : `Profile: ${profileFilter.length} selected`}
+                </span>
+                <ChevronDown className="h-4 w-4 opacity-60" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="start" className="w-[260px]">
+              <DropdownMenuItem onSelect={(e) => { e.preventDefault(); setProfileFilter([]); }}>
+                Clear (show all)
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuCheckboxItem
+                checked={profileFilter.includes("complete")}
+                onCheckedChange={(checked) =>
+                  setProfileFilter((prev) =>
+                    checked ? [...prev, "complete"] : prev.filter((v) => v !== "complete"),
+                  )
+                }
+                onSelect={(e) => e.preventDefault()}
+              >
+                Complete
+              </DropdownMenuCheckboxItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuLabel className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+                Incomplete — missing field
+              </DropdownMenuLabel>
+              {PROFILE_FIELD_LABELS.map((label) => (
+                <DropdownMenuCheckboxItem
+                  key={label}
+                  checked={profileFilter.includes(label)}
+                  onCheckedChange={(checked) =>
+                    setProfileFilter((prev) =>
+                      checked ? [...prev, label] : prev.filter((v) => v !== label),
+                    )
+                  }
+                  onSelect={(e) => e.preventDefault()}
+                >
+                  {label}
+                </DropdownMenuCheckboxItem>
+              ))}
+            </DropdownMenuContent>
+          </DropdownMenu>
           <Select value={appliedFilter} onValueChange={setAppliedFilter}>
             <SelectTrigger className="w-[180px]">
               <SelectValue placeholder="Applied Status" />
