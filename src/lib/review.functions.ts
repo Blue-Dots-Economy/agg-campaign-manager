@@ -43,7 +43,7 @@ export const fetchReviewCalls = createServerFn({ method: "GET" })
     const client = sb();
     const { data: rows, error } = await client
       .from("call_rows")
-      .select("call_id, campaign_day, campaign_date, campaign_type, language, city_campaign, call_outcome, call_duration_seconds, intent_score, drop_reason, job_status, phone, data")
+      .select("call_id, campaign_day, campaign_date, campaign_type, language, city_campaign, call_outcome, call_duration_seconds, intent_score, drop_reason, job_status, phone, channel, data")
       .eq("program", data.dataset)
       .limit(50000);
     if (error) throw new Error(error.message);
