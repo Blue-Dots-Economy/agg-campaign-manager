@@ -74,10 +74,41 @@ const ENCOURAGERS = [
   "Smooth — next!",
 ];
 function praise(count: number, hasNext: boolean, total: number): string {
-  if (!hasNext) return `🎉 Batch complete — you reviewed all ${total}! Incredible work.`;
-  if (count > 0 && count % 25 === 0) return `🏆 ${count} reviews this session — you're crushing it!`;
-  if (count > 0 && count % 10 === 0) return `🔥 ${count} in a row — you're on fire!`;
+  if (!hasNext) return `Batch complete — you reviewed all ${total}. Incredible work.`;
+  if (count > 0 && count % 25 === 0) return `${count} reviews this session — you're crushing it!`;
+  if (count > 0 && count % 10 === 0) return `${count} in a row — you're on fire!`;
   return ENCOURAGERS[count % ENCOURAGERS.length];
+}
+
+function playSwoosh() {
+  try {
+    const AC = window.AudioContext || (window as unknown as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
+    if (!AC) return;
+    const ctx = new AC();
+    const now = ctx.currentTime;
+    const dur = 0.32;
+    const buffer = ctx.createBuffer(1, Math.floor(ctx.sampleRate * dur), ctx.sampleRate);
+    const data = buffer.getChannelData(0);
+    for (let i = 0; i < data.length; i++) data[i] = Math.random() * 2 - 1;
+    const src = ctx.createBufferSource();
+    src.buffer = buffer;
+    const filter = ctx.createBiquadFilter();
+    filter.type = "bandpass";
+    filter.Q.value = 0.7;
+    filter.frequency.setValueAtTime(500, now);
+    filter.frequency.exponentialRampToValueAtTime(3600, now + dur * 0.55);
+    filter.frequency.exponentialRampToValueAtTime(700, now + dur);
+    const gain = ctx.createGain();
+    gain.gain.setValueAtTime(0.0001, now);
+    gain.gain.exponentialRampToValueAtTime(0.22, now + 0.04);
+    gain.gain.exponentialRampToValueAtTime(0.0001, now + dur);
+    src.connect(filter);
+    filter.connect(gain);
+    gain.connect(ctx.destination);
+    src.start(now);
+    src.stop(now + dur);
+    src.onended = () => { try { ctx.close(); } catch { /* ignore */ } };
+  } catch { /* ignore */ }
 }
 
 function TranscriptReview() {
