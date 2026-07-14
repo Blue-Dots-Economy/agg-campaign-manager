@@ -5,8 +5,6 @@ import {
   Rocket,
   Settings,
   Briefcase,
-  Plug,
-  Bot,
   Headphones,
   UserCog,
   LogOut,

@@ -14,9 +14,7 @@ import { Route as ReviewersRouteImport } from './routes/reviewers'
 import { Route as ReviewRouteImport } from './routes/review'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as LaunchRouteImport } from './routes/launch'
-import { Route as ConnectionsRouteImport } from './routes/connections'
 import { Route as CampaignsRouteImport } from './routes/campaigns'
-import { Route as AgentsRouteImport } from './routes/agents'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as ReviewCallIdRouteImport } from './routes/review_.$callId'
 import { Route as CampaignsCampaignRouteImport } from './routes/campaigns_.$campaign'
@@ -47,19 +45,9 @@ const LaunchRoute = LaunchRouteImport.update({
   path: '/launch',
   getParentRoute: () => rootRouteImport,
 } as any)
-const ConnectionsRoute = ConnectionsRouteImport.update({
-  id: '/connections',
-  path: '/connections',
-  getParentRoute: () => rootRouteImport,
-} as any)
 const CampaignsRoute = CampaignsRouteImport.update({
   id: '/campaigns',
   path: '/campaigns',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const AgentsRoute = AgentsRouteImport.update({
-  id: '/agents',
-  path: '/agents',
   getParentRoute: () => rootRouteImport,
 } as any)
 const IndexRoute = IndexRouteImport.update({
@@ -86,9 +74,7 @@ const ApiPublicHooksSyncSnapshotsRoute =
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
-  '/agents': typeof AgentsRoute
   '/campaigns': typeof CampaignsRoute
-  '/connections': typeof ConnectionsRoute
   '/launch': typeof LaunchRoute
   '/login': typeof LoginRoute
   '/review': typeof ReviewRoute
@@ -100,9 +86,7 @@ export interface FileRoutesByFullPath {
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
-  '/agents': typeof AgentsRoute
   '/campaigns': typeof CampaignsRoute
-  '/connections': typeof ConnectionsRoute
   '/launch': typeof LaunchRoute
   '/login': typeof LoginRoute
   '/review': typeof ReviewRoute
@@ -115,9 +99,7 @@ export interface FileRoutesByTo {
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
-  '/agents': typeof AgentsRoute
   '/campaigns': typeof CampaignsRoute
-  '/connections': typeof ConnectionsRoute
   '/launch': typeof LaunchRoute
   '/login': typeof LoginRoute
   '/review': typeof ReviewRoute
@@ -131,9 +113,7 @@ export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
-    | '/agents'
     | '/campaigns'
-    | '/connections'
     | '/launch'
     | '/login'
     | '/review'
@@ -145,9 +125,7 @@ export interface FileRouteTypes {
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
-    | '/agents'
     | '/campaigns'
-    | '/connections'
     | '/launch'
     | '/login'
     | '/review'
@@ -159,9 +137,7 @@ export interface FileRouteTypes {
   id:
     | '__root__'
     | '/'
-    | '/agents'
     | '/campaigns'
-    | '/connections'
     | '/launch'
     | '/login'
     | '/review'
@@ -174,9 +150,7 @@ export interface FileRouteTypes {
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
-  AgentsRoute: typeof AgentsRoute
   CampaignsRoute: typeof CampaignsRoute
-  ConnectionsRoute: typeof ConnectionsRoute
   LaunchRoute: typeof LaunchRoute
   LoginRoute: typeof LoginRoute
   ReviewRoute: typeof ReviewRoute
@@ -224,25 +198,11 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof LaunchRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/connections': {
-      id: '/connections'
-      path: '/connections'
-      fullPath: '/connections'
-      preLoaderRoute: typeof ConnectionsRouteImport
-      parentRoute: typeof rootRouteImport
-    }
     '/campaigns': {
       id: '/campaigns'
       path: '/campaigns'
       fullPath: '/campaigns'
       preLoaderRoute: typeof CampaignsRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/agents': {
-      id: '/agents'
-      path: '/agents'
-      fullPath: '/agents'
-      preLoaderRoute: typeof AgentsRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/': {
@@ -278,9 +238,7 @@ declare module '@tanstack/react-router' {
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
-  AgentsRoute: AgentsRoute,
   CampaignsRoute: CampaignsRoute,
-  ConnectionsRoute: ConnectionsRoute,
   LaunchRoute: LaunchRoute,
   LoginRoute: LoginRoute,
   ReviewRoute: ReviewRoute,
