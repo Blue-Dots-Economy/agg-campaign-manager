@@ -352,7 +352,7 @@ function UserLevelAnalysis() {
           <Table>
             <TableHeader>
               <TableRow className="bg-muted/40 hover:bg-muted/40">
-                <TableHead rowSpan={2} className="align-middle">Participant</TableHead>
+                <TableHead rowSpan={2} className="align-middle">Seeker</TableHead>
                 <TableHead rowSpan={2} className="align-middle">Joined</TableHead>
                 <TableHead rowSpan={2} className="align-middle">Profile Status</TableHead>
                 <TableHead colSpan={4} className="text-center border-l">Applied</TableHead>
