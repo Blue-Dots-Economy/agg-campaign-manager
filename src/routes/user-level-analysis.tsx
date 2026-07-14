@@ -177,12 +177,16 @@ function UserLevelAnalysis() {
     let rejectedGt0 = 0;
     let pending0 = 0;
     let pendingGt0 = 0;
+    const fieldPassCounts = new Array(PROFILE_FIELD_LABELS.length).fill(0) as number[];
     for (const s of seekers) {
       byStatus[s.status]++;
       if (s.profileStatus === "Complete") complete++;
       if (s.applications > 0) withApps++;
       totalApps += s.applications;
       totalCompletion += s.profileCompletion;
+      s.profileFieldChecks.forEach((c, i) => {
+        if (c.passed) fieldPassCounts[i]++;
+      });
       if (s.userId) {
         profilesPerUser.set(s.userId, (profilesPerUser.get(s.userId) ?? 0) + 1);
         if (s.applications > 0) usersWithApps.add(s.userId);
@@ -194,6 +198,7 @@ function UserLevelAnalysis() {
       if (s.rejected === 0) rejected0++; else rejectedGt0++;
       if (pending === 0) pending0++; else pendingGt0++;
     }
+
     const uniqueUsers = profilesPerUser.size;
     let usersMulti = 0;
     for (const count of profilesPerUser.values()) if (count > 1) usersMulti++;
