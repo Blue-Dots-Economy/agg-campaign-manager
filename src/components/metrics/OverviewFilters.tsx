@@ -49,10 +49,12 @@ export function OverviewFilters({
   value,
   onChange,
   showCampaignType = false,
+  showChannel = false,
 }: {
   value: OverviewFilterValue;
   onChange: (next: OverviewFilterValue) => void;
   showCampaignType?: boolean;
+  showChannel?: boolean;
 }) {
   const [open, setOpen] = useState(false);
 
