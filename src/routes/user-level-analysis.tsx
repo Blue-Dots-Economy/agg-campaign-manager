@@ -253,16 +253,23 @@ function UserLevelAnalysis() {
           }
         }
       }
-      if (appliedFilter !== "all") {
+      if (appliedFilters.length > 0) {
         const pending = Math.max(0, s.applications - s.shortlisted - s.rejected);
-        if (appliedFilter === "shortlisted" && s.shortlisted <= 0) return false;
-        if (appliedFilter === "rejected" && s.rejected <= 0) return false;
-        if (appliedFilter === "pending" && pending <= 0) return false;
+        const matches =
+          (appliedFilters.includes("total-0") && s.applications === 0) ||
+          (appliedFilters.includes("total-gt0") && s.applications > 0) ||
+          (appliedFilters.includes("shortlisted-0") && s.shortlisted === 0) ||
+          (appliedFilters.includes("shortlisted-gt0") && s.shortlisted > 0) ||
+          (appliedFilters.includes("rejected-0") && s.rejected === 0) ||
+          (appliedFilters.includes("rejected-gt0") && s.rejected > 0) ||
+          (appliedFilters.includes("pending-0") && pending === 0) ||
+          (appliedFilters.includes("pending-gt0") && pending > 0);
+        if (!matches) return false;
       }
       if (q && !(s.id.toLowerCase().includes(q) || s.userId.toLowerCase().includes(q) || s.name.toLowerCase().includes(q))) return false;
       return true;
     });
-  }, [seekers, search, statusFilter, profileFilter, appliedFilter]);
+  }, [seekers, search, statusFilter, profileFilter, appliedFilters]);
 
   const lifecycle = [
     {
