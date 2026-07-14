@@ -223,8 +223,8 @@ function computeProfileChecks(r: {
   age: string;
   role: string;
   salary: string;
-}): { passed: number; total: number } {
-  const checks = [
+}): { passed: number; total: number; fields: ProfileFieldCheck[] } {
+  const results = [
     isNameValid(r.name),
     isLocationMeaningful(r.location, r.district, r.state),
     r.email.trim().length > 0 || r.phone.trim().length > 0,
@@ -232,7 +232,11 @@ function computeProfileChecks(r: {
     r.role.trim().length > 0 && norm(r.role) !== "any",
     r.salary.trim().length > 0,
   ];
-  return { passed: checks.filter(Boolean).length, total: checks.length };
+  const fields: ProfileFieldCheck[] = PROFILE_FIELD_LABELS.map((label, i) => ({
+    label,
+    passed: results[i],
+  }));
+  return { passed: results.filter(Boolean).length, total: results.length, fields };
 }
 
 export function parseSeekersCsv(text: string): Seeker[] {
