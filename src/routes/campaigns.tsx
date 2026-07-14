@@ -195,7 +195,7 @@ function LiveBatchesSection({ program, onOpen }: { program: "kkb" | "dkb"; onOpe
     <Panel
       title="Live & scheduled"
       description="Reads directly from Raya across this program's agents."
-      actions={
+      action={
         batches.length > 0 ? (
           <div className="flex items-center gap-2">
             {runningCount > 0 && (
