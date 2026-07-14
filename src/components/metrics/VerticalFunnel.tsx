@@ -52,7 +52,7 @@ export function VerticalFunnel({
   stages: VerticalFunnelStage[];
   fill?: boolean;
   pickedUpKey?: string;
-  onStageClick?: (key: string) => void;
+  onStageClick?: (key: string, action: "copy" | "review") => void;
 }) {
   const baseline = stages[0]?.value ?? 0;
   const pickedUpIdx = pickedUpKey ? stages.findIndex((s) => s.key === pickedUpKey) : -1;
