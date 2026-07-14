@@ -17,6 +17,7 @@ import {
   ChevronDown,
   Upload,
   RotateCcw,
+  Info,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -55,6 +56,7 @@ import {
   loadSeekersAsync,
   saveUploadedCsv,
   resetToBundled,
+  PROFILE_FIELD_LABELS,
   type Seeker,
   type CsvMeta,
 } from "@/lib/upSeekersCsv";
@@ -105,6 +107,7 @@ function UserLevelAnalysis() {
   const [profileFilter, setProfileFilter] = useState<string>("all");
   const [appliedFilter, setAppliedFilter] = useState<string>("all");
   const [selected, setSelected] = useState<Seeker | null>(null);
+  const [profileInfoOpen, setProfileInfoOpen] = useState(false);
   const fileRef = useRef<HTMLInputElement | null>(null);
 
   // Hydrate from IndexedDB after mount (SSR-safe)
@@ -459,7 +462,19 @@ function UserLevelAnalysis() {
               <TableRow className="bg-muted/40 hover:bg-muted/40">
                 <TableHead rowSpan={2} className="align-middle">Seeker</TableHead>
                 <TableHead rowSpan={2} className="align-middle">Joined</TableHead>
-                <TableHead rowSpan={2} className="align-middle">Profile Status</TableHead>
+                <TableHead rowSpan={2} className="align-middle">
+                  <span className="inline-flex items-center gap-1">
+                    Profile Status
+                    <button
+                      type="button"
+                      onClick={() => setProfileInfoOpen(true)}
+                      className="text-muted-foreground hover:text-foreground transition"
+                      aria-label="About profile status"
+                    >
+                      <Info className="h-3.5 w-3.5" />
+                    </button>
+                  </span>
+                </TableHead>
                 <TableHead colSpan={4} className="text-center border-l">Applied</TableHead>
                 <TableHead colSpan={4} className="text-center border-l">Pre-shortlisted</TableHead>
                 <TableHead rowSpan={2} className="align-middle border-l">User Status</TableHead>
@@ -520,9 +535,12 @@ function UserLevelAnalysis() {
                       </Badge>
                     </TableCell>
                     <TableCell>
-                      <button className="text-xs px-3 py-1 rounded-full border bg-muted/40 hover:bg-muted transition">
-                        {p.recommendedAction}
-                      </button>
+                      <span
+                        className="text-xs px-3 py-1 rounded-full border bg-muted/30 text-muted-foreground italic cursor-not-allowed"
+                        title="Recommended actions are coming soon"
+                      >
+                        Coming soon
+                      </span>
                     </TableCell>
                   </TableRow>
                 );
@@ -551,11 +569,59 @@ function UserLevelAnalysis() {
               Profile {selected?.id}
             </DialogTitle>
             <DialogDescription className="font-mono text-xs">
-              User ID: {selected?.userId || "—"}
+              User ID: {selected?.userId || "—"} · {selected?.profileStatus} ({selected?.profileCompletion}%)
             </DialogDescription>
           </DialogHeader>
-          <div className="py-10 text-center text-sm text-muted-foreground">
-            Profile fields will be shown here once confirmed.
+          {selected && (
+            <div className="space-y-3">
+              <div className="text-sm font-medium">Incomplete fields</div>
+              {selected.profileFieldChecks.filter((f) => !f.passed).length === 0 ? (
+                <div className="text-sm text-emerald-700 bg-emerald-50 border border-emerald-200 rounded px-3 py-2">
+                  All required fields are complete.
+                </div>
+              ) : (
+                <ul className="space-y-1.5">
+                  {selected.profileFieldChecks
+                    .filter((f) => !f.passed)
+                    .map((f) => (
+                      <li
+                        key={f.label}
+                        className="text-sm flex items-center gap-2 rounded border border-amber-200 bg-amber-50 text-amber-800 px-3 py-1.5"
+                      >
+                        <span className="h-1.5 w-1.5 rounded-full bg-amber-500" />
+                        {f.label}
+                      </li>
+                    ))}
+                </ul>
+              )}
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={profileInfoOpen} onOpenChange={setProfileInfoOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Profile Status</DialogTitle>
+            <DialogDescription>
+              A profile is considered complete when all fields below pass. The
+              percentage is the share of these {PROFILE_FIELD_LABELS.length}{" "}
+              checks that pass.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-3">
+            <ol className="list-decimal pl-5 space-y-1 text-sm">
+              <li><span className="font-medium">Name</span> — not blank and not a placeholder (Unknown, अज्ञात, etc.)</li>
+              <li><span className="font-medium">Location</span> — not blank and not just city / state / their combination</li>
+              <li><span className="font-medium">Email or Phone</span> — at least one filled</li>
+              <li><span className="font-medium">Age</span> — not blank</li>
+              <li><span className="font-medium">Role</span> — not blank and not "any"</li>
+              <li><span className="font-medium">Expected Salary</span> — not blank</li>
+            </ol>
+            <div className="rounded border bg-muted/30 px-3 py-2 text-sm">
+              Average completion across current dataset:{" "}
+              <span className="font-semibold">{stats.avgCompletion}%</span>
+            </div>
           </div>
         </DialogContent>
       </Dialog>

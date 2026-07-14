@@ -1,5 +1,16 @@
 import bundledCsv from "@/data/up-seekers.csv?raw";
 
+export type ProfileFieldCheck = { label: string; passed: boolean };
+
+export const PROFILE_FIELD_LABELS = [
+  "Name",
+  "Location",
+  "Email or Phone",
+  "Age",
+  "Role",
+  "Expected Salary",
+] as const;
+
 export type Seeker = {
   id: string;
   userId: string;
@@ -13,6 +24,7 @@ export type Seeker = {
   shortlisted: number;
   rejected: number;
   profileCompletion: number;
+  profileFieldChecks: ProfileFieldCheck[];
   followUpFor: string;
   status: "New" | "Active" | "At Risk" | "Inactive";
   profileStatus: "Complete" | "Incomplete";
@@ -211,8 +223,8 @@ function computeProfileChecks(r: {
   age: string;
   role: string;
   salary: string;
-}): { passed: number; total: number } {
-  const checks = [
+}): { passed: number; total: number; fields: ProfileFieldCheck[] } {
+  const results = [
     isNameValid(r.name),
     isLocationMeaningful(r.location, r.district, r.state),
     r.email.trim().length > 0 || r.phone.trim().length > 0,
@@ -220,7 +232,11 @@ function computeProfileChecks(r: {
     r.role.trim().length > 0 && norm(r.role) !== "any",
     r.salary.trim().length > 0,
   ];
-  return { passed: checks.filter(Boolean).length, total: checks.length };
+  const fields: ProfileFieldCheck[] = PROFILE_FIELD_LABELS.map((label, i) => ({
+    label,
+    passed: results[i],
+  }));
+  return { passed: results.filter(Boolean).length, total: results.length, fields };
 }
 
 export function parseSeekersCsv(text: string): Seeker[] {
@@ -284,6 +300,7 @@ export function parseSeekersCsv(text: string): Seeker[] {
       shortlisted: toInt(r[cShort]),
       rejected: toInt(r[cRej]),
       profileCompletion: completion,
+      profileFieldChecks: checks.fields,
       followUpFor: (r[cFollow] ?? "").trim(),
       status,
       profileStatus,
