@@ -274,6 +274,19 @@ function TranscriptReview() {
 
   return (
     <div className="space-y-4">
+      {celebrate && (
+        <div className="pointer-events-none fixed inset-0 z-50 flex items-center justify-center" aria-hidden="true">
+          {celebrate === "milestone" && (
+            <>
+              <span className="rozgar-ring absolute h-28 w-28 rounded-full border-4 border-primary" />
+              <span className="rozgar-ring-2 absolute h-28 w-28 rounded-full border-4 border-primary" />
+            </>
+          )}
+          <span className="rozgar-pop flex h-20 w-20 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-xl">
+            <Check className="h-10 w-10" strokeWidth={3} />
+          </span>
+        </div>
+      )}
       <div className="flex items-center gap-3">
         <button onClick={() => navigate({ to: "/review" })} className="inline-flex items-center gap-1.5 rounded-full border border-border px-3 py-1.5 text-sm font-medium hover:bg-muted"><ArrowLeft className="h-4 w-4" /> Back</button>
         <div className="min-w-0">
