@@ -834,19 +834,34 @@ function UserLevelAnalysis() {
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-3">
-            <ol className="list-decimal pl-5 space-y-1 text-sm">
-              <li><span className="font-medium">Name</span> — not blank and not a placeholder (Unknown, अज्ञात, etc.)</li>
-              <li><span className="font-medium">Location</span> — not blank and not just city / state / their combination</li>
-              <li><span className="font-medium">Email or Phone</span> — at least one filled</li>
-              <li><span className="font-medium">Age</span> — not blank</li>
-              <li><span className="font-medium">Role</span> — not blank and not "any"</li>
-              <li><span className="font-medium">Expected Salary</span> — not blank</li>
+            <ol className="list-decimal pl-5 space-y-1.5 text-sm">
+              {[
+                { label: "Name", desc: "not blank and not a placeholder (Unknown, अज्ञात, etc.)" },
+                { label: "Location", desc: "not blank and not just city / state / their combination" },
+                { label: "Email or Phone", desc: "at least one filled" },
+                { label: "Age", desc: "not blank" },
+                { label: "Role", desc: 'not blank and not "any"' },
+                { label: "Expected Salary", desc: "not blank" },
+              ].map((f) => {
+                const fc = stats.fieldCompletion.find((x) => x.label === f.label);
+                return (
+                  <li key={f.label} className="flex items-start justify-between gap-3">
+                    <span>
+                      <span className="font-medium">{f.label}</span> — {f.desc}
+                    </span>
+                    <span className="whitespace-nowrap text-muted-foreground tabular-nums">
+                      {fc ? `${fc.pct}%` : ""}
+                    </span>
+                  </li>
+                );
+              })}
             </ol>
             <div className="rounded border bg-muted/30 px-3 py-2 text-sm">
-              Average completion across current dataset:{" "}
+              Profiles complete (all {PROFILE_FIELD_LABELS.length} checks pass):{" "}
               <span className="font-semibold">{stats.avgCompletion}%</span>
             </div>
           </div>
+
         </DialogContent>
       </Dialog>
     </div>
