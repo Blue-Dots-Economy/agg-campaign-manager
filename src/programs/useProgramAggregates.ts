@@ -65,9 +65,10 @@ export function useKkbDropAnalysis(filters?: OverviewFilters) {
   const dateTo = filters?.dateTo ?? null;
   const campaignType = filters?.campaignType ?? "all";
   const campaign = filters?.campaign ?? null;
+  const channel = filters?.channel ?? "all";
   return useQuery<KkbDropAnalysisPayload>({
-    queryKey: ["kkb-drop-analysis", state, dateFrom, dateTo, campaignType, campaign],
-    queryFn: () => fn({ data: { state, dateFrom, dateTo, campaignType, campaign } }),
+    queryKey: ["kkb-drop-analysis", state, dateFrom, dateTo, campaignType, campaign, channel],
+    queryFn: () => fn({ data: { state, dateFrom, dateTo, campaignType, campaign, channel } }),
     staleTime: 5 * 60_000,
     gcTime: 30 * 60_000,
     placeholderData: keepPreviousData,
