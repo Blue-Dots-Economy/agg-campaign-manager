@@ -109,9 +109,10 @@ export function useDkbDropAnalysis(filters?: OverviewFilters) {
   const dateTo = filters?.dateTo ?? null;
   const campaignType = filters?.campaignType ?? "all";
   const campaign = filters?.campaign ?? null;
+  const channel = filters?.channel ?? "all";
   return useQuery<KkbDropAnalysisPayload>({
-    queryKey: ["dkb-drop-analysis", state, dateFrom, dateTo, campaignType, campaign],
-    queryFn: () => fn({ data: { state, dateFrom, dateTo, campaignType, campaign } }),
+    queryKey: ["dkb-drop-analysis", state, dateFrom, dateTo, campaignType, campaign, channel],
+    queryFn: () => fn({ data: { state, dateFrom, dateTo, campaignType, campaign, channel } }),
     staleTime: 5 * 60_000,
     gcTime: 30 * 60_000,
     placeholderData: keepPreviousData,
@@ -125,15 +126,16 @@ export function useDkbDropAnalysis(filters?: OverviewFilters) {
 
 export function useCampaignList(
   config: ProgramConfig,
-  filters?: Pick<OverviewFilters, "state" | "dateFrom" | "dateTo">,
+  filters?: Pick<OverviewFilters, "state" | "dateFrom" | "dateTo" | "channel">,
 ) {
   const fn = useServerFn(fetchCampaignList);
   const state = filters?.state ?? "all";
   const dateFrom = filters?.dateFrom ?? null;
   const dateTo = filters?.dateTo ?? null;
+  const channel = filters?.channel ?? "all";
   return useQuery<CampaignListItem[]>({
-    queryKey: ["campaign-list", config.id, state, dateFrom, dateTo],
-    queryFn: () => fn({ data: { program: config.id, state, dateFrom, dateTo } }),
+    queryKey: ["campaign-list", config.id, state, dateFrom, dateTo, channel],
+    queryFn: () => fn({ data: { program: config.id, state, dateFrom, dateTo, channel } }),
     staleTime: 5 * 60_000,
     gcTime: 30 * 60_000,
     placeholderData: keepPreviousData,
