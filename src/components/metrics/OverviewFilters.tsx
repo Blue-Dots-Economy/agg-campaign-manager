@@ -9,12 +9,14 @@ import { cn } from "@/lib/utils";
 
 export type StateValue = "all" | "GZB" | "KA";
 export type CampaignTypeValue = "all" | "normal" | "higher_education";
+export type ChannelValue = "all" | "outbound" | "inbound";
 
 export interface OverviewFilterValue {
   state: StateValue;
   dateFrom: string | null; // YYYY-MM-DD
   dateTo: string | null;
   campaignType: CampaignTypeValue;
+  channel: ChannelValue;
 }
 
 const STATE_OPTIONS: { value: StateValue; label: string }[] = [
@@ -27,6 +29,12 @@ const CAMPAIGN_TYPE_OPTIONS: { value: CampaignTypeValue; label: string }[] = [
   { value: "all", label: "All types" },
   { value: "normal", label: "KKB" },
   { value: "higher_education", label: "Higher Education" },
+];
+
+const CHANNEL_OPTIONS: { value: ChannelValue; label: string }[] = [
+  { value: "all", label: "All calls" },
+  { value: "outbound", label: "Outbound" },
+  { value: "inbound", label: "Inbound" },
 ];
 
 const fmt = (d: Date) => format(d, "yyyy-MM-dd");
