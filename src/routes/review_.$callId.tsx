@@ -159,6 +159,7 @@ function TranscriptReview() {
 
   useEffect(() => {
     setIssues([]); setFlags([]); setFlagTurn(""); setFlagNote(""); setNotes(""); setRating(0);
+    setCelebrate(null); setSubmitting(false);
     window.scrollTo(0, 0);
   }, [callId]);
 
