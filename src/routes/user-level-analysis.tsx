@@ -377,8 +377,16 @@ function UserLevelAnalysis() {
                 return (
                   <TableRow key={p.id}>
                     <TableCell className="font-semibold">
-                      {p.name}
-                      {p.role && <div className="text-xs text-muted-foreground font-normal">{p.role}</div>}
+                      <button
+                        type="button"
+                        onClick={() => setSelected(p)}
+                        className="text-left hover:underline text-primary font-mono text-xs"
+                      >
+                        {p.id}
+                      </button>
+                      <div className="text-[11px] text-muted-foreground font-normal font-mono mt-0.5">
+                        User: {p.userId || "—"}
+                      </div>
                     </TableCell>
                     <TableCell className="text-muted-foreground">{p.createdOn || "—"}</TableCell>
                     <TableCell>
