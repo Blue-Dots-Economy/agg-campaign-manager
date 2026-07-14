@@ -10,7 +10,6 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as SettingsRouteImport } from './routes/settings'
-import { Route as ReviewersRouteImport } from './routes/reviewers'
 import { Route as ReviewRouteImport } from './routes/review'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as LaunchRouteImport } from './routes/launch'
@@ -23,11 +22,6 @@ import { Route as ApiPublicHooksSyncSnapshotsRouteImport } from './routes/api/pu
 const SettingsRoute = SettingsRouteImport.update({
   id: '/settings',
   path: '/settings',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ReviewersRoute = ReviewersRouteImport.update({
-  id: '/reviewers',
-  path: '/reviewers',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ReviewRoute = ReviewRouteImport.update({
@@ -78,7 +72,6 @@ export interface FileRoutesByFullPath {
   '/launch': typeof LaunchRoute
   '/login': typeof LoginRoute
   '/review': typeof ReviewRoute
-  '/reviewers': typeof ReviewersRoute
   '/settings': typeof SettingsRoute
   '/campaigns/$campaign': typeof CampaignsCampaignRoute
   '/review/$callId': typeof ReviewCallIdRoute
@@ -90,7 +83,6 @@ export interface FileRoutesByTo {
   '/launch': typeof LaunchRoute
   '/login': typeof LoginRoute
   '/review': typeof ReviewRoute
-  '/reviewers': typeof ReviewersRoute
   '/settings': typeof SettingsRoute
   '/campaigns/$campaign': typeof CampaignsCampaignRoute
   '/review/$callId': typeof ReviewCallIdRoute
@@ -103,7 +95,6 @@ export interface FileRoutesById {
   '/launch': typeof LaunchRoute
   '/login': typeof LoginRoute
   '/review': typeof ReviewRoute
-  '/reviewers': typeof ReviewersRoute
   '/settings': typeof SettingsRoute
   '/campaigns_/$campaign': typeof CampaignsCampaignRoute
   '/review_/$callId': typeof ReviewCallIdRoute
@@ -117,7 +108,6 @@ export interface FileRouteTypes {
     | '/launch'
     | '/login'
     | '/review'
-    | '/reviewers'
     | '/settings'
     | '/campaigns/$campaign'
     | '/review/$callId'
@@ -129,7 +119,6 @@ export interface FileRouteTypes {
     | '/launch'
     | '/login'
     | '/review'
-    | '/reviewers'
     | '/settings'
     | '/campaigns/$campaign'
     | '/review/$callId'
@@ -141,7 +130,6 @@ export interface FileRouteTypes {
     | '/launch'
     | '/login'
     | '/review'
-    | '/reviewers'
     | '/settings'
     | '/campaigns_/$campaign'
     | '/review_/$callId'
@@ -154,7 +142,6 @@ export interface RootRouteChildren {
   LaunchRoute: typeof LaunchRoute
   LoginRoute: typeof LoginRoute
   ReviewRoute: typeof ReviewRoute
-  ReviewersRoute: typeof ReviewersRoute
   SettingsRoute: typeof SettingsRoute
   CampaignsCampaignRoute: typeof CampaignsCampaignRoute
   ReviewCallIdRoute: typeof ReviewCallIdRoute
@@ -168,13 +155,6 @@ declare module '@tanstack/react-router' {
       path: '/settings'
       fullPath: '/settings'
       preLoaderRoute: typeof SettingsRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/reviewers': {
-      id: '/reviewers'
-      path: '/reviewers'
-      fullPath: '/reviewers'
-      preLoaderRoute: typeof ReviewersRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/review': {
@@ -242,7 +222,6 @@ const rootRouteChildren: RootRouteChildren = {
   LaunchRoute: LaunchRoute,
   LoginRoute: LoginRoute,
   ReviewRoute: ReviewRoute,
-  ReviewersRoute: ReviewersRoute,
   SettingsRoute: SettingsRoute,
   CampaignsCampaignRoute: CampaignsCampaignRoute,
   ReviewCallIdRoute: ReviewCallIdRoute,
