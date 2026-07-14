@@ -304,7 +304,10 @@ export function parseSeekersCsv(text: string): Seeker[] {
       rejected: toInt(r[cRej]),
       profileCompletion: completion,
       profileFieldChecks: checks.fields,
+      emailPresent: (cEmail !== -1 ? (r[cEmail] ?? "") : "").trim().length > 0,
+      phonePresent: (cPhone !== -1 ? (r[cPhone] ?? "") : "").trim().length > 0,
       followUpFor: (r[cFollow] ?? "").trim(),
+
       status,
       profileStatus,
       recommendedAction: computeAction(status, profileStatus, lastAppliedAge, r[cAction] ?? ""),
