@@ -80,6 +80,16 @@ const STATUS_STYLES: Record<Seeker["status"], string> = {
   Inactive: "bg-rose-50 text-rose-700 border-rose-200",
 };
 
+// Parses "M/D/YYYY" or "MM/DD/YYYY" strings from the CSV into a Date at midnight.
+function parseCreatedOn(s: string): Date | null {
+  if (!s) return null;
+  const parts = s.trim().split("/");
+  if (parts.length !== 3) return null;
+  const [m, d, y] = parts.map((p) => parseInt(p, 10));
+  if (!m || !d || !y) return null;
+  return new Date(y, m - 1, d);
+}
+
 function MetricTile({
   label,
   value,
