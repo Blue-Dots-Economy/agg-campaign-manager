@@ -3,7 +3,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { toast } from "sonner";
-import { ArrowLeft, Loader2, Plus, SkipForward, Star, X, ChevronDown } from "lucide-react";
+import { ArrowLeft, Loader2, Plus, SkipForward, Star, X, ChevronDown, Check } from "lucide-react";
 import { useProgram } from "@/programs/context";
 import { useAuth } from "@/auth/context";
 import { useReviewCalls, useExistingReviews } from "@/programs/useProgramAggregates";
@@ -74,10 +74,41 @@ const ENCOURAGERS = [
   "Smooth — next!",
 ];
 function praise(count: number, hasNext: boolean, total: number): string {
-  if (!hasNext) return `🎉 Batch complete — you reviewed all ${total}! Incredible work.`;
-  if (count > 0 && count % 25 === 0) return `🏆 ${count} reviews this session — you're crushing it!`;
-  if (count > 0 && count % 10 === 0) return `🔥 ${count} in a row — you're on fire!`;
+  if (!hasNext) return `Batch complete — you reviewed all ${total}. Incredible work.`;
+  if (count > 0 && count % 25 === 0) return `${count} reviews this session — you're crushing it!`;
+  if (count > 0 && count % 10 === 0) return `${count} in a row — you're on fire!`;
   return ENCOURAGERS[count % ENCOURAGERS.length];
+}
+
+function playSwoosh() {
+  try {
+    const AC = window.AudioContext || (window as unknown as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
+    if (!AC) return;
+    const ctx = new AC();
+    const now = ctx.currentTime;
+    const dur = 0.32;
+    const buffer = ctx.createBuffer(1, Math.floor(ctx.sampleRate * dur), ctx.sampleRate);
+    const data = buffer.getChannelData(0);
+    for (let i = 0; i < data.length; i++) data[i] = Math.random() * 2 - 1;
+    const src = ctx.createBufferSource();
+    src.buffer = buffer;
+    const filter = ctx.createBiquadFilter();
+    filter.type = "bandpass";
+    filter.Q.value = 0.7;
+    filter.frequency.setValueAtTime(500, now);
+    filter.frequency.exponentialRampToValueAtTime(3600, now + dur * 0.55);
+    filter.frequency.exponentialRampToValueAtTime(700, now + dur);
+    const gain = ctx.createGain();
+    gain.gain.setValueAtTime(0.0001, now);
+    gain.gain.exponentialRampToValueAtTime(0.22, now + 0.04);
+    gain.gain.exponentialRampToValueAtTime(0.0001, now + dur);
+    src.connect(filter);
+    filter.connect(gain);
+    gain.connect(ctx.destination);
+    src.start(now);
+    src.stop(now + dur);
+    src.onended = () => { try { ctx.close(); } catch { /* ignore */ } };
+  } catch { /* ignore */ }
 }
 
 function TranscriptReview() {
@@ -123,10 +154,12 @@ function TranscriptReview() {
     if (typeof window === "undefined") return 0;
     try { return Number(window.sessionStorage.getItem("reviews_done_session")) || 0; } catch { return 0; }
   });
+  const [celebrate, setCelebrate] = useState<null | "normal" | "milestone">(null);
   const turnRefs = useRef<Record<number, HTMLDivElement | null>>({});
 
   useEffect(() => {
     setIssues([]); setFlags([]); setFlagTurn(""); setFlagNote(""); setNotes(""); setRating(0);
+    setCelebrate(null); setSubmitting(false);
     window.scrollTo(0, 0);
   }, [callId]);
 
@@ -188,25 +221,31 @@ function TranscriptReview() {
       const newCount = sessionReviewed + 1;
       setSessionReviewed(newCount);
       try { window.sessionStorage.setItem("reviews_done_session", String(newCount)); } catch { /* ignore */ }
+      playSwoosh();
       if (bulkMode) {
-        try {
-          const raw = sessionStorage.getItem("bulk_review_queue");
-          const queue: string[] = raw ? JSON.parse(raw) : [];
-          const idx = queue.indexOf(callId);
-          const next = idx >= 0 && idx < queue.length - 1 ? queue[idx + 1] : null;
-          const remaining = queue.length - (idx + 1);
-          toast.success(praise(newCount, !!next, queue.length), next ? { description: `${remaining} ${remaining === 1 ? "call" : "calls"} to go` } : undefined);
-          if (next) { navigate({ to: "/review/$callId", params: { callId: next }, search: { bulk: "1" } }); return; }
-          sessionStorage.removeItem("bulk_review_queue");
-          navigate({ to: "/review" });
-          return;
-        } catch { /* ignore */ }
+        const raw = sessionStorage.getItem("bulk_review_queue");
+        const queue: string[] = raw ? JSON.parse(raw) : [];
+        const idx = queue.indexOf(callId);
+        const next = idx >= 0 && idx < queue.length - 1 ? queue[idx + 1] : null;
+        const remaining = queue.length - (idx + 1);
+        const milestone = !next || (newCount > 0 && newCount % 10 === 0);
+        toast.success(praise(newCount, !!next, queue.length), next ? { description: `${remaining} ${remaining === 1 ? "call" : "calls"} to go` } : undefined);
+        setCelebrate(milestone ? "milestone" : "normal");
+        window.setTimeout(() => {
+          if (next) {
+            navigate({ to: "/review/$callId", params: { callId: next }, search: { bulk: "1" } });
+          } else {
+            try { sessionStorage.removeItem("bulk_review_queue"); } catch { /* ignore */ }
+            navigate({ to: "/review" });
+          }
+        }, milestone ? 850 : 450);
+        return;
       }
       toast.success("Review submitted — nice work!");
-      navigate({ to: "/review" });
+      setCelebrate("normal");
+      window.setTimeout(() => navigate({ to: "/review" }), 450);
     } catch (e) {
       toast.error(`Failed to submit: ${e instanceof Error ? e.message : "Try again."}`);
-    } finally {
       setSubmitting(false);
     }
   }
@@ -235,6 +274,19 @@ function TranscriptReview() {
 
   return (
     <div className="space-y-4">
+      {celebrate && (
+        <div className="pointer-events-none fixed inset-0 z-50 flex items-center justify-center" aria-hidden="true">
+          {celebrate === "milestone" && (
+            <>
+              <span className="rozgar-ring absolute h-28 w-28 rounded-full border-4 border-primary" />
+              <span className="rozgar-ring-2 absolute h-28 w-28 rounded-full border-4 border-primary" />
+            </>
+          )}
+          <span className="rozgar-pop flex h-20 w-20 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-xl">
+            <Check className="h-10 w-10" strokeWidth={3} />
+          </span>
+        </div>
+      )}
       <div className="flex items-center gap-3">
         <button onClick={() => navigate({ to: "/review" })} className="inline-flex items-center gap-1.5 rounded-full border border-border px-3 py-1.5 text-sm font-medium hover:bg-muted"><ArrowLeft className="h-4 w-4" /> Back</button>
         <div className="min-w-0">
