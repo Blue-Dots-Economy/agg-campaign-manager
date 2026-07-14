@@ -1,5 +1,16 @@
 import bundledCsv from "@/data/up-seekers.csv?raw";
 
+export type ProfileFieldCheck = { label: string; passed: boolean };
+
+export const PROFILE_FIELD_LABELS = [
+  "Name",
+  "Location",
+  "Email or Phone",
+  "Age",
+  "Role",
+  "Expected Salary",
+] as const;
+
 export type Seeker = {
   id: string;
   userId: string;
@@ -13,6 +24,7 @@ export type Seeker = {
   shortlisted: number;
   rejected: number;
   profileCompletion: number;
+  profileFieldChecks: ProfileFieldCheck[];
   followUpFor: string;
   status: "New" | "Active" | "At Risk" | "Inactive";
   profileStatus: "Complete" | "Incomplete";
