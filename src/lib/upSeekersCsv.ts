@@ -25,11 +25,14 @@ export type Seeker = {
   rejected: number;
   profileCompletion: number;
   profileFieldChecks: ProfileFieldCheck[];
+  emailPresent: boolean;
+  phonePresent: boolean;
   followUpFor: string;
   status: "New" | "Active" | "At Risk" | "Inactive";
   profileStatus: "Complete" | "Incomplete";
   recommendedAction: string;
 };
+
 
 const DB_NAME = "up-seekers-db";
 const DB_VERSION = 1;
