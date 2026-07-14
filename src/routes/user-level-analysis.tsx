@@ -240,6 +240,13 @@ function UserLevelAnalysis() {
           </p>
         </div>
         <div className="flex items-center gap-2">
+          <input
+            ref={fileRef}
+            type="file"
+            accept=".csv,text/csv"
+            className="hidden"
+            onChange={handleFileChosen}
+          />
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button variant="outline" className="gap-2">
@@ -248,19 +255,25 @@ function UserLevelAnalysis() {
                 <ChevronDown className="h-4 w-4" />
               </Button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
+            <DropdownMenuContent align="end" className="w-64">
+              <div className="px-2 py-1.5 text-[11px] text-muted-foreground">
+                Source: <span className="font-medium text-foreground">{meta.name}</span>
+                <div>{meta.rows.toLocaleString()} rows</div>
+              </div>
+              <DropdownMenuSeparator />
               <DropdownMenuItem onSelect={() => refetch()}>
-                UP Job Seekers (sync now)
+                <RefreshCw className="h-4 w-4 mr-2" />
+                UP Job Seekers (reload)
               </DropdownMenuItem>
-              <DropdownMenuItem asChild>
-                <a
-                  href="https://docs.google.com/spreadsheets/d/1J2WDeSOCaIVz2KvWMmI9dVE4iTh_Dqbt8Aqb6423a2U/edit?usp=sharing"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                >
-                  Open UP source sheet
-                </a>
+              <DropdownMenuItem onSelect={() => handleUploadClick()}>
+                <Upload className="h-4 w-4 mr-2" />
+                Upload new CSV…
               </DropdownMenuItem>
+              <DropdownMenuItem onSelect={() => handleReset()}>
+                <RotateCcw className="h-4 w-4 mr-2" />
+                Reset to bundled CSV
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
               <DropdownMenuItem disabled>KA Job Seekers</DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
