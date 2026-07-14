@@ -95,6 +95,7 @@ function ReviewHub() {
   useEffect(() => {
     try { window.sessionStorage.setItem(FILTER_KEY, JSON.stringify(filters)); } catch { /* ignore */ }
   }, [filters]);
+  useEffect(() => { setPage(1); }, [filters]);
   const set = <K extends keyof Filters>(k: K, v: Filters[K]) => setFilters((f) => ({ ...f, [k]: v }));
 
   useEffect(() => {
