@@ -131,32 +131,50 @@ function isTestRow(v: string | undefined): boolean {
   return ["1", "1.0", "true", "yes", "y"].includes(normalized);
 }
 
-function computeStatus(profileAge: number | null, lastAppliedAge: number | null): Seeker["status"] {
-  const p = profileAge ?? 9999;
-  if (p <= 7) return "New";
-  const la = lastAppliedAge;
-  if (la !== null && la <= 30) return "Active";
-  if (la !== null && la >= 31 && la <= 90) return "At Risk";
-  return "Inactive";
+function norm(s: string | undefined): string {
+  return (s ?? "").trim().toLowerCase().replace(/\s+/g, " ");
 }
 
-function computeAction(
-  status: Seeker["status"],
-  profileStatus: Seeker["profileStatus"],
-  lastAppliedAge: number | null,
-  csvAction: string,
-): string {
-  if (profileStatus === "Incomplete") return "Complete Profile";
-  switch (status) {
-    case "New":
-    case "At Risk":
-      return "Automated Call";
-    case "Inactive":
-      return "Manual Call";
-    case "Active":
-      if (lastAppliedAge !== null && lastAppliedAge > 14) return "Automated Call";
-      return csvAction?.trim() || "No Action";
-  }
+/** Location must be filled AND contain more than just the district/state (or their combination). */
+function isLocationMeaningful(location: string, district: string, state: string): boolean {
+  const loc = norm(location);
+  if (!loc) return false;
+  const d = norm(district);
+  const s = norm(state);
+  const combos = new Set(
+    [d, s, d && s ? `${d}, ${s}` : "", d && s ? `${s}, ${d}` : "", d && s ? `${d} ${s}` : "", d && s ? `${d},${s}` : ""].filter(Boolean),
+  );
+  return !combos.has(loc);
+}
+
+/** Profile completeness rules:
+ *  1) name not blank
+ *  2) location not blank and not just city/state name(s)
+ *  3) email OR phone filled
+ *  4) age not blank
+ *  5) role not blank and not "any"
+ *  6) expected salary not blank
+ */
+function computeProfileChecks(r: {
+  name: string;
+  location: string;
+  district: string;
+  state: string;
+  email: string;
+  phone: string;
+  age: string;
+  role: string;
+  salary: string;
+}): { passed: number; total: number } {
+  const checks = [
+    r.name.trim().length > 0,
+    isLocationMeaningful(r.location, r.district, r.state),
+    r.email.trim().length > 0 || r.phone.trim().length > 0,
+    r.age.trim().length > 0,
+    r.role.trim().length > 0 && norm(r.role) !== "any",
+    r.salary.trim().length > 0,
+  ];
+  return { passed: checks.filter(Boolean).length, total: checks.length };
 }
 
 export function parseSeekersCsv(text: string): Seeker[] {
@@ -168,12 +186,17 @@ export function parseSeekersCsv(text: string): Seeker[] {
   const cUser = idx("user_id");
   const cName = idx("name");
   const cLoc = idx("location");
+  const cDistrict = idx("location_district");
+  const cState = idx("location_state");
+  const cEmail = idx("email id");
+  const cPhone = idx("phone number");
+  const cAge = idx("age");
+  const cSalary = idx("expected salary");
   const cRole = idx("role");
   const cAction = idx("recommended action");
   const cApps = idx("applications");
   const cShort = idx("shortlisted");
   const cRej = idx("rejected");
-  const cCompl = idx("profile completion");
   const cFollow = idx("follow up for");
   const cCreated = idx("created_on");
   const cPAge = idx("profile age");
@@ -186,8 +209,19 @@ export function parseSeekersCsv(text: string): Seeker[] {
     const id = (r[cId] ?? "").trim();
     if (!id) continue;
     if (cTest !== -1 && isTestRow(r[cTest])) continue;
-    const completion = toPct(r[cCompl]);
-    const profileStatus: Seeker["profileStatus"] = completion >= 100 ? "Complete" : "Incomplete";
+    const checks = computeProfileChecks({
+      name: r[cName] ?? "",
+      location: r[cLoc] ?? "",
+      district: cDistrict !== -1 ? (r[cDistrict] ?? "") : "",
+      state: cState !== -1 ? (r[cState] ?? "") : "",
+      email: cEmail !== -1 ? (r[cEmail] ?? "") : "",
+      phone: cPhone !== -1 ? (r[cPhone] ?? "") : "",
+      age: cAge !== -1 ? (r[cAge] ?? "") : "",
+      role: r[cRole] ?? "",
+      salary: cSalary !== -1 ? (r[cSalary] ?? "") : "",
+    });
+    const completion = Math.round((checks.passed / checks.total) * 100);
+    const profileStatus: Seeker["profileStatus"] = checks.passed === checks.total ? "Complete" : "Incomplete";
     const profileAge = toIntOrNull(r[cPAge]);
     const lastAppliedAge = toIntOrNull(r[cLApp]);
     const status = computeStatus(profileAge, lastAppliedAge);
@@ -212,6 +246,7 @@ export function parseSeekersCsv(text: string): Seeker[] {
   }
   return out;
 }
+
 
 function bundledResult(): { seekers: Seeker[]; meta: CsvMeta } {
   const seekers = parseSeekersCsv(bundledCsv);
