@@ -103,6 +103,7 @@ function UserLevelAnalysis() {
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [profileFilter, setProfileFilter] = useState<string>("all");
+  const [appliedFilter, setAppliedFilter] = useState<string>("all");
   const [selected, setSelected] = useState<Seeker | null>(null);
   const fileRef = useRef<HTMLInputElement | null>(null);
 
@@ -198,10 +199,12 @@ function UserLevelAnalysis() {
     return seekers.filter((s) => {
       if (statusFilter !== "all" && s.status.toLowerCase().replace(" ", "-") !== statusFilter) return false;
       if (profileFilter !== "all" && s.profileStatus.toLowerCase() !== profileFilter) return false;
+      if (appliedFilter === "applied" && s.applications <= 0) return false;
+      if (appliedFilter === "not-applied" && s.applications > 0) return false;
       if (q && !(s.id.toLowerCase().includes(q) || s.userId.toLowerCase().includes(q) || s.name.toLowerCase().includes(q))) return false;
       return true;
     });
-  }, [seekers, search, statusFilter, profileFilter]);
+  }, [seekers, search, statusFilter, profileFilter, appliedFilter]);
 
   const lifecycle = [
     {
@@ -410,12 +413,22 @@ function UserLevelAnalysis() {
               <SelectItem value="incomplete">Incomplete</SelectItem>
             </SelectContent>
           </Select>
+          <Select value={appliedFilter} onValueChange={setAppliedFilter}>
+            <SelectTrigger className="w-[180px]">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All applied</SelectItem>
+              <SelectItem value="applied">Applied</SelectItem>
+              <SelectItem value="not-applied">Not applied</SelectItem>
+            </SelectContent>
+          </Select>
           <Select value={statusFilter} onValueChange={setStatusFilter}>
             <SelectTrigger className="w-[180px]">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="all">All statuses</SelectItem>
+              <SelectItem value="all">All activity</SelectItem>
               <SelectItem value="new">New</SelectItem>
               <SelectItem value="active">Active</SelectItem>
               <SelectItem value="at-risk">At Risk</SelectItem>
@@ -436,7 +449,7 @@ function UserLevelAnalysis() {
                 <TableHead rowSpan={2} className="align-middle">Profile Status</TableHead>
                 <TableHead colSpan={4} className="text-center border-l">Applied</TableHead>
                 <TableHead colSpan={4} className="text-center border-l">Pre-shortlisted</TableHead>
-                <TableHead rowSpan={2} className="align-middle border-l">Status</TableHead>
+                <TableHead rowSpan={2} className="align-middle border-l">Activity Status</TableHead>
                 <TableHead rowSpan={2} className="align-middle">Recommended Action</TableHead>
               </TableRow>
               <TableRow className="bg-muted/40 hover:bg-muted/40">
