@@ -82,13 +82,50 @@ export function Sidebar() {
         </div>
       </div>
 
-      <nav className="px-3 py-2 space-y-0.5">
-        {NAV.map((item) => {
-          const active = item.to === "/" ? pathname === "/" : pathname.startsWith(item.to);
+      <nav className="flex-1 px-3 py-2 space-y-5 overflow-y-auto">
+        {GROUPS.map((group) => (
+          <div key={group.title}>
+            <div className="px-3 py-1.5 text-[11px] font-medium uppercase tracking-wider text-sidebar-foreground/60">
+              {group.title}
+            </div>
+            <div className="space-y-0.5">
+              {group.items.map((item) => {
+                const active = item.to === "/" ? pathname === "/" : pathname.startsWith(item.to);
+                const Icon = item.icon;
+                return (
+                  <Link
+                    key={item.to}
+                    to={item.to}
+                    aria-current={active ? "page" : undefined}
+                    className={cn(
+                      "flex items-center gap-3 px-3 py-2 rounded-md text-sm transition-colors",
+                      active
+                        ? "bg-sidebar-accent text-sidebar-foreground"
+                        : "text-sidebar-foreground/85 hover:bg-sidebar-accent/70 hover:text-sidebar-foreground"
+                    )}
+                  >
+                    <Icon className="h-4 w-4 shrink-0" />
+                    <div className="flex flex-col">
+                      <span>{item.label}</span>
+                      {item.sub && (
+                        <span className="text-[11px] leading-tight opacity-70">{item.sub}</span>
+                      )}
+                    </div>
+                  </Link>
+                );
+              })}
+            </div>
+          </div>
+        ))}
+      </nav>
+
+      <div className="border-t border-sidebar-border px-3 py-2">
+        {(() => {
+          const item = SETTINGS;
+          const active = pathname.startsWith(item.to);
           const Icon = item.icon;
           return (
             <Link
-              key={item.to}
               to={item.to}
               aria-current={active ? "page" : undefined}
               className={cn(
@@ -98,12 +135,12 @@ export function Sidebar() {
                   : "text-sidebar-foreground/85 hover:bg-sidebar-accent/70 hover:text-sidebar-foreground"
               )}
             >
-              <Icon className="h-4 w-4" />
+              <Icon className="h-4 w-4 shrink-0" />
               {item.label}
             </Link>
           );
-        })}
-      </nav>
+        })()}
+      </div>
 
       <div className="mt-auto px-5 py-4 border-t border-sidebar-border text-[11px] opacity-85">
         <div>
