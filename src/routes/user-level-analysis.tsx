@@ -305,10 +305,24 @@ function UserLevelAnalysis() {
           (appliedFilters.includes("pending-gt0") && pending > 0);
         if (!matches) return false;
       }
+      if (dateRange?.from || dateRange?.to) {
+        const d = parseCreatedOn(s.createdOn);
+        if (!d) return false;
+        if (dateRange.from) {
+          const from = new Date(dateRange.from);
+          from.setHours(0, 0, 0, 0);
+          if (d < from) return false;
+        }
+        if (dateRange.to) {
+          const to = new Date(dateRange.to);
+          to.setHours(23, 59, 59, 999);
+          if (d > to) return false;
+        }
+      }
       if (q && !(s.id.toLowerCase().includes(q) || s.userId.toLowerCase().includes(q) || s.name.toLowerCase().includes(q))) return false;
       return true;
     });
-  }, [seekers, search, statusFilter, profileFilter, appliedFilters]);
+  }, [seekers, search, statusFilter, profileFilter, appliedFilters, dateRange]);
 
   const lifecycle = [
     {
