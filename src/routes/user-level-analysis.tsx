@@ -452,7 +452,7 @@ function UserLevelAnalysis() {
             <MetricTile
               label="Profiles Complete"
               value={stats.complete.toLocaleString()}
-              description={`${stats.completePct}% of all profiles`}
+              description={`${stats.completePct}% of all profiles · strong search & match`}
               Icon={CheckCircle2}
             />
             <MetricTile
@@ -527,7 +527,10 @@ function UserLevelAnalysis() {
                 }
                 onSelect={(e) => e.preventDefault()}
               >
-                Complete
+                <div className="flex flex-col">
+                  <span>Complete</span>
+                  <span className="text-[11px] text-muted-foreground">strong search & match</span>
+                </div>
               </DropdownMenuCheckboxItem>
               <DropdownMenuSeparator />
               <DropdownMenuLabel className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
