@@ -56,8 +56,8 @@ export function NoDataState({ reason = "no_connections", onClearFilters }: NoDat
         </div>
         <p className="text-sm text-muted-foreground max-w-md">
           No data yet — connect a sheet in{" "}
-          <Link to="/connections" className="text-brand underline">
-            Connections
+          <Link to="/settings" className="text-brand underline">
+            Settings
           </Link>{" "}
           to start seeing live KPIs, charts and call rows here.
         </p>

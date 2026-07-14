@@ -296,8 +296,8 @@ export function ProgramAnalytics({
                     <Tooltip {...tooltipStyle} />
                     <Legend wrapperStyle={{ fontSize: 12 }} />
                     <Line type="monotone" dataKey="rows" name="calls" stroke="var(--color-chart-1)" strokeWidth={2} dot={false} />
-                    <Line type="monotone" dataKey="answered" stroke="var(--color-chart-2)" strokeWidth={2} dot={false} />
-                    <Line type="monotone" dataKey="new_jobs" name="new jobs" stroke="var(--color-chart-3)" strokeWidth={2} dot={false} />
+                    <Line type="monotone" dataKey="answered" stroke="var(--color-chart-2)" strokeWidth={2} strokeDasharray="6 3" dot={false} />
+                    <Line type="monotone" dataKey="new_jobs" name="new jobs" stroke="var(--color-chart-3)" strokeWidth={2} strokeDasharray="2 2" dot={false} />
                   </LineChart>
                 </ResponsiveContainer>
               </div>
@@ -406,8 +406,8 @@ export function ProgramAnalytics({
                     />
                     <Legend wrapperStyle={{ fontSize: 12 }} />
                     <Line type="monotone" dataKey="answered" stroke="var(--color-chart-1)" strokeWidth={2} dot={false} />
-                    <Line type="monotone" dataKey="engaged" stroke="var(--color-chart-2)" strokeWidth={2} dot={false} />
-                    <Line type="monotone" dataKey="converted" name={config.successMetric} stroke="var(--color-chart-3)" strokeWidth={2} dot={false} />
+                    <Line type="monotone" dataKey="engaged" stroke="var(--color-chart-2)" strokeWidth={2} strokeDasharray="6 3" dot={false} />
+                    <Line type="monotone" dataKey="converted" name={config.successMetric} stroke="var(--color-chart-3)" strokeWidth={2} strokeDasharray="2 2" dot={false} />
                   </LineChart>
                 </ResponsiveContainer>
               </div>
