@@ -9,6 +9,7 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as UserLevelAnalysisRouteImport } from './routes/user-level-analysis'
 import { Route as SettingsRouteImport } from './routes/settings'
 import { Route as ReviewRouteImport } from './routes/review'
 import { Route as LoginRouteImport } from './routes/login'
@@ -19,6 +20,11 @@ import { Route as ReviewCallIdRouteImport } from './routes/review_.$callId'
 import { Route as CampaignsCampaignRouteImport } from './routes/campaigns_.$campaign'
 import { Route as ApiPublicHooksSyncSnapshotsRouteImport } from './routes/api/public/hooks/sync-snapshots'
 
+const UserLevelAnalysisRoute = UserLevelAnalysisRouteImport.update({
+  id: '/user-level-analysis',
+  path: '/user-level-analysis',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const SettingsRoute = SettingsRouteImport.update({
   id: '/settings',
   path: '/settings',
@@ -73,6 +79,7 @@ export interface FileRoutesByFullPath {
   '/login': typeof LoginRoute
   '/review': typeof ReviewRoute
   '/settings': typeof SettingsRoute
+  '/user-level-analysis': typeof UserLevelAnalysisRoute
   '/campaigns/$campaign': typeof CampaignsCampaignRoute
   '/review/$callId': typeof ReviewCallIdRoute
   '/api/public/hooks/sync-snapshots': typeof ApiPublicHooksSyncSnapshotsRoute
@@ -84,6 +91,7 @@ export interface FileRoutesByTo {
   '/login': typeof LoginRoute
   '/review': typeof ReviewRoute
   '/settings': typeof SettingsRoute
+  '/user-level-analysis': typeof UserLevelAnalysisRoute
   '/campaigns/$campaign': typeof CampaignsCampaignRoute
   '/review/$callId': typeof ReviewCallIdRoute
   '/api/public/hooks/sync-snapshots': typeof ApiPublicHooksSyncSnapshotsRoute
@@ -96,6 +104,7 @@ export interface FileRoutesById {
   '/login': typeof LoginRoute
   '/review': typeof ReviewRoute
   '/settings': typeof SettingsRoute
+  '/user-level-analysis': typeof UserLevelAnalysisRoute
   '/campaigns_/$campaign': typeof CampaignsCampaignRoute
   '/review_/$callId': typeof ReviewCallIdRoute
   '/api/public/hooks/sync-snapshots': typeof ApiPublicHooksSyncSnapshotsRoute
@@ -109,6 +118,7 @@ export interface FileRouteTypes {
     | '/login'
     | '/review'
     | '/settings'
+    | '/user-level-analysis'
     | '/campaigns/$campaign'
     | '/review/$callId'
     | '/api/public/hooks/sync-snapshots'
@@ -120,6 +130,7 @@ export interface FileRouteTypes {
     | '/login'
     | '/review'
     | '/settings'
+    | '/user-level-analysis'
     | '/campaigns/$campaign'
     | '/review/$callId'
     | '/api/public/hooks/sync-snapshots'
@@ -131,6 +142,7 @@ export interface FileRouteTypes {
     | '/login'
     | '/review'
     | '/settings'
+    | '/user-level-analysis'
     | '/campaigns_/$campaign'
     | '/review_/$callId'
     | '/api/public/hooks/sync-snapshots'
@@ -143,6 +155,7 @@ export interface RootRouteChildren {
   LoginRoute: typeof LoginRoute
   ReviewRoute: typeof ReviewRoute
   SettingsRoute: typeof SettingsRoute
+  UserLevelAnalysisRoute: typeof UserLevelAnalysisRoute
   CampaignsCampaignRoute: typeof CampaignsCampaignRoute
   ReviewCallIdRoute: typeof ReviewCallIdRoute
   ApiPublicHooksSyncSnapshotsRoute: typeof ApiPublicHooksSyncSnapshotsRoute
@@ -150,6 +163,13 @@ export interface RootRouteChildren {
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/user-level-analysis': {
+      id: '/user-level-analysis'
+      path: '/user-level-analysis'
+      fullPath: '/user-level-analysis'
+      preLoaderRoute: typeof UserLevelAnalysisRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/settings': {
       id: '/settings'
       path: '/settings'
@@ -223,6 +243,7 @@ const rootRouteChildren: RootRouteChildren = {
   LoginRoute: LoginRoute,
   ReviewRoute: ReviewRoute,
   SettingsRoute: SettingsRoute,
+  UserLevelAnalysisRoute: UserLevelAnalysisRoute,
   CampaignsCampaignRoute: CampaignsCampaignRoute,
   ReviewCallIdRoute: ReviewCallIdRoute,
   ApiPublicHooksSyncSnapshotsRoute: ApiPublicHooksSyncSnapshotsRoute,
@@ -230,3 +251,13 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
+
+import type { getRouter } from './router.tsx'
+import type { startInstance } from './start.ts'
+declare module '@tanstack/react-start' {
+  interface Register {
+    ssr: true
+    router: Awaited<ReturnType<typeof getRouter>>
+    config: Awaited<ReturnType<typeof startInstance.getOptions>>
+  }
+}
