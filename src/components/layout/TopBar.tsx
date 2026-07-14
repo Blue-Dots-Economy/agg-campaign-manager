@@ -3,6 +3,7 @@ import { Button } from "@/components/ui/button";
 import { useProgram } from "@/programs/context";
 import { Link } from "@tanstack/react-router";
 import { MobileNav } from "./MobileNav";
+import { AccountMenu } from "./AccountMenu";
 import {
   useSyncProgram,
   useProgramAggregates,
@@ -72,6 +73,7 @@ export function TopBar() {
             <Rocket className="h-4 w-4" /> Launch campaign
           </Button>
         </Link>
+        <AccountMenu />
       </div>
     </header>
   );
