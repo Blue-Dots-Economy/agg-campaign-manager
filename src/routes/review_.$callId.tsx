@@ -65,6 +65,21 @@ function normaliseSpeaker(s: string): "Bot" | "Employer" {
   return "Employer";
 }
 
+const ENCOURAGERS = [
+  "Nice work!",
+  "Another one down!",
+  "On a roll!",
+  "Great catch!",
+  "Keep it going!",
+  "Smooth — next!",
+];
+function praise(count: number, hasNext: boolean, total: number): string {
+  if (!hasNext) return `🎉 Batch complete — you reviewed all ${total}! Incredible work.`;
+  if (count > 0 && count % 25 === 0) return `🏆 ${count} reviews this session — you're crushing it!`;
+  if (count > 0 && count % 10 === 0) return `🔥 ${count} in a row — you're on fire!`;
+  return ENCOURAGERS[count % ENCOURAGERS.length];
+}
+
 function TranscriptReview() {
   const { callId } = Route.useParams();
   const { bulk } = Route.useSearch();
@@ -104,6 +119,10 @@ function TranscriptReview() {
   const [rating, setRating] = useState(0);
   const [submitting, setSubmitting] = useState(false);
   const [infoOpen, setInfoOpen] = useState(true);
+  const [sessionReviewed, setSessionReviewed] = useState<number>(() => {
+    if (typeof window === "undefined") return 0;
+    try { return Number(window.sessionStorage.getItem("reviews_done_session")) || 0; } catch { return 0; }
+  });
   const turnRefs = useRef<Record<number, HTMLDivElement | null>>({});
 
   useEffect(() => {
@@ -166,18 +185,24 @@ function TranscriptReview() {
       await submitFn({ data: { review } });
       qc.invalidateQueries({ queryKey: ["review-map"] });
       qc.invalidateQueries({ queryKey: ["existing-reviews", callIdStr, jobIdStr] });
-      toast.success("Review submitted");
+      const newCount = sessionReviewed + 1;
+      setSessionReviewed(newCount);
+      try { window.sessionStorage.setItem("reviews_done_session", String(newCount)); } catch { /* ignore */ }
       if (bulkMode) {
         try {
           const raw = sessionStorage.getItem("bulk_review_queue");
           const queue: string[] = raw ? JSON.parse(raw) : [];
           const idx = queue.indexOf(callId);
           const next = idx >= 0 && idx < queue.length - 1 ? queue[idx + 1] : null;
+          const remaining = queue.length - (idx + 1);
+          toast.success(praise(newCount, !!next, queue.length), next ? { description: `${remaining} ${remaining === 1 ? "call" : "calls"} to go` } : undefined);
           if (next) { navigate({ to: "/review/$callId", params: { callId: next }, search: { bulk: "1" } }); return; }
           sessionStorage.removeItem("bulk_review_queue");
-          toast.success("Bulk review complete");
+          navigate({ to: "/review" });
+          return;
         } catch { /* ignore */ }
       }
+      toast.success("Review submitted — nice work!");
       navigate({ to: "/review" });
     } catch (e) {
       toast.error(`Failed to submit: ${e instanceof Error ? e.message : "Try again."}`);
@@ -204,6 +229,9 @@ function TranscriptReview() {
       return { idx, total: queue.length, next };
     } catch { return null; }
   })();
+  const bulkPct = bulkInfo && bulkInfo.total > 0 ? Math.round((bulkInfo.idx / bulkInfo.total) * 100) : 0;
+  const canSubmit = issues.length > 0 && rating > 0;
+  const submitHint = issues.length === 0 ? "Select at least one issue" : rating === 0 ? "Add an overall rating to submit" : "";
 
   return (
     <div className="space-y-4">
@@ -214,12 +242,22 @@ function TranscriptReview() {
           <p className="truncate text-xs text-muted-foreground">{call.campaign_day} · {call.language} · {call.city_campaign} · {call.call_datetime_ist}</p>
         </div>
         {bulkInfo && (
-          <div className="ml-auto flex items-center gap-2">
-            <span className="rounded-full bg-primary/10 px-3 py-1 text-xs font-semibold text-primary">Bulk · {bulkInfo.idx + 1} of {bulkInfo.total}</span>
-            <button onClick={() => bulkInfo.next ? navigate({ to: "/review/$callId", params: { callId: bulkInfo.next }, search: { bulk: "1" } }) : navigate({ to: "/review" })} className="inline-flex items-center gap-1 rounded-full border border-border bg-background px-3 py-1.5 text-xs font-medium hover:bg-muted">Skip <SkipForward className="h-3.5 w-3.5" /></button>
-          </div>
+          <button onClick={() => bulkInfo.next ? navigate({ to: "/review/$callId", params: { callId: bulkInfo.next }, search: { bulk: "1" } }) : navigate({ to: "/review" })} className="ml-auto inline-flex shrink-0 items-center gap-1 rounded-full border border-border bg-background px-3 py-1.5 text-xs font-medium hover:bg-muted">Skip <SkipForward className="h-3.5 w-3.5" /></button>
         )}
       </div>
+
+      {bulkInfo && (
+        <div className="space-y-1.5 rounded-2xl border border-border bg-card px-4 py-3 shadow-sm">
+          <div className="flex items-center justify-between text-xs">
+            <span className="font-medium text-foreground">Reviewing call {bulkInfo.idx + 1} of {bulkInfo.total}</span>
+            <span className="text-muted-foreground">{bulkPct}% complete{sessionReviewed > 0 ? ` · ${sessionReviewed} reviewed this session` : ""}</span>
+          </div>
+          <div className="h-2 w-full overflow-hidden rounded-full bg-muted" role="progressbar" aria-valuenow={bulkPct} aria-valuemin={0} aria-valuemax={100} aria-label="Batch review progress">
+            <div className="h-full rounded-full bg-primary transition-all duration-500" style={{ width: `${bulkPct}%` }} />
+          </div>
+        </div>
+      )}
+
 
       <div className="grid gap-4 lg:grid-cols-5 lg:h-[calc(100vh-11rem)] lg:overflow-hidden">
         {/* transcript */}
@@ -331,7 +369,14 @@ function TranscriptReview() {
             </div>
           </div>
 
-          <Button onClick={submit} disabled={submitting} className="w-full rounded-full">{submitting ? "Submitting…" : "Submit Review"}</Button>
+          <div className="sticky bottom-0 z-10 -mx-1 border-t border-border bg-card/95 px-1 pb-1 pt-3 backdrop-blur supports-[backdrop-filter]:bg-card/80">
+            {!canSubmit && (
+              <p className="mb-2 text-center text-[11px] font-medium text-muted-foreground">{submitHint}</p>
+            )}
+            <Button onClick={submit} disabled={submitting} className="w-full rounded-full">
+              {submitting ? "Submitting…" : bulkMode ? "Submit & next call" : "Submit Review"}
+            </Button>
+          </div>
         </aside>
       </div>
     </div>
