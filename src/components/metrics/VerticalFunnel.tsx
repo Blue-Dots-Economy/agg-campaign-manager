@@ -1,6 +1,7 @@
 import * as React from "react";
 import { IconArrowNarrowDown } from "@tabler/icons-react";
-import { Copy, Phone } from "lucide-react";
+import { Copy, Phone, Headphones } from "lucide-react";
+import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem } from "@/components/ui/dropdown-menu";
 import type { Accent } from "./primitives";
 
 const TINT: Record<Accent | "coral" | "purple", string> = {
