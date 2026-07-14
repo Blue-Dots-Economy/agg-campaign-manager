@@ -229,6 +229,9 @@ function TranscriptReview() {
       return { idx, total: queue.length, next };
     } catch { return null; }
   })();
+  const bulkPct = bulkInfo && bulkInfo.total > 0 ? Math.round((bulkInfo.idx / bulkInfo.total) * 100) : 0;
+  const canSubmit = issues.length > 0 && rating > 0;
+  const submitHint = issues.length === 0 ? "Select at least one issue" : rating === 0 ? "Add an overall rating to submit" : "";
 
   return (
     <div className="space-y-4">
