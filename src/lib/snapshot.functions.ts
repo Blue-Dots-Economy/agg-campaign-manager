@@ -702,7 +702,7 @@ export interface KkbDropAnalysisPayload {
 
 export const fetchKkbDropAnalysis = createServerFn({ method: "GET" })
   .inputValidator(
-    (d: { state?: string; dateFrom?: string | null; dateTo?: string | null; campaignType?: string; campaign?: string | null }) => d,
+    (d: { state?: string; dateFrom?: string | null; dateTo?: string | null; campaignType?: string; campaign?: string | null; channel?: string }) => d,
   )
   .handler(async ({ data }): Promise<KkbDropAnalysisPayload> => {
     const empty: KkbDropAnalysisPayload = { stages: [], buckets: [], maxCell: 0, grandTotal: 0 };
