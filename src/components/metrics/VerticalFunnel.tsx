@@ -1,6 +1,7 @@
 import * as React from "react";
 import { IconArrowNarrowDown } from "@tabler/icons-react";
-import { Copy, Phone } from "lucide-react";
+import { Copy, Phone, Headphones } from "lucide-react";
+import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem } from "@/components/ui/dropdown-menu";
 import type { Accent } from "./primitives";
 
 const TINT: Record<Accent | "coral" | "purple", string> = {
@@ -51,7 +52,7 @@ export function VerticalFunnel({
   stages: VerticalFunnelStage[];
   fill?: boolean;
   pickedUpKey?: string;
-  onStageClick?: (key: string) => void;
+  onStageClick?: (key: string, action: "copy" | "review") => void;
 }) {
   const baseline = stages[0]?.value ?? 0;
   const pickedUpIdx = pickedUpKey ? stages.findIndex((s) => s.key === pickedUpKey) : -1;
@@ -71,68 +72,88 @@ export function VerticalFunnel({
           const pct = baseline > 0 ? Math.min(100, Math.max(0, (s.value / baseline) * 100)) : 0;
           const width = visualWidth(s.value);
           const dur = fmtDur(s.avgDurationSec);
+          const blockClass = `group relative overflow-hidden rounded-xl ${TINT[s.color]} px-4 pt-4 pb-3.5 shadow-sm transition-[width,box-shadow] duration-500 ${interactive ? "cursor-pointer hover:ring-2 hover:ring-primary/40 hover:shadow-md focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/60" : ""}`;
+          const blockInner = (
+            <>
+              <span className={`absolute inset-x-0 top-0 h-1 ${BAR[s.color]}`} aria-hidden />
+              <div className="flex items-start justify-between gap-4">
+                <div className="min-w-0 flex flex-col gap-2">
+                  <div>
+                    <div className="flex items-center gap-1.5">
+                      <p className="text-sm font-semibold text-foreground leading-tight">{s.label}</p>
+                      {interactive ? (
+                        <Copy className="h-3 w-3 shrink-0 text-muted-foreground opacity-0 transition-opacity group-hover:opacity-100" aria-hidden />
+                      ) : null}
+                    </div>
+                    {s.description ? (
+                      <p className="mt-0.5 text-[11px] leading-snug text-muted-foreground">{s.description}</p>
+                    ) : null}
+                  </div>
+                  {dur ? (
+                    <span className="inline-flex items-center gap-1 self-start rounded-full border border-border/60 bg-background px-2 py-0.5 text-[10.5px] font-medium text-foreground/70">
+                      <Phone className="h-3 w-3" aria-hidden />
+                      {dur}
+                    </span>
+                  ) : null}
+                </div>
+                <div className="shrink-0 text-right">
+                  <p className={`text-2xl font-semibold leading-none tabular-nums ${TEXT[s.color]}`}>
+                    {fmtNum(s.value)}
+                    {s.unit ? <span className="ml-1 text-[11px] font-normal text-muted-foreground">{s.unit}</span> : null}
+                  </p>
+                  {s.secondaryValue !== undefined ? (
+                    <p className="mt-1 text-[11px] font-medium tabular-nums text-foreground/80">
+                      {fmtNum(s.secondaryValue)}
+                      {s.secondaryLabel ? <span className="ml-1 font-normal text-muted-foreground">{s.secondaryLabel}</span> : null}
+                    </p>
+                  ) : null}
+                  <p className="mt-1 text-[11px] tabular-nums text-muted-foreground">
+                    {s.sub ?? `${fmtPct(pct)} of ${stages[0].label.toLowerCase()}`}
+                  </p>
+                  {pickedUpIdx >= 0 && i > pickedUpIdx && pickedUpValue > 0 ? (
+                    <p className="mt-0.5 text-[11px] font-medium tabular-nums text-sky-600 dark:text-sky-400">
+                      {fmtPct((s.value / pickedUpValue) * 100)} of {pickedUpLabel}
+                    </p>
+                  ) : null}
+                </div>
+              </div>
+            </>
+          );
           return (
             <React.Fragment key={s.key}>
               <div className="flex justify-center">
-                <div
-                  className={`group relative overflow-hidden rounded-xl ${TINT[s.color]} px-4 pt-4 pb-3.5 shadow-sm transition-[width,box-shadow] duration-500 ${
-                    interactive ? "cursor-pointer hover:ring-2 hover:ring-primary/40 hover:shadow-md focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/60" : ""
-                  }`}
-                  style={{ width: `${width}%` }}
-                  {...(interactive ? {
-                    role: "button", tabIndex: 0,
-                    title: `Copy call IDs that reached ${s.label}`,
-                    "aria-label": `Copy call IDs of calls that reached ${s.label}`,
-                    onClick: () => onStageClick!(s.key),
-                    onKeyDown: (e: React.KeyboardEvent<HTMLDivElement>) => {
-                      if (e.key === "Enter" || e.key === " ") { e.preventDefault(); onStageClick!(s.key); }
-                    },
-                  } : {})}
-                >
-                  <span className={`absolute inset-x-0 top-0 h-1 ${BAR[s.color]}`} aria-hidden />
-                  <div className="flex items-start justify-between gap-4">
-                    <div className="min-w-0 flex flex-col gap-2">
-                      <div>
-                        <div className="flex items-center gap-1.5">
-                          <p className="text-sm font-semibold text-foreground leading-tight">{s.label}</p>
-                          {interactive ? (
-                            <Copy className="h-3 w-3 shrink-0 text-muted-foreground opacity-0 transition-opacity group-hover:opacity-100" aria-hidden />
-                          ) : null}
-                        </div>
-                        {s.description ? (
-                          <p className="mt-0.5 text-[11px] leading-snug text-muted-foreground">{s.description}</p>
-                        ) : null}
+                {interactive ? (
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <div
+                        role="button"
+                        tabIndex={0}
+                        aria-label={`Review or copy call IDs for calls that reached ${s.label}`}
+                        title={`${s.label} — review or copy call IDs`}
+                        className={blockClass}
+                        style={{ width: `${width}%` }}
+                      >
+                        {blockInner}
                       </div>
-                      {dur ? (
-                        <span className="inline-flex items-center gap-1 self-start rounded-full border border-border/60 bg-background px-2 py-0.5 text-[10.5px] font-medium text-foreground/70">
-                          <Phone className="h-3 w-3" aria-hidden />
-                          {dur}
-                        </span>
-                      ) : null}
-                    </div>
-                    <div className="shrink-0 text-right">
-                      <p className={`text-2xl font-semibold leading-none tabular-nums ${TEXT[s.color]}`}>
-                        {fmtNum(s.value)}
-                        {s.unit ? <span className="ml-1 text-[11px] font-normal text-muted-foreground">{s.unit}</span> : null}
-                      </p>
-                      {s.secondaryValue !== undefined ? (
-                        <p className="mt-1 text-[11px] font-medium tabular-nums text-foreground/80">
-                          {fmtNum(s.secondaryValue)}
-                          {s.secondaryLabel ? <span className="ml-1 font-normal text-muted-foreground">{s.secondaryLabel}</span> : null}
-                        </p>
-                      ) : null}
-                      <p className="mt-1 text-[11px] tabular-nums text-muted-foreground">
-                        {s.sub ?? `${fmtPct(pct)} of ${stages[0].label.toLowerCase()}`}
-                      </p>
-                      {pickedUpIdx >= 0 && i > pickedUpIdx && pickedUpValue > 0 ? (
-                        <p className="mt-0.5 text-[11px] font-medium tabular-nums text-sky-600 dark:text-sky-400">
-                          {fmtPct((s.value / pickedUpValue) * 100)} of {pickedUpLabel}
-                        </p>
-                      ) : null}
-                    </div>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="center" className="w-48">
+                      <DropdownMenuItem onClick={() => onStageClick!(s.key, "copy")}>
+                        <Copy className="h-4 w-4" />
+                        Copy Call IDs
+                      </DropdownMenuItem>
+                      <DropdownMenuItem onClick={() => onStageClick!(s.key, "review")}>
+                        <Headphones className="h-4 w-4" />
+                        Review Calls
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                ) : (
+                  <div className={blockClass} style={{ width: `${width}%` }}>
+                    {blockInner}
                   </div>
-                </div>
+                )}
               </div>
+
 
               {i < stages.length - 1 ? (() => {
                 const next = stages[i + 1];

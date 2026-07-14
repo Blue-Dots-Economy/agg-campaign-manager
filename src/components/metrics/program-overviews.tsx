@@ -85,7 +85,7 @@ export function KkbOverviewMetrics({
   previous?: KkbMetrics;
   perDay?: DailyPoint[];
   comparisonLabel?: string;
-  onFunnelStageClick?: (key: string) => void;
+  onFunnelStageClick?: (key: string, action: "copy" | "review") => void;
   stageDurations?: Record<string, number>;
 }) {
   const appRate = m.answeredSeekers > 0 ? (m.appliedSeekers / m.answeredSeekers) * 100 : 0;
@@ -229,7 +229,7 @@ export function DkbOverviewMetrics({
   previous?: DkbMetrics;
   perDay?: DailyPoint[];
   comparisonLabel?: string;
-  onFunnelStageClick?: (key: string) => void;
+  onFunnelStageClick?: (key: string, action: "copy" | "review") => void;
   stageDurations?: Record<string, number>;
 }) {
   const pickupPct = m.totalCalls > 0 ? (m.answeredCalls / m.totalCalls) * 100 : 0;
