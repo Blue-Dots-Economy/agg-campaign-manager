@@ -178,6 +178,9 @@ function UserLevelAnalysis() {
     let pending0 = 0;
     let pendingGt0 = 0;
     const fieldPassCounts = new Array(PROFILE_FIELD_LABELS.length).fill(0) as number[];
+    let emailCount = 0;
+    let phoneCount = 0;
+
     for (const s of seekers) {
       byStatus[s.status]++;
       if (s.profileStatus === "Complete") complete++;
@@ -187,6 +190,9 @@ function UserLevelAnalysis() {
       s.profileFieldChecks.forEach((c, i) => {
         if (c.passed) fieldPassCounts[i]++;
       });
+      if (s.emailPresent) emailCount++;
+      if (s.phonePresent) phoneCount++;
+
       if (s.userId) {
         profilesPerUser.set(s.userId, (profilesPerUser.get(s.userId) ?? 0) + 1);
         if (s.applications > 0) usersWithApps.add(s.userId);
@@ -221,6 +227,11 @@ function UserLevelAnalysis() {
         count: fieldPassCounts[i],
         pct: total ? Math.round((fieldPassCounts[i] / total) * 100) : 0,
       })),
+      emailPct: total ? Math.round((emailCount / total) * 100) : 0,
+      emailCount,
+      phonePct: total ? Math.round((phoneCount / total) * 100) : 0,
+      phoneCount,
+
 
       newLast7,
       appliedCounts: {
@@ -848,17 +859,35 @@ function UserLevelAnalysis() {
               ].map((f) => {
                 const fc = stats.fieldCompletion.find((x) => x.label === f.label);
                 return (
-                  <li key={f.label} className="flex items-start justify-between gap-3">
-                    <span>
-                      <span className="font-medium">{f.label}</span> — {f.desc}
-                    </span>
-                    <span className="whitespace-nowrap text-muted-foreground tabular-nums">
-                      {fc ? `${fc.count.toLocaleString()} (${fc.pct}%)` : ""}
-                    </span>
+                  <li key={f.label}>
+                    <div className="flex items-start justify-between gap-3">
+                      <span>
+                        <span className="font-medium">{f.label}</span> — {f.desc}
+                      </span>
+                      <span className="whitespace-nowrap text-muted-foreground tabular-nums">
+                        {fc ? `${fc.count.toLocaleString()} (${fc.pct}%)` : ""}
+                      </span>
+                    </div>
+                    {f.label === "Email or Phone" && (
+                      <div className="mt-1 ml-1 space-y-0.5 text-xs text-muted-foreground">
+                        <div className="flex justify-between gap-3">
+                          <span>Email filled</span>
+                          <span className="tabular-nums">
+                            {stats.emailCount.toLocaleString()} ({stats.emailPct}%)
+                          </span>
+                        </div>
+                        <div className="flex justify-between gap-3">
+                          <span>Phone filled</span>
+                          <span className="tabular-nums">
+                            {stats.phoneCount.toLocaleString()} ({stats.phonePct}%)
+                          </span>
+                        </div>
+                      </div>
+                    )}
                   </li>
-
                 );
               })}
+
             </ol>
             <div className="rounded border bg-muted/30 px-3 py-2 text-sm">
               Profiles complete (all {PROFILE_FIELD_LABELS.length} checks pass):{" "}
