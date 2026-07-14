@@ -608,7 +608,7 @@ function normalizeMetricGroups(value: unknown): MetricGroup[] {
 }
 
 export const fetchProgramAggregates = createServerFn({ method: "GET" })
-  .inputValidator((d: { program: ProgramId; state?: string; dateFrom?: string | null; dateTo?: string | null; campaignType?: string; campaign?: string | null }) => d)
+  .inputValidator((d: { program: ProgramId; state?: string; dateFrom?: string | null; dateTo?: string | null; campaignType?: string; campaign?: string | null; channel?: string }) => d)
   .handler(async ({ data }): Promise<AggregatePayload> => {
     const program = data.program;
     const state = data.state && data.state !== "all" ? data.state : "all";
