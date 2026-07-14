@@ -82,6 +82,8 @@ function ReviewHub() {
     return buildStatusMap(mapQuery.data, email);
   }, [mapQuery.data, email]);
 
+  const [page, setPage] = useState(1);
+  const PAGE_SIZE = 20;
   const [filters, setFilters] = useState<Filters>(() => {
     if (typeof window === "undefined") return DEFAULT_FILTERS;
     try {
