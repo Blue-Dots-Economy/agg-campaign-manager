@@ -107,7 +107,7 @@ function UserLevelAnalysis() {
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [profileFilter, setProfileFilter] = useState<string[]>([]);
-  const [appliedFilter, setAppliedFilter] = useState<string>("all");
+  const [appliedFilters, setAppliedFilters] = useState<string[]>([]);
   const [selected, setSelected] = useState<Seeker | null>(null);
   const [profileInfoOpen, setProfileInfoOpen] = useState(false);
   const fileRef = useRef<HTMLInputElement | null>(null);
