@@ -41,6 +41,13 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+} from "@/components/ui/dialog";
 import { getUpSeekers, type Seeker } from "@/lib/upSeekers.functions";
 
 const seekersQuery = queryOptions({
@@ -96,6 +103,8 @@ function UserLevelAnalysis() {
   const { data: seekers, refetch, isFetching } = useSuspenseQuery(seekersQuery);
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
+  const [selected, setSelected] = useState<Seeker | null>(null);
+
 
   const stats = useMemo(() => {
     const total = seekers.length;
@@ -133,7 +142,7 @@ function UserLevelAnalysis() {
     const q = search.trim().toLowerCase();
     return seekers.filter((s) => {
       if (statusFilter !== "all" && s.status.toLowerCase().replace(" ", "-") !== statusFilter) return false;
-      if (q && !s.name.toLowerCase().includes(q)) return false;
+      if (q && !(s.id.toLowerCase().includes(q) || s.userId.toLowerCase().includes(q) || s.name.toLowerCase().includes(q))) return false;
       return true;
     });
   }, [seekers, search, statusFilter]);
@@ -316,7 +325,7 @@ function UserLevelAnalysis() {
           <div className="relative flex-1">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <Input
-              placeholder="Search by seeker name..."
+              placeholder="Search by Profile ID or User ID..."
               className="pl-9 bg-muted/40 border-0"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
@@ -343,7 +352,7 @@ function UserLevelAnalysis() {
           <Table>
             <TableHeader>
               <TableRow className="bg-muted/40 hover:bg-muted/40">
-                <TableHead rowSpan={2} className="align-middle">Participant</TableHead>
+                <TableHead rowSpan={2} className="align-middle">Seeker</TableHead>
                 <TableHead rowSpan={2} className="align-middle">Joined</TableHead>
                 <TableHead rowSpan={2} className="align-middle">Profile Status</TableHead>
                 <TableHead colSpan={4} className="text-center border-l">Applied</TableHead>
@@ -368,8 +377,16 @@ function UserLevelAnalysis() {
                 return (
                   <TableRow key={p.id}>
                     <TableCell className="font-semibold">
-                      {p.name}
-                      {p.role && <div className="text-xs text-muted-foreground font-normal">{p.role}</div>}
+                      <button
+                        type="button"
+                        onClick={() => setSelected(p)}
+                        className="text-left hover:underline text-primary font-mono text-xs"
+                      >
+                        {p.id}
+                      </button>
+                      <div className="text-[11px] text-muted-foreground font-normal font-mono mt-0.5">
+                        User: {p.userId || "—"}
+                      </div>
                     </TableCell>
                     <TableCell className="text-muted-foreground">{p.createdOn || "—"}</TableCell>
                     <TableCell>
@@ -421,6 +438,22 @@ function UserLevelAnalysis() {
           )}
         </div>
       </div>
+
+      <Dialog open={!!selected} onOpenChange={(open) => !open && setSelected(null)}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle className="font-mono text-sm">
+              Profile {selected?.id}
+            </DialogTitle>
+            <DialogDescription className="font-mono text-xs">
+              User ID: {selected?.userId || "—"}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="py-10 text-center text-sm text-muted-foreground">
+            Profile fields will be shown here once confirmed.
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
