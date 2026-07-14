@@ -176,8 +176,25 @@ function isLocationMeaningful(location: string, district: string, state: string)
   return !combos.has(loc);
 }
 
+const INVALID_NAMES = new Set(
+  [
+    "अज्ञात",
+    "unknown",
+    "उपलब्ध नहीं",
+    "उपयोगकर्ता",
+    "अभी नाम नहीं बतायाअ",
+    "Unnamed Profile",
+    "Unknown",
+  ].map(norm),
+);
+
+function isNameValid(name: string): boolean {
+  const n = norm(name);
+  return n.length > 0 && !INVALID_NAMES.has(n);
+}
+
 /** Profile completeness rules:
- *  1) name not blank
+ *  1) name not blank and not a placeholder/unknown value
  *  2) location not blank and not just city/state name(s)
  *  3) email OR phone filled
  *  4) age not blank
@@ -196,7 +213,7 @@ function computeProfileChecks(r: {
   salary: string;
 }): { passed: number; total: number } {
   const checks = [
-    r.name.trim().length > 0,
+    isNameValid(r.name),
     isLocationMeaningful(r.location, r.district, r.state),
     r.email.trim().length > 0 || r.phone.trim().length > 0,
     r.age.trim().length > 0,
