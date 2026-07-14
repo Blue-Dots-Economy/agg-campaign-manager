@@ -3,7 +3,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { format } from "date-fns";
-import { Search, ArrowRight, ExternalLink, ShieldAlert, ChevronLeft, ChevronRight } from "lucide-react";
+import { Search, ArrowRight, ExternalLink, ShieldAlert, ChevronLeft, ChevronRight, ChevronDown } from "lucide-react";
 import { useProgram } from "@/programs/context";
 import { useCampaignList } from "@/programs/useProgramAggregates";
 import { humanizeCampaignType } from "@/lib/campaign-name";
