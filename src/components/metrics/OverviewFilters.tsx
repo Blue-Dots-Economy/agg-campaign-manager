@@ -142,6 +142,30 @@ export function OverviewFilters({
         </div>
       )}
 
+      {/* Channel segmented control (KKB only) */}
+      {showChannel && (
+        <div className="inline-flex rounded-md border border-border bg-card p-0.5 text-xs">
+          {CHANNEL_OPTIONS.map((opt) => {
+            const active = value.channel === opt.value;
+            return (
+              <button
+                key={opt.value}
+                type="button"
+                onClick={() => onChange({ ...value, channel: opt.value })}
+                className={cn(
+                  "px-3 py-1.5 rounded transition-colors",
+                  active
+                    ? "bg-primary text-primary-foreground"
+                    : "text-muted-foreground hover:text-foreground",
+                )}
+              >
+                {opt.label}
+              </button>
+            );
+          })}
+        </div>
+      )}
+
       {/* Date range */}
       <Popover open={open} onOpenChange={setOpen}>
         <PopoverTrigger asChild>
