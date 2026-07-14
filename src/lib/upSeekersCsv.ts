@@ -19,10 +19,58 @@ export type Seeker = {
   recommendedAction: string;
 };
 
-const STORAGE_KEY = "up-seekers-csv-v1";
-const META_KEY = "up-seekers-csv-meta-v1";
+const DB_NAME = "up-seekers-db";
+const DB_VERSION = 1;
+const STORE = "csv";
+const CSV_KEY = "current-csv";
+const META_KEY_IDB = "current-meta";
+// Legacy localStorage keys (migrated away from due to 5MB quota).
+const LS_STORAGE_KEY = "up-seekers-csv-v1";
+const LS_META_KEY = "up-seekers-csv-meta-v1";
 
 export type CsvMeta = { name: string; uploadedAt: string; rows: number };
+
+function openDb(): Promise<IDBDatabase> {
+  return new Promise((resolve, reject) => {
+    const req = indexedDB.open(DB_NAME, DB_VERSION);
+    req.onupgradeneeded = () => {
+      const db = req.result;
+      if (!db.objectStoreNames.contains(STORE)) db.createObjectStore(STORE);
+    };
+    req.onsuccess = () => resolve(req.result);
+    req.onerror = () => reject(req.error);
+  });
+}
+
+async function idbGet<T>(key: string): Promise<T | undefined> {
+  const db = await openDb();
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(STORE, "readonly");
+    const req = tx.objectStore(STORE).get(key);
+    req.onsuccess = () => resolve(req.result as T | undefined);
+    req.onerror = () => reject(req.error);
+  });
+}
+
+async function idbSet(key: string, value: unknown): Promise<void> {
+  const db = await openDb();
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(STORE, "readwrite");
+    tx.objectStore(STORE).put(value, key);
+    tx.oncomplete = () => resolve();
+    tx.onerror = () => reject(tx.error);
+  });
+}
+
+async function idbDel(key: string): Promise<void> {
+  const db = await openDb();
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(STORE, "readwrite");
+    tx.objectStore(STORE).delete(key);
+    tx.oncomplete = () => resolve();
+    tx.onerror = () => reject(tx.error);
+  });
+}
 
 // Minimal RFC4180-ish CSV parser (handles quoted fields with commas/newlines/escaped quotes)
 function parseCsv(text: string): string[][] {
@@ -155,22 +203,7 @@ export function parseSeekersCsv(text: string): Seeker[] {
   return out;
 }
 
-export function loadSeekers(): { seekers: Seeker[]; meta: CsvMeta } {
-  if (typeof window !== "undefined") {
-    try {
-      const stored = window.localStorage.getItem(STORAGE_KEY);
-      const metaRaw = window.localStorage.getItem(META_KEY);
-      if (stored) {
-        const seekers = parseSeekersCsv(stored);
-        const meta: CsvMeta = metaRaw
-          ? JSON.parse(metaRaw)
-          : { name: "Uploaded CSV", uploadedAt: "", rows: seekers.length };
-        return { seekers, meta };
-      }
-    } catch {
-      /* fall through to bundled */
-    }
-  }
+function bundledResult(): { seekers: Seeker[]; meta: CsvMeta } {
   const seekers = parseSeekersCsv(bundledCsv);
   return {
     seekers,
@@ -178,23 +211,60 @@ export function loadSeekers(): { seekers: Seeker[]; meta: CsvMeta } {
   };
 }
 
-export function saveUploadedCsv(
+/** Synchronous initial load — returns the bundled CSV. Use `loadSeekersAsync` after mount to pick up any IndexedDB-persisted upload. */
+export function loadSeekers(): { seekers: Seeker[]; meta: CsvMeta } {
+  return bundledResult();
+}
+
+export async function loadSeekersAsync(): Promise<{ seekers: Seeker[]; meta: CsvMeta }> {
+  if (typeof window === "undefined" || typeof indexedDB === "undefined") return bundledResult();
+  try {
+    // One-time migration from the old localStorage entries.
+    try {
+      const legacyText = window.localStorage.getItem(LS_STORAGE_KEY);
+      if (legacyText) {
+        const legacyMeta = window.localStorage.getItem(LS_META_KEY);
+        await idbSet(CSV_KEY, legacyText);
+        if (legacyMeta) await idbSet(META_KEY_IDB, JSON.parse(legacyMeta));
+        window.localStorage.removeItem(LS_STORAGE_KEY);
+        window.localStorage.removeItem(LS_META_KEY);
+      }
+    } catch {
+      /* ignore migration errors */
+    }
+
+    const stored = await idbGet<string>(CSV_KEY);
+    if (!stored) return bundledResult();
+    const seekers = parseSeekersCsv(stored);
+    const meta =
+      (await idbGet<CsvMeta>(META_KEY_IDB)) ?? {
+        name: "Uploaded CSV",
+        uploadedAt: "",
+        rows: seekers.length,
+      };
+    return { seekers, meta };
+  } catch {
+    return bundledResult();
+  }
+}
+
+export async function saveUploadedCsv(
   name: string,
   text: string,
-): { seekers: Seeker[]; meta: CsvMeta; persisted: boolean } {
+): Promise<{ seekers: Seeker[]; meta: CsvMeta; persisted: boolean }> {
   const seekers = parseSeekersCsv(text);
-  let persisted = false;
   const meta: CsvMeta = { name, uploadedAt: new Date().toISOString(), rows: seekers.length };
-  if (typeof window !== "undefined") {
+  let persisted = false;
+  if (typeof window !== "undefined" && typeof indexedDB !== "undefined") {
     try {
-      window.localStorage.setItem(STORAGE_KEY, text);
-      window.localStorage.setItem(META_KEY, JSON.stringify({ ...meta, persisted: true }));
+      await idbSet(CSV_KEY, text);
+      await idbSet(META_KEY_IDB, meta);
       persisted = true;
     } catch {
-      // Quota exceeded — CSV too large for localStorage. Keep in-memory only.
+      // Storage failed (quota or disabled). Keep the parsed data in-memory only.
       try {
-        window.localStorage.removeItem(STORAGE_KEY);
-        window.localStorage.removeItem(META_KEY);
+        await idbDel(CSV_KEY);
+        await idbDel(META_KEY_IDB);
       } catch {
         /* ignore */
       }
@@ -203,10 +273,15 @@ export function saveUploadedCsv(
   return { seekers, meta, persisted };
 }
 
-export function resetToBundled(): { seekers: Seeker[]; meta: CsvMeta } {
-  if (typeof window !== "undefined") {
-    window.localStorage.removeItem(STORAGE_KEY);
-    window.localStorage.removeItem(META_KEY);
+export async function resetToBundled(): Promise<{ seekers: Seeker[]; meta: CsvMeta }> {
+  if (typeof window !== "undefined" && typeof indexedDB !== "undefined") {
+    try {
+      await idbDel(CSV_KEY);
+      await idbDel(META_KEY_IDB);
+    } catch {
+      /* ignore */
+    }
   }
-  return loadSeekers();
+  return bundledResult();
 }
+
