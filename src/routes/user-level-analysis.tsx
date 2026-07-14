@@ -853,9 +853,10 @@ function UserLevelAnalysis() {
                       <span className="font-medium">{f.label}</span> — {f.desc}
                     </span>
                     <span className="whitespace-nowrap text-muted-foreground tabular-nums">
-                      {fc ? `${fc.pct}%` : ""}
+                      {fc ? `${fc.count.toLocaleString()} (${fc.pct}%)` : ""}
                     </span>
                   </li>
+
                 );
               })}
             </ol>
