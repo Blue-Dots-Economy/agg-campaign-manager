@@ -188,6 +188,7 @@ export async function performSync(program: ProgramId, opts?: { force?: boolean }
       name: string;
       sheet_id: string;
       tab_name: string | null;
+      channel: string | null;
     }>;
 
     const errors: SyncResult["errors"] = [];
