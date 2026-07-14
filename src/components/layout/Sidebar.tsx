@@ -18,9 +18,9 @@ import { cn } from "@/lib/utils";
 
 
 const NAV = [
+  { to: "/user-level-analysis", label: "User Overview", icon: Users },
   { to: "/", label: "Campaign Analysis", icon: LayoutDashboard },
   { to: "/review", label: "Transcript & Call Review", icon: Headphones },
-  { to: "/user-level-analysis", label: "User Overview", icon: Users },
   { to: "/campaigns", label: "Campaigns", icon: Megaphone },
   { to: "/launch", label: "Launch", icon: Rocket },
   { to: "/settings", label: "Settings", icon: Settings },
