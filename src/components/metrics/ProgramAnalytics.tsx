@@ -197,7 +197,8 @@ export function ProgramAnalytics({
 
   const comparisonLabel = comparison ? `vs ${comparison.label} avg` : undefined;
 
-  const handleStageClick = async (stage: string) => {
+  const handleStageClick = async (stage: string, action: "copy" | "review") => {
+    let ids: string[] = [];
     try {
       const res = await fetchIds({
         data: {
@@ -210,31 +211,29 @@ export function ProgramAnalytics({
           stage,
         },
       });
-      const ids: string[] = res?.ids ?? [];
-      if (!ids.length) {
-        toast.message("No call IDs for this stage");
-        return;
-      }
-      const ok = await copyText(ids.join(", "));
-      if (ok) {
-        toast.success(
-          `Copied ${ids.length.toLocaleString()} call ID${ids.length === 1 ? "" : "s"}`,
-          {
-            description: "Paste into the review hub, or open it now.",
-            action: {
-              label: "Open Review hub",
-              onClick: () => {
-                try { window.sessionStorage.setItem("review_prefill_ids", ids.join(" ")); } catch { /* ignore */ }
-                navigate({ to: "/review", search: { prefill: "1" } });
-              },
-            },
-          },
-        );
-      } else {
-        toast.error("Couldn't copy to clipboard");
-      }
+      ids = res?.ids ?? [];
     } catch {
       toast.error("Couldn't fetch call IDs");
+      return;
+    }
+    if (!ids.length) {
+      toast.message("No call IDs for this stage");
+      return;
+    }
+    if (action === "review") {
+      try { window.sessionStorage.setItem("bulk_review_queue", JSON.stringify(ids)); } catch { /* ignore */ }
+      toast.success(`Reviewing ${ids.length.toLocaleString()} call${ids.length === 1 ? "" : "s"} from this stage`);
+      navigate({ to: "/review/$callId", params: { callId: ids[0] }, search: { bulk: "1" } });
+      return;
+    }
+    const ok = await copyText(ids.join(", "));
+    if (ok) {
+      toast.success(
+        `Copied ${ids.length.toLocaleString()} call ID${ids.length === 1 ? "" : "s"}`,
+        { description: "Paste into the Review hub search, or use “Review Calls” to open them directly." },
+      );
+    } else {
+      toast.error("Couldn't copy to clipboard");
     }
   };
 
