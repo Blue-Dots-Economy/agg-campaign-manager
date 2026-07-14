@@ -188,12 +188,14 @@ export async function performSync(program: ProgramId, opts?: { force?: boolean }
       name: string;
       sheet_id: string;
       tab_name: string | null;
+      channel: string | null;
     }>;
 
     const errors: SyncResult["errors"] = [];
     type UpsertRow = {
       program: ProgramId;
       connection_id: string;
+      channel: string;
       call_id: string;
       campaign_day: string;
       intent_score: number | null;
@@ -255,6 +257,7 @@ export async function performSync(program: ProgramId, opts?: { force?: boolean }
                 pageRows.push({
                   program,
                   connection_id: c.id,
+                  channel: c.channel ?? "outbound",
                   call_id: callId,
                   campaign_day: mapped.campaign_day || "",
                   intent_score: Number.isFinite(mapped["Intent Score"]) ? mapped["Intent Score"] : null,
