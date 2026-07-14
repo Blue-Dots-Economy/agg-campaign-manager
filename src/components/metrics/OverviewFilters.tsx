@@ -235,7 +235,7 @@ export function OverviewFilters({
           variant="ghost"
           size="sm"
           className="h-8 gap-1 text-xs text-muted-foreground"
-          onClick={() => onChange({ state: "all", dateFrom: null, dateTo: null, campaignType: "all" })}
+          onClick={() => onChange({ state: "all", dateFrom: null, dateTo: null, campaignType: "all", channel: "all" })}
         >
           <X className="h-3.5 w-3.5" />
           Clear
