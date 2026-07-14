@@ -30,7 +30,7 @@ export function Sidebar() {
   const { config, programId, setProgramId } = useProgram();
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const navigate = useNavigate();
-  const { logout, isAdmin } = useAuth();
+  const { logout } = useAuth();
   const listFn = useServerFn(listConnections);
   const { data: conns } = useQuery({
     queryKey: ["connections", programId],
