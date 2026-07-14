@@ -178,6 +178,9 @@ function UserLevelAnalysis() {
     let pending0 = 0;
     let pendingGt0 = 0;
     const fieldPassCounts = new Array(PROFILE_FIELD_LABELS.length).fill(0) as number[];
+    let emailCount = 0;
+    let phoneCount = 0;
+
     for (const s of seekers) {
       byStatus[s.status]++;
       if (s.profileStatus === "Complete") complete++;
