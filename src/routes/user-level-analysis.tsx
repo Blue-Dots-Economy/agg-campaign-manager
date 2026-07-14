@@ -1,6 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { queryOptions, useSuspenseQuery } from "@tanstack/react-query";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   Users,
   UserPlus,
@@ -16,6 +15,8 @@ import {
   Moon,
   Search,
   ChevronDown,
+  Upload,
+  RotateCcw,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -25,6 +26,7 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
+  DropdownMenuSeparator,
 } from "@/components/ui/dropdown-menu";
 import {
   Select,
@@ -48,23 +50,16 @@ import {
   DialogTitle,
   DialogDescription,
 } from "@/components/ui/dialog";
-import { getUpSeekers, type Seeker } from "@/lib/upSeekers.functions";
-
-const seekersQuery = queryOptions({
-  queryKey: ["up-seekers"],
-  queryFn: () => getUpSeekers(),
-  staleTime: 5 * 60_000,
-});
+import {
+  loadSeekers,
+  saveUploadedCsv,
+  resetToBundled,
+  type Seeker,
+  type CsvMeta,
+} from "@/lib/upSeekersCsv";
 
 export const Route = createFileRoute("/user-level-analysis")({
-  loader: ({ context }) => context.queryClient.ensureQueryData(seekersQuery),
   component: UserLevelAnalysis,
-  errorComponent: ({ error }) => (
-    <div className="p-6 text-sm text-rose-600">Failed to load seekers: {error.message}</div>
-  ),
-  pendingComponent: () => (
-    <div className="p-6 text-sm text-muted-foreground">Loading UP Job Seekers…</div>
-  ),
 });
 
 const STATUS_STYLES: Record<Seeker["status"], string> = {
