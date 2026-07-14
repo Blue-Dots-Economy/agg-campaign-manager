@@ -52,6 +52,7 @@ import {
 } from "@/components/ui/dialog";
 import {
   loadSeekers,
+  loadSeekersAsync,
   saveUploadedCsv,
   resetToBundled,
   type Seeker,
