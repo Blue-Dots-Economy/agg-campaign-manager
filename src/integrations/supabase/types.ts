@@ -40,6 +40,7 @@ export type Database = {
           phases_reached: string | null
           phone: string | null
           program: string
+          row_hash: string | null
           synced_at: string
           talent_insights_shown: string | null
           tried_to_apply: boolean | null
@@ -69,6 +70,7 @@ export type Database = {
           phases_reached?: string | null
           phone?: string | null
           program: string
+          row_hash?: string | null
           synced_at?: string
           talent_insights_shown?: string | null
           tried_to_apply?: boolean | null
@@ -98,6 +100,7 @@ export type Database = {
           phases_reached?: string | null
           phone?: string | null
           program?: string
+          row_hash?: string | null
           synced_at?: string
           talent_insights_shown?: string | null
           tried_to_apply?: boolean | null
