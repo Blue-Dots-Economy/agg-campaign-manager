@@ -10,7 +10,6 @@ import {
   Briefcase,
   Plug,
   Bot,
-  ClipboardCheck,
   Headphones,
   UserCog,
   LogOut,
@@ -27,7 +26,6 @@ import { useAuth } from "@/auth/context";
 
 const NAV = [
   { to: "/", label: "Overview", icon: LayoutDashboard },
-  { to: "/campaign-review", label: "Campaign review", icon: ClipboardCheck },
   { to: "/review", label: "Review hub", icon: Headphones },
   { to: "/campaigns", label: "Campaigns", icon: Megaphone },
   { to: "/launch", label: "Launch", icon: Rocket },
