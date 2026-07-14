@@ -221,25 +221,31 @@ function TranscriptReview() {
       const newCount = sessionReviewed + 1;
       setSessionReviewed(newCount);
       try { window.sessionStorage.setItem("reviews_done_session", String(newCount)); } catch { /* ignore */ }
+      playSwoosh();
       if (bulkMode) {
-        try {
-          const raw = sessionStorage.getItem("bulk_review_queue");
-          const queue: string[] = raw ? JSON.parse(raw) : [];
-          const idx = queue.indexOf(callId);
-          const next = idx >= 0 && idx < queue.length - 1 ? queue[idx + 1] : null;
-          const remaining = queue.length - (idx + 1);
-          toast.success(praise(newCount, !!next, queue.length), next ? { description: `${remaining} ${remaining === 1 ? "call" : "calls"} to go` } : undefined);
-          if (next) { navigate({ to: "/review/$callId", params: { callId: next }, search: { bulk: "1" } }); return; }
-          sessionStorage.removeItem("bulk_review_queue");
-          navigate({ to: "/review" });
-          return;
-        } catch { /* ignore */ }
+        const raw = sessionStorage.getItem("bulk_review_queue");
+        const queue: string[] = raw ? JSON.parse(raw) : [];
+        const idx = queue.indexOf(callId);
+        const next = idx >= 0 && idx < queue.length - 1 ? queue[idx + 1] : null;
+        const remaining = queue.length - (idx + 1);
+        const milestone = !next || (newCount > 0 && newCount % 10 === 0);
+        toast.success(praise(newCount, !!next, queue.length), next ? { description: `${remaining} ${remaining === 1 ? "call" : "calls"} to go` } : undefined);
+        setCelebrate(milestone ? "milestone" : "normal");
+        window.setTimeout(() => {
+          if (next) {
+            navigate({ to: "/review/$callId", params: { callId: next }, search: { bulk: "1" } });
+          } else {
+            try { sessionStorage.removeItem("bulk_review_queue"); } catch { /* ignore */ }
+            navigate({ to: "/review" });
+          }
+        }, milestone ? 850 : 450);
+        return;
       }
       toast.success("Review submitted — nice work!");
-      navigate({ to: "/review" });
+      setCelebrate("normal");
+      window.setTimeout(() => navigate({ to: "/review" }), 450);
     } catch (e) {
       toast.error(`Failed to submit: ${e instanceof Error ? e.message : "Try again."}`);
-    } finally {
       setSubmitting(false);
     }
   }
