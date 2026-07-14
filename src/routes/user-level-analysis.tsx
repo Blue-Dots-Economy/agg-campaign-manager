@@ -106,6 +106,7 @@ function UserLevelAnalysis() {
   const [profileFilter, setProfileFilter] = useState<string>("all");
   const [appliedFilter, setAppliedFilter] = useState<string>("all");
   const [selected, setSelected] = useState<Seeker | null>(null);
+  const [profileInfoOpen, setProfileInfoOpen] = useState(false);
   const fileRef = useRef<HTMLInputElement | null>(null);
 
   // Hydrate from IndexedDB after mount (SSR-safe)
