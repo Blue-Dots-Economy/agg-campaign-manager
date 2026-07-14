@@ -21,16 +21,16 @@ const GROUPS = [
   {
     title: "Program, Ops & Biz",
     items: [
-      { to: "/user-level-analysis", label: "User Overview", icon: Users },
-      { to: "/review", label: "Transcript & Call Review", icon: Headphones },
-      { to: "/launch", label: "Launch A Campaign", icon: Rocket },
+      { to: "/user-level-analysis", label: "User Overview", sub: undefined, icon: Users },
+      { to: "/review", label: "Transcript & Call Review", sub: undefined, icon: Headphones },
+      { to: "/launch", label: "Launch A Campaign", sub: undefined, icon: Rocket },
     ],
   },
   {
     title: "Product & Tech",
     items: [
       { to: "/", label: "Campaign Analysis", sub: "Make it Bot & Campaign Overview", icon: LayoutDashboard },
-      { to: "/campaigns", label: "Campaign Level Analysis", icon: Megaphone },
+      { to: "/campaigns", label: "Campaign Level Analysis", sub: undefined, icon: Megaphone },
     ],
   },
 ] as const;
