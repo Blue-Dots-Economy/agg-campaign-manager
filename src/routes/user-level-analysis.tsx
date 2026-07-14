@@ -177,12 +177,16 @@ function UserLevelAnalysis() {
     let rejectedGt0 = 0;
     let pending0 = 0;
     let pendingGt0 = 0;
+    const fieldPassCounts = new Array(PROFILE_FIELD_LABELS.length).fill(0) as number[];
     for (const s of seekers) {
       byStatus[s.status]++;
       if (s.profileStatus === "Complete") complete++;
       if (s.applications > 0) withApps++;
       totalApps += s.applications;
       totalCompletion += s.profileCompletion;
+      s.profileFieldChecks.forEach((c, i) => {
+        if (c.passed) fieldPassCounts[i]++;
+      });
       if (s.userId) {
         profilesPerUser.set(s.userId, (profilesPerUser.get(s.userId) ?? 0) + 1);
         if (s.applications > 0) usersWithApps.add(s.userId);
@@ -194,6 +198,7 @@ function UserLevelAnalysis() {
       if (s.rejected === 0) rejected0++; else rejectedGt0++;
       if (pending === 0) pending0++; else pendingGt0++;
     }
+
     const uniqueUsers = profilesPerUser.size;
     let usersMulti = 0;
     for (const count of profilesPerUser.values()) if (count > 1) usersMulti++;
@@ -210,7 +215,13 @@ function UserLevelAnalysis() {
       usersWithAppsCount: usersWithApps.size,
       pctUsersWithApps: uniqueUsers ? Math.round((usersWithApps.size / uniqueUsers) * 100) : 0,
       avgAppsPerSeeker: total ? (totalApps / total).toFixed(2) : "0",
-      avgCompletion: total ? Math.round(totalCompletion / total) : 0,
+      avgCompletion: total ? Math.round((complete / total) * 100) : 0,
+      fieldCompletion: PROFILE_FIELD_LABELS.map((label, i) => ({
+        label,
+        count: fieldPassCounts[i],
+        pct: total ? Math.round((fieldPassCounts[i] / total) * 100) : 0,
+      })),
+
       newLast7,
       appliedCounts: {
         total0,
@@ -823,19 +834,34 @@ function UserLevelAnalysis() {
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-3">
-            <ol className="list-decimal pl-5 space-y-1 text-sm">
-              <li><span className="font-medium">Name</span> — not blank and not a placeholder (Unknown, अज्ञात, etc.)</li>
-              <li><span className="font-medium">Location</span> — not blank and not just city / state / their combination</li>
-              <li><span className="font-medium">Email or Phone</span> — at least one filled</li>
-              <li><span className="font-medium">Age</span> — not blank</li>
-              <li><span className="font-medium">Role</span> — not blank and not "any"</li>
-              <li><span className="font-medium">Expected Salary</span> — not blank</li>
+            <ol className="list-decimal pl-5 space-y-1.5 text-sm">
+              {[
+                { label: "Name", desc: "not blank and not a placeholder (Unknown, अज्ञात, etc.)" },
+                { label: "Location", desc: "not blank and not just city / state / their combination" },
+                { label: "Email or Phone", desc: "at least one filled" },
+                { label: "Age", desc: "not blank" },
+                { label: "Role", desc: 'not blank and not "any"' },
+                { label: "Expected Salary", desc: "not blank" },
+              ].map((f) => {
+                const fc = stats.fieldCompletion.find((x) => x.label === f.label);
+                return (
+                  <li key={f.label} className="flex items-start justify-between gap-3">
+                    <span>
+                      <span className="font-medium">{f.label}</span> — {f.desc}
+                    </span>
+                    <span className="whitespace-nowrap text-muted-foreground tabular-nums">
+                      {fc ? `${fc.pct}%` : ""}
+                    </span>
+                  </li>
+                );
+              })}
             </ol>
             <div className="rounded border bg-muted/30 px-3 py-2 text-sm">
-              Average completion across current dataset:{" "}
+              Profiles complete (all {PROFILE_FIELD_LABELS.length} checks pass):{" "}
               <span className="font-semibold">{stats.avgCompletion}%</span>
             </div>
           </div>
+
         </DialogContent>
       </Dialog>
     </div>
