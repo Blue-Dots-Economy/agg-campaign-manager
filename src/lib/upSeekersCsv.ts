@@ -131,7 +131,36 @@ function isTestRow(v: string | undefined): boolean {
   return ["1", "1.0", "true", "yes", "y"].includes(normalized);
 }
 
+function computeStatus(profileAge: number | null, lastAppliedAge: number | null): Seeker["status"] {
+  const p = profileAge ?? 9999;
+  if (p <= 7) return "New";
+  const la = lastAppliedAge;
+  if (la !== null && la <= 30) return "Active";
+  if (la !== null && la >= 31 && la <= 90) return "At Risk";
+  return "Inactive";
+}
+
+function computeAction(
+  status: Seeker["status"],
+  profileStatus: Seeker["profileStatus"],
+  lastAppliedAge: number | null,
+  csvAction: string,
+): string {
+  if (profileStatus === "Incomplete") return "Complete Profile";
+  switch (status) {
+    case "New":
+    case "At Risk":
+      return "Automated Call";
+    case "Inactive":
+      return "Manual Call";
+    case "Active":
+      if (lastAppliedAge !== null && lastAppliedAge > 14) return "Automated Call";
+      return csvAction?.trim() || "No Action";
+  }
+}
+
 function norm(s: string | undefined): string {
+
   return (s ?? "").trim().toLowerCase().replace(/\s+/g, " ");
 }
 
