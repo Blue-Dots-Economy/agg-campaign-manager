@@ -27,6 +27,7 @@ export type Database = {
           campaign_date: string | null
           campaign_day: string
           campaign_type: string | null
+          channel: string
           city_campaign: string | null
           connection_id: string | null
           data: Json
@@ -55,6 +56,7 @@ export type Database = {
           campaign_date?: string | null
           campaign_day?: string
           campaign_type?: string | null
+          channel?: string
           city_campaign?: string | null
           connection_id?: string | null
           data: Json
@@ -83,6 +85,7 @@ export type Database = {
           campaign_date?: string | null
           campaign_day?: string
           campaign_type?: string | null
+          channel?: string
           city_campaign?: string | null
           connection_id?: string | null
           data?: Json
@@ -301,6 +304,7 @@ export type Database = {
       }
       sheet_connections: {
         Row: {
+          channel: string
           created_at: string
           enabled: boolean
           id: string
@@ -314,6 +318,7 @@ export type Database = {
           tab_name: string | null
         }
         Insert: {
+          channel?: string
           created_at?: string
           enabled?: boolean
           id?: string
@@ -327,6 +332,7 @@ export type Database = {
           tab_name?: string | null
         }
         Update: {
+          channel?: string
           created_at?: string
           enabled?: boolean
           id?: string
