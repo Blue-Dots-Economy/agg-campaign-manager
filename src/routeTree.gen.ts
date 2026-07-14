@@ -20,10 +20,8 @@ import { Route as ConnectionsRouteImport } from './routes/connections'
 import { Route as CampaignsRouteImport } from './routes/campaigns'
 import { Route as AgentsRouteImport } from './routes/agents'
 import { Route as IndexRouteImport } from './routes/index'
-import { Route as ReviewIndexRouteImport } from './routes/review.index'
-import { Route as CampaignsIndexRouteImport } from './routes/campaigns.index'
-import { Route as ReviewCallIdRouteImport } from './routes/review.$callId'
-import { Route as CampaignsCampaignRouteImport } from './routes/campaigns.$campaign'
+import { Route as ReviewCallIdRouteImport } from './routes/review_.$callId'
+import { Route as CampaignsCampaignRouteImport } from './routes/campaigns_.$campaign'
 import { Route as ApiPublicHooksSyncSnapshotsRouteImport } from './routes/api/public/hooks/sync-snapshots'
 
 const SettingsRoute = SettingsRouteImport.update({
@@ -81,25 +79,15 @@ const IndexRoute = IndexRouteImport.update({
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
-const ReviewIndexRoute = ReviewIndexRouteImport.update({
-  id: '/',
-  path: '/',
-  getParentRoute: () => ReviewRoute,
-} as any)
-const CampaignsIndexRoute = CampaignsIndexRouteImport.update({
-  id: '/',
-  path: '/',
-  getParentRoute: () => CampaignsRoute,
-} as any)
 const ReviewCallIdRoute = ReviewCallIdRouteImport.update({
-  id: '/$callId',
-  path: '/$callId',
-  getParentRoute: () => ReviewRoute,
+  id: '/review_/$callId',
+  path: '/review/$callId',
+  getParentRoute: () => rootRouteImport,
 } as any)
 const CampaignsCampaignRoute = CampaignsCampaignRouteImport.update({
-  id: '/$campaign',
-  path: '/$campaign',
-  getParentRoute: () => CampaignsRoute,
+  id: '/campaigns_/$campaign',
+  path: '/campaigns/$campaign',
+  getParentRoute: () => rootRouteImport,
 } as any)
 const ApiPublicHooksSyncSnapshotsRoute =
   ApiPublicHooksSyncSnapshotsRouteImport.update({
@@ -111,54 +99,50 @@ const ApiPublicHooksSyncSnapshotsRoute =
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/agents': typeof AgentsRoute
-  '/campaigns': typeof CampaignsRouteWithChildren
+  '/campaigns': typeof CampaignsRoute
   '/connections': typeof ConnectionsRoute
   '/data': typeof DataRoute
   '/launch': typeof LaunchRoute
   '/login': typeof LoginRoute
-  '/review': typeof ReviewRouteWithChildren
+  '/review': typeof ReviewRoute
   '/reviewers': typeof ReviewersRoute
   '/schedule': typeof ScheduleRoute
   '/settings': typeof SettingsRoute
   '/campaigns/$campaign': typeof CampaignsCampaignRoute
   '/review/$callId': typeof ReviewCallIdRoute
-  '/campaigns/': typeof CampaignsIndexRoute
-  '/review/': typeof ReviewIndexRoute
   '/api/public/hooks/sync-snapshots': typeof ApiPublicHooksSyncSnapshotsRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/agents': typeof AgentsRoute
+  '/campaigns': typeof CampaignsRoute
   '/connections': typeof ConnectionsRoute
   '/data': typeof DataRoute
   '/launch': typeof LaunchRoute
   '/login': typeof LoginRoute
+  '/review': typeof ReviewRoute
   '/reviewers': typeof ReviewersRoute
   '/schedule': typeof ScheduleRoute
   '/settings': typeof SettingsRoute
   '/campaigns/$campaign': typeof CampaignsCampaignRoute
   '/review/$callId': typeof ReviewCallIdRoute
-  '/campaigns': typeof CampaignsIndexRoute
-  '/review': typeof ReviewIndexRoute
   '/api/public/hooks/sync-snapshots': typeof ApiPublicHooksSyncSnapshotsRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/agents': typeof AgentsRoute
-  '/campaigns': typeof CampaignsRouteWithChildren
+  '/campaigns': typeof CampaignsRoute
   '/connections': typeof ConnectionsRoute
   '/data': typeof DataRoute
   '/launch': typeof LaunchRoute
   '/login': typeof LoginRoute
-  '/review': typeof ReviewRouteWithChildren
+  '/review': typeof ReviewRoute
   '/reviewers': typeof ReviewersRoute
   '/schedule': typeof ScheduleRoute
   '/settings': typeof SettingsRoute
-  '/campaigns/$campaign': typeof CampaignsCampaignRoute
-  '/review/$callId': typeof ReviewCallIdRoute
-  '/campaigns/': typeof CampaignsIndexRoute
-  '/review/': typeof ReviewIndexRoute
+  '/campaigns_/$campaign': typeof CampaignsCampaignRoute
+  '/review_/$callId': typeof ReviewCallIdRoute
   '/api/public/hooks/sync-snapshots': typeof ApiPublicHooksSyncSnapshotsRoute
 }
 export interface FileRouteTypes {
@@ -177,24 +161,22 @@ export interface FileRouteTypes {
     | '/settings'
     | '/campaigns/$campaign'
     | '/review/$callId'
-    | '/campaigns/'
-    | '/review/'
     | '/api/public/hooks/sync-snapshots'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
     | '/agents'
+    | '/campaigns'
     | '/connections'
     | '/data'
     | '/launch'
     | '/login'
+    | '/review'
     | '/reviewers'
     | '/schedule'
     | '/settings'
     | '/campaigns/$campaign'
     | '/review/$callId'
-    | '/campaigns'
-    | '/review'
     | '/api/public/hooks/sync-snapshots'
   id:
     | '__root__'
@@ -209,25 +191,25 @@ export interface FileRouteTypes {
     | '/reviewers'
     | '/schedule'
     | '/settings'
-    | '/campaigns/$campaign'
-    | '/review/$callId'
-    | '/campaigns/'
-    | '/review/'
+    | '/campaigns_/$campaign'
+    | '/review_/$callId'
     | '/api/public/hooks/sync-snapshots'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AgentsRoute: typeof AgentsRoute
-  CampaignsRoute: typeof CampaignsRouteWithChildren
+  CampaignsRoute: typeof CampaignsRoute
   ConnectionsRoute: typeof ConnectionsRoute
   DataRoute: typeof DataRoute
   LaunchRoute: typeof LaunchRoute
   LoginRoute: typeof LoginRoute
-  ReviewRoute: typeof ReviewRouteWithChildren
+  ReviewRoute: typeof ReviewRoute
   ReviewersRoute: typeof ReviewersRoute
   ScheduleRoute: typeof ScheduleRoute
   SettingsRoute: typeof SettingsRoute
+  CampaignsCampaignRoute: typeof CampaignsCampaignRoute
+  ReviewCallIdRoute: typeof ReviewCallIdRoute
   ApiPublicHooksSyncSnapshotsRoute: typeof ApiPublicHooksSyncSnapshotsRoute
 }
 
@@ -310,33 +292,19 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/review/': {
-      id: '/review/'
-      path: '/'
-      fullPath: '/review/'
-      preLoaderRoute: typeof ReviewIndexRouteImport
-      parentRoute: typeof ReviewRoute
-    }
-    '/campaigns/': {
-      id: '/campaigns/'
-      path: '/'
-      fullPath: '/campaigns/'
-      preLoaderRoute: typeof CampaignsIndexRouteImport
-      parentRoute: typeof CampaignsRoute
-    }
-    '/review/$callId': {
-      id: '/review/$callId'
-      path: '/$callId'
+    '/review_/$callId': {
+      id: '/review_/$callId'
+      path: '/review/$callId'
       fullPath: '/review/$callId'
       preLoaderRoute: typeof ReviewCallIdRouteImport
-      parentRoute: typeof ReviewRoute
+      parentRoute: typeof rootRouteImport
     }
-    '/campaigns/$campaign': {
-      id: '/campaigns/$campaign'
-      path: '/$campaign'
+    '/campaigns_/$campaign': {
+      id: '/campaigns_/$campaign'
+      path: '/campaigns/$campaign'
       fullPath: '/campaigns/$campaign'
       preLoaderRoute: typeof CampaignsCampaignRouteImport
-      parentRoute: typeof CampaignsRoute
+      parentRoute: typeof rootRouteImport
     }
     '/api/public/hooks/sync-snapshots': {
       id: '/api/public/hooks/sync-snapshots'
@@ -348,45 +316,20 @@ declare module '@tanstack/react-router' {
   }
 }
 
-interface CampaignsRouteChildren {
-  CampaignsCampaignRoute: typeof CampaignsCampaignRoute
-  CampaignsIndexRoute: typeof CampaignsIndexRoute
-}
-
-const CampaignsRouteChildren: CampaignsRouteChildren = {
-  CampaignsCampaignRoute: CampaignsCampaignRoute,
-  CampaignsIndexRoute: CampaignsIndexRoute,
-}
-
-const CampaignsRouteWithChildren = CampaignsRoute._addFileChildren(
-  CampaignsRouteChildren,
-)
-
-interface ReviewRouteChildren {
-  ReviewCallIdRoute: typeof ReviewCallIdRoute
-  ReviewIndexRoute: typeof ReviewIndexRoute
-}
-
-const ReviewRouteChildren: ReviewRouteChildren = {
-  ReviewCallIdRoute: ReviewCallIdRoute,
-  ReviewIndexRoute: ReviewIndexRoute,
-}
-
-const ReviewRouteWithChildren =
-  ReviewRoute._addFileChildren(ReviewRouteChildren)
-
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AgentsRoute: AgentsRoute,
-  CampaignsRoute: CampaignsRouteWithChildren,
+  CampaignsRoute: CampaignsRoute,
   ConnectionsRoute: ConnectionsRoute,
   DataRoute: DataRoute,
   LaunchRoute: LaunchRoute,
   LoginRoute: LoginRoute,
-  ReviewRoute: ReviewRouteWithChildren,
+  ReviewRoute: ReviewRoute,
   ReviewersRoute: ReviewersRoute,
   ScheduleRoute: ScheduleRoute,
   SettingsRoute: SettingsRoute,
+  CampaignsCampaignRoute: CampaignsCampaignRoute,
+  ReviewCallIdRoute: ReviewCallIdRoute,
   ApiPublicHooksSyncSnapshotsRoute: ApiPublicHooksSyncSnapshotsRoute,
 }
 export const routeTree = rootRouteImport
