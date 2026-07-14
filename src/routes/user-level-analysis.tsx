@@ -18,7 +18,13 @@ import {
   Upload,
   RotateCcw,
   Info,
+  CalendarIcon,
 } from "lucide-react";
+import { format } from "date-fns";
+import type { DateRange } from "react-day-picker";
+import { Calendar } from "@/components/ui/calendar";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -74,6 +80,16 @@ const STATUS_STYLES: Record<Seeker["status"], string> = {
   Inactive: "bg-rose-50 text-rose-700 border-rose-200",
 };
 
+// Parses "M/D/YYYY" or "MM/DD/YYYY" strings from the CSV into a Date at midnight.
+function parseCreatedOn(s: string): Date | null {
+  if (!s) return null;
+  const parts = s.trim().split("/");
+  if (parts.length !== 3) return null;
+  const [m, d, y] = parts.map((p) => parseInt(p, 10));
+  if (!m || !d || !y) return null;
+  return new Date(y, m - 1, d);
+}
+
 function MetricTile({
   label,
   value,
@@ -108,6 +124,7 @@ function UserLevelAnalysis() {
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [profileFilter, setProfileFilter] = useState<string[]>([]);
   const [appliedFilters, setAppliedFilters] = useState<string[]>([]);
+  const [dateRange, setDateRange] = useState<DateRange | undefined>(undefined);
   const [selected, setSelected] = useState<Seeker | null>(null);
   const [profileInfoOpen, setProfileInfoOpen] = useState(false);
   const fileRef = useRef<HTMLInputElement | null>(null);
@@ -288,10 +305,24 @@ function UserLevelAnalysis() {
           (appliedFilters.includes("pending-gt0") && pending > 0);
         if (!matches) return false;
       }
+      if (dateRange?.from || dateRange?.to) {
+        const d = parseCreatedOn(s.createdOn);
+        if (!d) return false;
+        if (dateRange.from) {
+          const from = new Date(dateRange.from);
+          from.setHours(0, 0, 0, 0);
+          if (d < from) return false;
+        }
+        if (dateRange.to) {
+          const to = new Date(dateRange.to);
+          to.setHours(23, 59, 59, 999);
+          if (d > to) return false;
+        }
+      }
       if (q && !(s.id.toLowerCase().includes(q) || s.userId.toLowerCase().includes(q) || s.name.toLowerCase().includes(q))) return false;
       return true;
     });
-  }, [seekers, search, statusFilter, profileFilter, appliedFilters]);
+  }, [seekers, search, statusFilter, profileFilter, appliedFilters, dateRange]);
 
   const lifecycle = [
     {
@@ -677,6 +708,54 @@ function UserLevelAnalysis() {
               </DropdownMenuCheckboxItem>
             </DropdownMenuContent>
           </DropdownMenu>
+          <Popover>
+            <PopoverTrigger asChild>
+              <Button
+                variant="outline"
+                className={cn(
+                  "w-[240px] justify-start text-left font-normal",
+                  !dateRange?.from && "text-muted-foreground",
+                )}
+              >
+                <CalendarIcon className="mr-2 h-4 w-4" />
+                {dateRange?.from ? (
+                  dateRange.to ? (
+                    <>
+                      Joined: {format(dateRange.from, "LLL d, y")} – {format(dateRange.to, "LLL d, y")}
+                    </>
+                  ) : (
+                    <>Joined: {format(dateRange.from, "LLL d, y")}</>
+                  )
+                ) : (
+                  <span>Joined: Any date</span>
+                )}
+                {dateRange?.from && (
+                  <span
+                    role="button"
+                    tabIndex={0}
+                    onClick={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      setDateRange(undefined);
+                    }}
+                    className="ml-auto text-xs text-muted-foreground hover:text-foreground"
+                  >
+                    Clear
+                  </span>
+                )}
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-auto p-0" align="start">
+              <Calendar
+                mode="range"
+                selected={dateRange}
+                onSelect={setDateRange}
+                numberOfMonths={2}
+                initialFocus
+                className={cn("p-3 pointer-events-auto")}
+              />
+            </PopoverContent>
+          </Popover>
           <Select value={statusFilter} onValueChange={setStatusFilter}>
             <SelectTrigger className="w-[170px]">
               <SelectValue placeholder="User Status" />
