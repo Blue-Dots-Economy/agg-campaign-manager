@@ -10,7 +10,7 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
 
-export const Route = createFileRoute("/review/")({
+export const Route = createFileRoute("/review")({
   validateSearch: (s: Record<string, unknown>) => ({ prefill: typeof s.prefill === "string" ? s.prefill : undefined }),
   component: ReviewHub,
 });

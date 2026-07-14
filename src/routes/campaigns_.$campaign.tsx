@@ -19,7 +19,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 
-export const Route = createFileRoute("/campaigns/$campaign")({
+export const Route = createFileRoute("/campaigns_/$campaign")({
   validateSearch: (s: Record<string, unknown>) => ({
     date: typeof s.date === "string" ? s.date : undefined,
   }),

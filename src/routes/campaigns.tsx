@@ -21,7 +21,7 @@ import { exportBatchToStaging } from "@/lib/raya-export.functions";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 
-export const Route = createFileRoute("/campaigns/")({ component: CampaignsPage });
+export const Route = createFileRoute("/campaigns")({ component: CampaignsPage });
 
 const RECENT_WINDOW_DAYS = 2;
 const PAGE_SIZE = 12;
