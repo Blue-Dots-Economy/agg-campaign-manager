@@ -190,6 +190,9 @@ function UserLevelAnalysis() {
       s.profileFieldChecks.forEach((c, i) => {
         if (c.passed) fieldPassCounts[i]++;
       });
+      if (s.emailPresent) emailCount++;
+      if (s.phonePresent) phoneCount++;
+
       if (s.userId) {
         profilesPerUser.set(s.userId, (profilesPerUser.get(s.userId) ?? 0) + 1);
         if (s.applications > 0) usersWithApps.add(s.userId);
