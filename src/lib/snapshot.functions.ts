@@ -627,6 +627,7 @@ export const fetchProgramAggregates = createServerFn({ method: "GET" })
           _date_to: dateTo,
           _campaign_type: campaignType,
           _campaign: campaign,
+          _channel: data.channel ?? "all",
         });
         if (error) throw new Error(error.message);
         payload = (rpcData && typeof rpcData === "object" ? rpcData : {}) as AggregateRpcPayload;
