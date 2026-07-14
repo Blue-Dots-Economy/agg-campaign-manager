@@ -199,10 +199,12 @@ function UserLevelAnalysis() {
     return seekers.filter((s) => {
       if (statusFilter !== "all" && s.status.toLowerCase().replace(" ", "-") !== statusFilter) return false;
       if (profileFilter !== "all" && s.profileStatus.toLowerCase() !== profileFilter) return false;
+      if (appliedFilter === "applied" && s.applications <= 0) return false;
+      if (appliedFilter === "not-applied" && s.applications > 0) return false;
       if (q && !(s.id.toLowerCase().includes(q) || s.userId.toLowerCase().includes(q) || s.name.toLowerCase().includes(q))) return false;
       return true;
     });
-  }, [seekers, search, statusFilter, profileFilter]);
+  }, [seekers, search, statusFilter, profileFilter, appliedFilter]);
 
   const lifecycle = [
     {
