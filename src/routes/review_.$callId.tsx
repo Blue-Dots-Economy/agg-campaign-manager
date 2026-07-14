@@ -17,6 +17,7 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { cn } from "@/lib/utils";
+import { playSwoosh } from "@/lib/sfx";
 
 export const Route = createFileRoute("/review_/$callId")({
   validateSearch: (s: Record<string, unknown>) => ({ bulk: typeof s.bulk === "string" ? s.bulk : undefined }),
@@ -80,36 +81,6 @@ function praise(count: number, hasNext: boolean, total: number): string {
   return ENCOURAGERS[count % ENCOURAGERS.length];
 }
 
-function playSwoosh() {
-  try {
-    const AC = window.AudioContext || (window as unknown as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
-    if (!AC) return;
-    const ctx = new AC();
-    const now = ctx.currentTime;
-    const dur = 0.32;
-    const buffer = ctx.createBuffer(1, Math.floor(ctx.sampleRate * dur), ctx.sampleRate);
-    const data = buffer.getChannelData(0);
-    for (let i = 0; i < data.length; i++) data[i] = Math.random() * 2 - 1;
-    const src = ctx.createBufferSource();
-    src.buffer = buffer;
-    const filter = ctx.createBiquadFilter();
-    filter.type = "bandpass";
-    filter.Q.value = 0.7;
-    filter.frequency.setValueAtTime(500, now);
-    filter.frequency.exponentialRampToValueAtTime(3600, now + dur * 0.55);
-    filter.frequency.exponentialRampToValueAtTime(700, now + dur);
-    const gain = ctx.createGain();
-    gain.gain.setValueAtTime(0.0001, now);
-    gain.gain.exponentialRampToValueAtTime(0.22, now + 0.04);
-    gain.gain.exponentialRampToValueAtTime(0.0001, now + dur);
-    src.connect(filter);
-    filter.connect(gain);
-    gain.connect(ctx.destination);
-    src.start(now);
-    src.stop(now + dur);
-    src.onended = () => { try { ctx.close(); } catch { /* ignore */ } };
-  } catch { /* ignore */ }
-}
 
 function TranscriptReview() {
   const { callId } = Route.useParams();
@@ -238,12 +209,12 @@ function TranscriptReview() {
             try { sessionStorage.removeItem("bulk_review_queue"); } catch { /* ignore */ }
             navigate({ to: "/review" });
           }
-        }, milestone ? 850 : 450);
+        }, milestone ? 420 : 170);
         return;
       }
       toast.success("Review submitted — nice work!");
       setCelebrate("normal");
-      window.setTimeout(() => navigate({ to: "/review" }), 450);
+      window.setTimeout(() => navigate({ to: "/review" }), 170);
     } catch (e) {
       toast.error(`Failed to submit: ${e instanceof Error ? e.message : "Try again."}`);
       setSubmitting(false);
