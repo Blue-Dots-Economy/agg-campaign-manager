@@ -103,6 +103,8 @@ function UserLevelAnalysis() {
   const { data: seekers, refetch, isFetching } = useSuspenseQuery(seekersQuery);
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
+  const [selected, setSelected] = useState<Seeker | null>(null);
+
 
   const stats = useMemo(() => {
     const total = seekers.length;
