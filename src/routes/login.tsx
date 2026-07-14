@@ -54,6 +54,8 @@ function LoginPage() {
               value={email}
               onChange={(e) => { setEmail(e.target.value); setError(false); }}
               required
+              aria-invalid={error || undefined}
+              aria-describedby={error ? "login-error" : undefined}
             />
           </div>
           <div className="space-y-1.5">
@@ -64,10 +66,12 @@ function LoginPage() {
               autoComplete="current-password"
               value={password}
               onChange={(e) => { setPassword(e.target.value); setError(false); }}
+              aria-invalid={error || undefined}
+              aria-describedby={error ? "login-error" : undefined}
             />
           </div>
           {error && (
-            <p className="text-xs text-rose-600">Not an authorised email, or wrong admin password.</p>
+            <p id="login-error" role="alert" className="text-xs text-rose-600">Not an authorised email, or wrong admin password.</p>
           )}
           <Button type="submit" className="w-full">Sign in</Button>
           <p className="text-xs text-muted-foreground text-center">Reviewers sign in with your email. Admins also enter a password.</p>

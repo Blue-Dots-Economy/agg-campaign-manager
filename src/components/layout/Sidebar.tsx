@@ -54,11 +54,13 @@ export function Sidebar() {
           </div>
         </div>
 
-        <div className="mt-5 inline-flex rounded-lg bg-sidebar-accent p-1 w-full">
+        <div role="group" aria-label="Select program" className="mt-5 inline-flex rounded-lg bg-sidebar-accent p-1 w-full">
           {(["kkb", "dkb"] as const).map((id) => (
             <button
               key={id}
               onClick={() => setProgramId(id)}
+              aria-pressed={programId === id}
+              aria-label={`Show ${id.toUpperCase()} program`}
               className={cn(
                 "flex-1 text-xs font-medium py-1.5 rounded-md uppercase tracking-wide transition-colors",
                 programId === id
@@ -80,6 +82,7 @@ export function Sidebar() {
             <Link
               key={item.to}
               to={item.to}
+              aria-current={active ? "page" : undefined}
               className={cn(
                 "flex items-center gap-3 px-3 py-2 rounded-md text-sm transition-colors",
                 active

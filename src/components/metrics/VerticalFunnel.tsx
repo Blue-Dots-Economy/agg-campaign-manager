@@ -65,7 +65,7 @@ export function VerticalFunnel({
   const interactive = !!onStageClick;
   return (
     <div className={`rounded-xl border bg-card p-5 ${fill ? "flex h-full flex-col" : ""}`}>
-      {title ? <p className="mb-4 text-sm font-medium text-foreground">{title}</p> : null}
+      {title ? <h3 className="mb-4 text-sm font-medium text-foreground">{title}</h3> : null}
       <div className={fill ? "flex flex-1 flex-col justify-between gap-2" : "space-y-2"}>
         {stages.map((s, i) => {
           const pct = baseline > 0 ? Math.min(100, Math.max(0, (s.value / baseline) * 100)) : 0;
@@ -82,6 +82,7 @@ export function VerticalFunnel({
                   {...(interactive ? {
                     role: "button", tabIndex: 0,
                     title: `Copy call IDs that reached ${s.label}`,
+                    "aria-label": `Copy call IDs of calls that reached ${s.label}`,
                     onClick: () => onStageClick!(s.key),
                     onKeyDown: (e: React.KeyboardEvent<HTMLDivElement>) => {
                       if (e.key === "Enter" || e.key === " ") { e.preventDefault(); onStageClick!(s.key); }
@@ -103,7 +104,7 @@ export function VerticalFunnel({
                         ) : null}
                       </div>
                       {dur ? (
-                        <span className="inline-flex items-center gap-1 self-start rounded-full border border-border/60 bg-background/60 px-2 py-0.5 text-[10.5px] font-medium text-muted-foreground">
+                        <span className="inline-flex items-center gap-1 self-start rounded-full border border-border/60 bg-background px-2 py-0.5 text-[10.5px] font-medium text-foreground/70">
                           <Phone className="h-3 w-3" aria-hidden />
                           {dur}
                         </span>

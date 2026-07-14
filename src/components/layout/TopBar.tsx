@@ -2,6 +2,7 @@ import { Upload, Rocket, RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useProgram } from "@/programs/context";
 import { Link } from "@tanstack/react-router";
+import { MobileNav } from "./MobileNav";
 import {
   useSyncProgram,
   useProgramAggregates,
@@ -25,6 +26,7 @@ export function TopBar() {
 
   return (
     <header className="flex flex-wrap items-center justify-between gap-3 px-6 py-5 border-b bg-background">
+      <MobileNav />
       <div>
         <h1 className="text-xl font-semibold tracking-tight">Operation Rozgar</h1>
         <p className="text-sm text-muted-foreground mt-0.5">
