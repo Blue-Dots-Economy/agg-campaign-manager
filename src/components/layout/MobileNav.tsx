@@ -22,14 +22,25 @@ import { useProgram } from "@/programs/context";
 import { useAuth } from "@/auth/context";
 import { cn } from "@/lib/utils";
 
-const NAV = [
-  { to: "/user-level-analysis", label: "User Overview", icon: Users },
-  { to: "/", label: "Campaign Analysis", icon: LayoutDashboard },
-  { to: "/review", label: "Transcript & Call Review", icon: Headphones },
-  { to: "/campaigns", label: "Campaigns", icon: Megaphone },
-  { to: "/launch", label: "Launch", icon: Rocket },
-  { to: "/settings", label: "Settings", icon: Settings },
+const GROUPS = [
+  {
+    title: "Program, Ops & Biz",
+    items: [
+      { to: "/user-level-analysis", label: "User Overview", sub: undefined, icon: Users },
+      { to: "/review", label: "Transcript & Call Review", sub: undefined, icon: Headphones },
+      { to: "/launch", label: "Launch A Campaign", sub: undefined, icon: Rocket },
+    ],
+  },
+  {
+    title: "Product & Tech",
+    items: [
+      { to: "/", label: "Campaign Analysis", sub: "Make it Bot & Campaign Overview", icon: LayoutDashboard },
+      { to: "/campaigns", label: "Campaign Level Analysis", sub: undefined, icon: Megaphone },
+    ],
+  },
 ] as const;
+
+const SETTINGS = { to: "/settings", label: "Settings", icon: Settings } as const;
 
 export function MobileNav() {
   const [open, setOpen] = useState(false);
