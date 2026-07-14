@@ -290,13 +290,50 @@ function ReviewHub() {
             No calls match these filters.
           </div>
         ) : (
-          filtered.map((c) => (
-            <CallCard
-              key={String(c.call_id || c.job_id)}
-              call={c}
-              reviewStatus={statusMap?.get(getReviewKey(c))}
-            />
-          ))
+          <>
+            {filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE).map((c) => (
+              <CallCard
+                key={String(c.call_id || c.job_id)}
+                call={c}
+                reviewStatus={statusMap?.get(getReviewKey(c))}
+              />
+            ))}
+            {filtered.length > PAGE_SIZE && (() => {
+              const totalPages = Math.ceil(filtered.length / PAGE_SIZE);
+              const current = Math.min(page, totalPages);
+              const start = (current - 1) * PAGE_SIZE + 1;
+              const end = Math.min(current * PAGE_SIZE, filtered.length);
+              return (
+                <div className="flex items-center justify-between gap-3 pt-2 flex-wrap">
+                  <div className="text-xs text-muted-foreground">
+                    Showing <span className="font-medium text-foreground">{start}–{end}</span> of{" "}
+                    <span className="font-medium text-foreground">{filtered.length}</span>
+                  </div>
+                  <div className="inline-flex items-center gap-1">
+                    <button
+                      type="button"
+                      onClick={() => setPage((p) => Math.max(1, p - 1))}
+                      disabled={current <= 1}
+                      className="rounded-md border border-border bg-background px-3 py-1.5 text-xs font-medium text-foreground hover:bg-muted disabled:opacity-40 disabled:cursor-not-allowed"
+                    >
+                      Previous
+                    </button>
+                    <span className="px-2 text-xs text-muted-foreground">
+                      Page <span className="font-medium text-foreground">{current}</span> of {totalPages}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+                      disabled={current >= totalPages}
+                      className="rounded-md border border-border bg-background px-3 py-1.5 text-xs font-medium text-foreground hover:bg-muted disabled:opacity-40 disabled:cursor-not-allowed"
+                    >
+                      Next
+                    </button>
+                  </div>
+                </div>
+              );
+            })()}
+          </>
         )}
       </div>
     </div>
