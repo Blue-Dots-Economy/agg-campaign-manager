@@ -123,6 +123,16 @@ function toPct(v: string | undefined): number {
   return Number.isFinite(n) ? n : 0;
 }
 
+/** Default exclusion: rows flagged as test data are dropped from any linked sheet/CSV.
+ * Treats "1", "true", "yes", "y" (and numeric equivalents like "1.0") as test flags. */
+function isTestRow(v: string | undefined): boolean {
+  if (!v) return false;
+  const normalized = v.trim().toLowerCase();
+  if (["1", "true", "yes", "y"].includes(normalized)) return true;
+  const n = Number(normalized);
+  return Number.isFinite(n) && n !== 0;
+}
+
 function computeStatus(profileAge: number | null, lastAppliedAge: number | null): Seeker["status"] {
   const p = profileAge ?? 9999;
   if (p <= 7) return "New";
