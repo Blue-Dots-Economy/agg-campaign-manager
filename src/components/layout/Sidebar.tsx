@@ -6,6 +6,7 @@ import {
   Settings,
   Briefcase,
   Headphones,
+  Users,
 } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
@@ -18,7 +19,8 @@ import { cn } from "@/lib/utils";
 
 const NAV = [
   { to: "/", label: "Overview", icon: LayoutDashboard },
-  { to: "/review", label: "Review hub", icon: Headphones },
+  { to: "/review", label: "Campaign Review", icon: Headphones },
+  { to: "/user-level-analysis", label: "User Level Analysis", icon: Users },
   { to: "/campaigns", label: "Campaigns", icon: Megaphone },
   { to: "/launch", label: "Launch", icon: Rocket },
   { to: "/settings", label: "Settings", icon: Settings },

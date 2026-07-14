@@ -6,6 +6,7 @@ import {
   Rocket,
   Settings,
   Headphones,
+  Users,
   Menu,
   LogOut,
 } from "lucide-react";
@@ -23,7 +24,8 @@ import { cn } from "@/lib/utils";
 
 const NAV = [
   { to: "/", label: "Overview", icon: LayoutDashboard },
-  { to: "/review", label: "Review hub", icon: Headphones },
+  { to: "/review", label: "Campaign Review", icon: Headphones },
+  { to: "/user-level-analysis", label: "User Level Analysis", icon: Users },
   { to: "/campaigns", label: "Campaigns", icon: Megaphone },
   { to: "/launch", label: "Launch", icon: Rocket },
   { to: "/settings", label: "Settings", icon: Settings },
