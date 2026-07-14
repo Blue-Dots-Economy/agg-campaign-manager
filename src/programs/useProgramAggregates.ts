@@ -41,9 +41,10 @@ export function useProgramAggregates(config: ProgramConfig, filters?: OverviewFi
   const dateTo = filters?.dateTo ?? null;
   const campaignType = filters?.campaignType ?? "all";
   const campaign = filters?.campaign ?? null;
+  const channel = filters?.channel ?? "all";
   const query = useQuery<AggregatePayload>({
-    queryKey: ["program-aggregates", config.id, state, dateFrom, dateTo, campaignType, campaign],
-    queryFn: () => fn({ data: { program: config.id, state, dateFrom, dateTo, campaignType, campaign } }),
+    queryKey: ["program-aggregates", config.id, state, dateFrom, dateTo, campaignType, campaign, channel],
+    queryFn: () => fn({ data: { program: config.id, state, dateFrom, dateTo, campaignType, campaign, channel } }),
     staleTime: 5 * 60_000,
     gcTime: 30 * 60_000,
     placeholderData: keepPreviousData,
