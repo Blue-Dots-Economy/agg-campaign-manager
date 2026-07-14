@@ -1,6 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { queryOptions, useSuspenseQuery } from "@tanstack/react-query";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   Users,
   UserPlus,
@@ -16,6 +15,8 @@ import {
   Moon,
   Search,
   ChevronDown,
+  Upload,
+  RotateCcw,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -25,6 +26,7 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
+  DropdownMenuSeparator,
 } from "@/components/ui/dropdown-menu";
 import {
   Select,
@@ -48,23 +50,16 @@ import {
   DialogTitle,
   DialogDescription,
 } from "@/components/ui/dialog";
-import { getUpSeekers, type Seeker } from "@/lib/upSeekers.functions";
-
-const seekersQuery = queryOptions({
-  queryKey: ["up-seekers"],
-  queryFn: () => getUpSeekers(),
-  staleTime: 5 * 60_000,
-});
+import {
+  loadSeekers,
+  saveUploadedCsv,
+  resetToBundled,
+  type Seeker,
+  type CsvMeta,
+} from "@/lib/upSeekersCsv";
 
 export const Route = createFileRoute("/user-level-analysis")({
-  loader: ({ context }) => context.queryClient.ensureQueryData(seekersQuery),
   component: UserLevelAnalysis,
-  errorComponent: ({ error }) => (
-    <div className="p-6 text-sm text-rose-600">Failed to load seekers: {error.message}</div>
-  ),
-  pendingComponent: () => (
-    <div className="p-6 text-sm text-muted-foreground">Loading UP Job Seekers…</div>
-  ),
 });
 
 const STATUS_STYLES: Record<Seeker["status"], string> = {
@@ -100,10 +95,54 @@ function MetricTile({
 }
 
 function UserLevelAnalysis() {
-  const { data: seekers, refetch, isFetching } = useSuspenseQuery(seekersQuery);
+  const initial = useMemo(() => loadSeekers(), []);
+  const [seekers, setSeekers] = useState<Seeker[]>(initial.seekers);
+  const [meta, setMeta] = useState<CsvMeta>(initial.meta);
+  const [isFetching, setIsFetching] = useState(false);
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [selected, setSelected] = useState<Seeker | null>(null);
+  const fileRef = useRef<HTMLInputElement | null>(null);
+
+  // Hydrate from localStorage after mount (SSR-safe)
+  useEffect(() => {
+    const { seekers: s, meta: m } = loadSeekers();
+    setSeekers(s);
+    setMeta(m);
+  }, []);
+
+  const refetch = () => {
+    setIsFetching(true);
+    const { seekers: s, meta: m } = loadSeekers();
+    setSeekers(s);
+    setMeta(m);
+    setTimeout(() => setIsFetching(false), 300);
+  };
+
+  const handleUploadClick = () => fileRef.current?.click();
+
+  const handleFileChosen = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const text = await file.text();
+    try {
+      const { seekers: s, meta: m } = saveUploadedCsv(file.name, text);
+      setSeekers(s);
+      setMeta(m);
+    } catch (err) {
+      alert("Failed to parse CSV: " + (err instanceof Error ? err.message : String(err)));
+    } finally {
+      if (fileRef.current) fileRef.current.value = "";
+    }
+  };
+
+  const handleReset = () => {
+    const { seekers: s, meta: m } = resetToBundled();
+    setSeekers(s);
+    setMeta(m);
+  };
+
+
 
 
   const stats = useMemo(() => {
@@ -201,6 +240,13 @@ function UserLevelAnalysis() {
           </p>
         </div>
         <div className="flex items-center gap-2">
+          <input
+            ref={fileRef}
+            type="file"
+            accept=".csv,text/csv"
+            className="hidden"
+            onChange={handleFileChosen}
+          />
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button variant="outline" className="gap-2">
@@ -209,19 +255,25 @@ function UserLevelAnalysis() {
                 <ChevronDown className="h-4 w-4" />
               </Button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
+            <DropdownMenuContent align="end" className="w-64">
+              <div className="px-2 py-1.5 text-[11px] text-muted-foreground">
+                Source: <span className="font-medium text-foreground">{meta.name}</span>
+                <div>{meta.rows.toLocaleString()} rows</div>
+              </div>
+              <DropdownMenuSeparator />
               <DropdownMenuItem onSelect={() => refetch()}>
-                UP Job Seekers (sync now)
+                <RefreshCw className="h-4 w-4 mr-2" />
+                UP Job Seekers (reload)
               </DropdownMenuItem>
-              <DropdownMenuItem asChild>
-                <a
-                  href="https://docs.google.com/spreadsheets/d/1J2WDeSOCaIVz2KvWMmI9dVE4iTh_Dqbt8Aqb6423a2U/edit?usp=sharing"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                >
-                  Open UP source sheet
-                </a>
+              <DropdownMenuItem onSelect={() => handleUploadClick()}>
+                <Upload className="h-4 w-4 mr-2" />
+                Upload new CSV…
               </DropdownMenuItem>
+              <DropdownMenuItem onSelect={() => handleReset()}>
+                <RotateCcw className="h-4 w-4 mr-2" />
+                Reset to bundled CSV
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
               <DropdownMenuItem disabled>KA Job Seekers</DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
