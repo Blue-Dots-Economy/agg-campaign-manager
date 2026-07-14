@@ -19,7 +19,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 
-export const Route = createFileRoute("/campaign-review/$campaign")({
+export const Route = createFileRoute("/campaigns/$campaign")({
   validateSearch: (s: Record<string, unknown>) => ({
     date: typeof s.date === "string" ? s.date : undefined,
   }),
@@ -58,7 +58,7 @@ function CampaignReviewDetail() {
     return (
       <div className="space-y-4">
         <Link
-          to="/campaign-review"
+          to="/campaigns"
           className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground"
         >
           <ArrowLeft className="h-4 w-4" /> All campaigns
@@ -83,7 +83,7 @@ function CampaignReviewDetail() {
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="min-w-0">
           <Link
-            to="/campaign-review"
+            to="/campaigns"
             className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground"
           >
             <ArrowLeft className="h-3.5 w-3.5" /> All campaigns
@@ -104,7 +104,7 @@ function CampaignReviewDetail() {
               const type = idx === -1 ? v : v.slice(0, idx);
               const d = idx === -1 ? "" : v.slice(idx + 1);
               navigate({
-                to: "/campaign-review/$campaign",
+                to: "/campaigns/$campaign",
                 params: { campaign: type },
                 search: { date: d || undefined },
               });
