@@ -535,9 +535,12 @@ function UserLevelAnalysis() {
                       </Badge>
                     </TableCell>
                     <TableCell>
-                      <button className="text-xs px-3 py-1 rounded-full border bg-muted/40 hover:bg-muted transition">
-                        {p.recommendedAction}
-                      </button>
+                      <span
+                        className="text-xs px-3 py-1 rounded-full border bg-muted/30 text-muted-foreground italic cursor-not-allowed"
+                        title="Recommended actions are coming soon"
+                      >
+                        Coming soon
+                      </span>
                     </TableCell>
                   </TableRow>
                 );
