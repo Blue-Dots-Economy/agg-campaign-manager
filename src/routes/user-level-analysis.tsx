@@ -413,12 +413,22 @@ function UserLevelAnalysis() {
               <SelectItem value="incomplete">Incomplete</SelectItem>
             </SelectContent>
           </Select>
+          <Select value={appliedFilter} onValueChange={setAppliedFilter}>
+            <SelectTrigger className="w-[180px]">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All applied</SelectItem>
+              <SelectItem value="applied">Applied</SelectItem>
+              <SelectItem value="not-applied">Not applied</SelectItem>
+            </SelectContent>
+          </Select>
           <Select value={statusFilter} onValueChange={setStatusFilter}>
             <SelectTrigger className="w-[180px]">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="all">All statuses</SelectItem>
+              <SelectItem value="all">All activity</SelectItem>
               <SelectItem value="new">New</SelectItem>
               <SelectItem value="active">Active</SelectItem>
               <SelectItem value="at-risk">At Risk</SelectItem>
