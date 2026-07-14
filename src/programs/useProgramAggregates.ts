@@ -87,9 +87,10 @@ export function useFunnelDurations(config: ProgramConfig, filters?: OverviewFilt
   const dateTo = filters?.dateTo ?? null;
   const campaignType = filters?.campaignType ?? "all";
   const campaign = filters?.campaign ?? null;
+  const channel = filters?.channel ?? "all";
   return useQuery<Record<string, number>>({
-    queryKey: ["funnel-durations", config.id, state, dateFrom, dateTo, campaignType, campaign],
-    queryFn: () => fn({ data: { program: config.id, state, dateFrom, dateTo, campaignType, campaign } }),
+    queryKey: ["funnel-durations", config.id, state, dateFrom, dateTo, campaignType, campaign, channel],
+    queryFn: () => fn({ data: { program: config.id, state, dateFrom, dateTo, campaignType, campaign, channel } }),
     staleTime: 5 * 60_000,
     gcTime: 30 * 60_000,
     placeholderData: keepPreviousData,
