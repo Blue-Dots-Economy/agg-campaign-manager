@@ -369,7 +369,14 @@ function TranscriptReview() {
             </div>
           </div>
 
-          <Button onClick={submit} disabled={submitting} className="w-full rounded-full">{submitting ? "Submitting…" : "Submit Review"}</Button>
+          <div className="sticky bottom-0 z-10 -mx-1 border-t border-border bg-card/95 px-1 pb-1 pt-3 backdrop-blur supports-[backdrop-filter]:bg-card/80">
+            {!canSubmit && (
+              <p className="mb-2 text-center text-[11px] font-medium text-muted-foreground">{submitHint}</p>
+            )}
+            <Button onClick={submit} disabled={submitting} className="w-full rounded-full">
+              {submitting ? "Submitting…" : bulkMode ? "Submit & next call" : "Submit Review"}
+            </Button>
+          </div>
         </aside>
       </div>
     </div>
