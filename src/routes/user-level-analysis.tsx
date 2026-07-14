@@ -408,31 +408,32 @@ function UserLevelAnalysis() {
             />
           </div>
           <Select value={profileFilter} onValueChange={setProfileFilter}>
-            <SelectTrigger className="w-[180px]">
-              <SelectValue />
+            <SelectTrigger className="w-[170px]">
+              <SelectValue placeholder="Profile Status" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="all">All profiles</SelectItem>
+              <SelectItem value="all">Profile: All</SelectItem>
               <SelectItem value="complete">Complete</SelectItem>
               <SelectItem value="incomplete">Incomplete</SelectItem>
             </SelectContent>
           </Select>
           <Select value={appliedFilter} onValueChange={setAppliedFilter}>
             <SelectTrigger className="w-[180px]">
-              <SelectValue />
+              <SelectValue placeholder="Applied Status" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="all">All applied</SelectItem>
-              <SelectItem value="applied">Applied</SelectItem>
-              <SelectItem value="not-applied">Not applied</SelectItem>
+              <SelectItem value="all">Applied: All</SelectItem>
+              <SelectItem value="shortlisted">Shortlisted &gt; 0</SelectItem>
+              <SelectItem value="rejected">Rejected &gt; 0</SelectItem>
+              <SelectItem value="pending">Pending &gt; 0</SelectItem>
             </SelectContent>
           </Select>
           <Select value={statusFilter} onValueChange={setStatusFilter}>
-            <SelectTrigger className="w-[180px]">
-              <SelectValue />
+            <SelectTrigger className="w-[170px]">
+              <SelectValue placeholder="User Status" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="all">All activity</SelectItem>
+              <SelectItem value="all">User: All</SelectItem>
               <SelectItem value="new">New</SelectItem>
               <SelectItem value="active">Active</SelectItem>
               <SelectItem value="at-risk">At Risk</SelectItem>
