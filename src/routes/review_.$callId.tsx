@@ -154,6 +154,7 @@ function TranscriptReview() {
     if (typeof window === "undefined") return 0;
     try { return Number(window.sessionStorage.getItem("reviews_done_session")) || 0; } catch { return 0; }
   });
+  const [celebrate, setCelebrate] = useState<null | "normal" | "milestone">(null);
   const turnRefs = useRef<Record<number, HTMLDivElement | null>>({});
 
   useEffect(() => {
