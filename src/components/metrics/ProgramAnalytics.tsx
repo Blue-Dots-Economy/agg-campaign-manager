@@ -122,6 +122,7 @@ export function ProgramAnalytics({
       dateFrom: iso(prevFrom),
       dateTo: iso(prevTo),
       campaignType: filters.campaignType,
+      channel: filters.channel,
     };
   })();
   const prevQuery = useProgramAggregates(
@@ -131,6 +132,7 @@ export function ProgramAnalytics({
       dateFrom: null,
       dateTo: null,
       campaignType: filters.campaignType,
+      channel: filters.channel,
     },
   );
 
@@ -141,8 +143,9 @@ export function ProgramAnalytics({
         dateFrom: null,
         dateTo: null,
         campaignType: "all",
+        channel: filters.channel,
       }
-    : { state: "all", dateFrom: null, dateTo: null, campaignType: "all" };
+    : { state: "all", dateFrom: null, dateTo: null, campaignType: "all", channel: filters.channel };
   const stateAvgQuery = useProgramAggregates(config, stateAvgFilters);
 
   const prevMetrics = comparison

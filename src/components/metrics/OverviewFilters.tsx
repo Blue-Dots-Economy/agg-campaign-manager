@@ -9,12 +9,14 @@ import { cn } from "@/lib/utils";
 
 export type StateValue = "all" | "GZB" | "KA";
 export type CampaignTypeValue = "all" | "normal" | "higher_education";
+export type ChannelValue = "all" | "outbound" | "inbound";
 
 export interface OverviewFilterValue {
   state: StateValue;
   dateFrom: string | null; // YYYY-MM-DD
   dateTo: string | null;
   campaignType: CampaignTypeValue;
+  channel: ChannelValue;
 }
 
 const STATE_OPTIONS: { value: StateValue; label: string }[] = [
@@ -29,6 +31,12 @@ const CAMPAIGN_TYPE_OPTIONS: { value: CampaignTypeValue; label: string }[] = [
   { value: "higher_education", label: "Higher Education" },
 ];
 
+const CHANNEL_OPTIONS: { value: ChannelValue; label: string }[] = [
+  { value: "all", label: "All calls" },
+  { value: "outbound", label: "Outbound" },
+  { value: "inbound", label: "Inbound" },
+];
+
 const fmt = (d: Date) => format(d, "yyyy-MM-dd");
 
 // Parse a YYYY-MM-DD string as a LOCAL date (avoid UTC shift from new Date("YYYY-MM-DD")).
@@ -41,10 +49,12 @@ export function OverviewFilters({
   value,
   onChange,
   showCampaignType = false,
+  showChannel = false,
 }: {
   value: OverviewFilterValue;
   onChange: (next: OverviewFilterValue) => void;
   showCampaignType?: boolean;
+  showChannel?: boolean;
 }) {
   const [open, setOpen] = useState(false);
 
@@ -82,7 +92,8 @@ export function OverviewFilters({
     value.dateFrom ||
     value.dateTo ||
     value.state !== "all" ||
-    (showCampaignType && value.campaignType !== "all");
+    (showCampaignType && value.campaignType !== "all") ||
+    (showChannel && value.channel !== "all");
 
   return (
     <div className="flex flex-wrap items-center gap-2">
@@ -118,6 +129,30 @@ export function OverviewFilters({
                 key={opt.value}
                 type="button"
                 onClick={() => onChange({ ...value, campaignType: opt.value })}
+                className={cn(
+                  "px-3 py-1.5 rounded transition-colors",
+                  active
+                    ? "bg-primary text-primary-foreground"
+                    : "text-muted-foreground hover:text-foreground",
+                )}
+              >
+                {opt.label}
+              </button>
+            );
+          })}
+        </div>
+      )}
+
+      {/* Channel segmented control (KKB only) */}
+      {showChannel && (
+        <div className="inline-flex rounded-md border border-border bg-card p-0.5 text-xs">
+          {CHANNEL_OPTIONS.map((opt) => {
+            const active = value.channel === opt.value;
+            return (
+              <button
+                key={opt.value}
+                type="button"
+                onClick={() => onChange({ ...value, channel: opt.value })}
                 className={cn(
                   "px-3 py-1.5 rounded transition-colors",
                   active
@@ -200,7 +235,7 @@ export function OverviewFilters({
           variant="ghost"
           size="sm"
           className="h-8 gap-1 text-xs text-muted-foreground"
-          onClick={() => onChange({ state: "all", dateFrom: null, dateTo: null, campaignType: "all" })}
+          onClick={() => onChange({ state: "all", dateFrom: null, dateTo: null, campaignType: "all", channel: "all" })}
         >
           <X className="h-3.5 w-3.5" />
           Clear

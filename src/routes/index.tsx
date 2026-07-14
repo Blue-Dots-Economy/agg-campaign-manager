@@ -20,13 +20,14 @@ function Overview() {
     dateFrom: null,
     dateTo: null,
     campaignType: "all",
+    channel: "all",
   });
   const query = useProgramAggregates(config, filters);
 
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between gap-3 flex-wrap">
-        <OverviewFilters value={filters} onChange={setFilters} showCampaignType={!isDkb} />
+        <OverviewFilters value={filters} onChange={setFilters} showCampaignType={!isDkb} showChannel={!isDkb} />
         {query.isFetching && (
           <span className="text-xs text-muted-foreground">Updating…</span>
         )}
@@ -40,6 +41,7 @@ function Overview() {
             dateFrom: null,
             dateTo: null,
             campaignType: "all",
+            channel: "all",
           })
         }
       />
