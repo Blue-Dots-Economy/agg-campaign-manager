@@ -73,7 +73,7 @@ export function Sidebar() {
       </div>
 
       <nav className="px-3 py-2 space-y-0.5">
-        {NAV.filter((item) => !("adminOnly" in item && item.adminOnly) || isAdmin).map((item) => {
+        {NAV.map((item) => {
           const active = item.to === "/" ? pathname === "/" : pathname.startsWith(item.to);
           const Icon = item.icon;
           return (
