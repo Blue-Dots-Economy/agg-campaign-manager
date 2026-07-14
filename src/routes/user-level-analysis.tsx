@@ -105,16 +105,17 @@ function UserLevelAnalysis() {
   const [selected, setSelected] = useState<Seeker | null>(null);
   const fileRef = useRef<HTMLInputElement | null>(null);
 
-  // Hydrate from localStorage after mount (SSR-safe)
+  // Hydrate from IndexedDB after mount (SSR-safe)
   useEffect(() => {
-    const { seekers: s, meta: m } = loadSeekers();
-    setSeekers(s);
-    setMeta(m);
+    loadSeekersAsync().then(({ seekers: s, meta: m }) => {
+      setSeekers(s);
+      setMeta(m);
+    });
   }, []);
 
-  const refetch = () => {
+  const refetch = async () => {
     setIsFetching(true);
-    const { seekers: s, meta: m } = loadSeekers();
+    const { seekers: s, meta: m } = await loadSeekersAsync();
     setSeekers(s);
     setMeta(m);
     setTimeout(() => setIsFetching(false), 300);
@@ -127,12 +128,12 @@ function UserLevelAnalysis() {
     if (!file) return;
     const text = await file.text();
     try {
-      const { seekers: s, meta: m, persisted } = saveUploadedCsv(file.name, text);
+      const { seekers: s, meta: m, persisted } = await saveUploadedCsv(file.name, text);
       setSeekers(s);
       setMeta(m);
       if (!persisted) {
         alert(
-          `Loaded ${s.length} rows from "${file.name}", but it was too large to save in browser storage. It will remain active until you reload the page.`,
+          `Loaded ${s.length} rows from "${file.name}", but it couldn't be saved to browser storage. It will remain active until you reload the page.`,
         );
       }
     } catch (err) {
@@ -142,8 +143,8 @@ function UserLevelAnalysis() {
     }
   };
 
-  const handleReset = () => {
-    const { seekers: s, meta: m } = resetToBundled();
+  const handleReset = async () => {
+    const { seekers: s, meta: m } = await resetToBundled();
     setSeekers(s);
     setMeta(m);
   };
