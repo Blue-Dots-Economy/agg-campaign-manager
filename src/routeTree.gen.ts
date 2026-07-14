@@ -10,12 +10,10 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as SettingsRouteImport } from './routes/settings'
-import { Route as ScheduleRouteImport } from './routes/schedule'
 import { Route as ReviewersRouteImport } from './routes/reviewers'
 import { Route as ReviewRouteImport } from './routes/review'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as LaunchRouteImport } from './routes/launch'
-import { Route as DataRouteImport } from './routes/data'
 import { Route as ConnectionsRouteImport } from './routes/connections'
 import { Route as CampaignsRouteImport } from './routes/campaigns'
 import { Route as AgentsRouteImport } from './routes/agents'
@@ -27,11 +25,6 @@ import { Route as ApiPublicHooksSyncSnapshotsRouteImport } from './routes/api/pu
 const SettingsRoute = SettingsRouteImport.update({
   id: '/settings',
   path: '/settings',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ScheduleRoute = ScheduleRouteImport.update({
-  id: '/schedule',
-  path: '/schedule',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ReviewersRoute = ReviewersRouteImport.update({
@@ -52,11 +45,6 @@ const LoginRoute = LoginRouteImport.update({
 const LaunchRoute = LaunchRouteImport.update({
   id: '/launch',
   path: '/launch',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const DataRoute = DataRouteImport.update({
-  id: '/data',
-  path: '/data',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ConnectionsRoute = ConnectionsRouteImport.update({
@@ -101,12 +89,10 @@ export interface FileRoutesByFullPath {
   '/agents': typeof AgentsRoute
   '/campaigns': typeof CampaignsRoute
   '/connections': typeof ConnectionsRoute
-  '/data': typeof DataRoute
   '/launch': typeof LaunchRoute
   '/login': typeof LoginRoute
   '/review': typeof ReviewRoute
   '/reviewers': typeof ReviewersRoute
-  '/schedule': typeof ScheduleRoute
   '/settings': typeof SettingsRoute
   '/campaigns/$campaign': typeof CampaignsCampaignRoute
   '/review/$callId': typeof ReviewCallIdRoute
@@ -117,12 +103,10 @@ export interface FileRoutesByTo {
   '/agents': typeof AgentsRoute
   '/campaigns': typeof CampaignsRoute
   '/connections': typeof ConnectionsRoute
-  '/data': typeof DataRoute
   '/launch': typeof LaunchRoute
   '/login': typeof LoginRoute
   '/review': typeof ReviewRoute
   '/reviewers': typeof ReviewersRoute
-  '/schedule': typeof ScheduleRoute
   '/settings': typeof SettingsRoute
   '/campaigns/$campaign': typeof CampaignsCampaignRoute
   '/review/$callId': typeof ReviewCallIdRoute
@@ -134,12 +118,10 @@ export interface FileRoutesById {
   '/agents': typeof AgentsRoute
   '/campaigns': typeof CampaignsRoute
   '/connections': typeof ConnectionsRoute
-  '/data': typeof DataRoute
   '/launch': typeof LaunchRoute
   '/login': typeof LoginRoute
   '/review': typeof ReviewRoute
   '/reviewers': typeof ReviewersRoute
-  '/schedule': typeof ScheduleRoute
   '/settings': typeof SettingsRoute
   '/campaigns_/$campaign': typeof CampaignsCampaignRoute
   '/review_/$callId': typeof ReviewCallIdRoute
@@ -152,12 +134,10 @@ export interface FileRouteTypes {
     | '/agents'
     | '/campaigns'
     | '/connections'
-    | '/data'
     | '/launch'
     | '/login'
     | '/review'
     | '/reviewers'
-    | '/schedule'
     | '/settings'
     | '/campaigns/$campaign'
     | '/review/$callId'
@@ -168,12 +148,10 @@ export interface FileRouteTypes {
     | '/agents'
     | '/campaigns'
     | '/connections'
-    | '/data'
     | '/launch'
     | '/login'
     | '/review'
     | '/reviewers'
-    | '/schedule'
     | '/settings'
     | '/campaigns/$campaign'
     | '/review/$callId'
@@ -184,12 +162,10 @@ export interface FileRouteTypes {
     | '/agents'
     | '/campaigns'
     | '/connections'
-    | '/data'
     | '/launch'
     | '/login'
     | '/review'
     | '/reviewers'
-    | '/schedule'
     | '/settings'
     | '/campaigns_/$campaign'
     | '/review_/$callId'
@@ -201,12 +177,10 @@ export interface RootRouteChildren {
   AgentsRoute: typeof AgentsRoute
   CampaignsRoute: typeof CampaignsRoute
   ConnectionsRoute: typeof ConnectionsRoute
-  DataRoute: typeof DataRoute
   LaunchRoute: typeof LaunchRoute
   LoginRoute: typeof LoginRoute
   ReviewRoute: typeof ReviewRoute
   ReviewersRoute: typeof ReviewersRoute
-  ScheduleRoute: typeof ScheduleRoute
   SettingsRoute: typeof SettingsRoute
   CampaignsCampaignRoute: typeof CampaignsCampaignRoute
   ReviewCallIdRoute: typeof ReviewCallIdRoute
@@ -220,13 +194,6 @@ declare module '@tanstack/react-router' {
       path: '/settings'
       fullPath: '/settings'
       preLoaderRoute: typeof SettingsRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/schedule': {
-      id: '/schedule'
-      path: '/schedule'
-      fullPath: '/schedule'
-      preLoaderRoute: typeof ScheduleRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/reviewers': {
@@ -255,13 +222,6 @@ declare module '@tanstack/react-router' {
       path: '/launch'
       fullPath: '/launch'
       preLoaderRoute: typeof LaunchRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/data': {
-      id: '/data'
-      path: '/data'
-      fullPath: '/data'
-      preLoaderRoute: typeof DataRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/connections': {
@@ -321,12 +281,10 @@ const rootRouteChildren: RootRouteChildren = {
   AgentsRoute: AgentsRoute,
   CampaignsRoute: CampaignsRoute,
   ConnectionsRoute: ConnectionsRoute,
-  DataRoute: DataRoute,
   LaunchRoute: LaunchRoute,
   LoginRoute: LoginRoute,
   ReviewRoute: ReviewRoute,
   ReviewersRoute: ReviewersRoute,
-  ScheduleRoute: ScheduleRoute,
   SettingsRoute: SettingsRoute,
   CampaignsCampaignRoute: CampaignsCampaignRoute,
   ReviewCallIdRoute: ReviewCallIdRoute,
