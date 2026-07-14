@@ -1,4 +1,3 @@
-import { createFileRoute } from "@tanstack/react-router";
 import { useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
@@ -45,10 +44,6 @@ import {
 const DEFAULT_SA_EMAIL = "blue-dots-admin@blue-dots-project.iam.gserviceaccount.com";
 import type { ProgramId } from "@/programs/registry";
 
-export const Route = createFileRoute("/connections")({
-  component: ConnectionsPage,
-});
-
 function extractSheetId(input: string): string {
   const m = input.match(/\/spreadsheets\/d\/([a-zA-Z0-9_-]+)/);
   return m ? m[1] : input.trim();
@@ -66,7 +61,7 @@ function timeAgo(iso: string | null) {
   return `${Math.floor(s / 86400)}d ago`;
 }
 
-function ConnectionsPage() {
+export function ConnectionsSection() {
   return (
     <div className="space-y-6">
       <Panel
@@ -122,8 +117,6 @@ function ProgramConnections({ program }: { program: ProgramId }) {
     qc.invalidateQueries({ queryKey: ["program-rows", program] });
   };
 
-  // Re-validate every enabled connection on mount so a stale "error" badge
-  // recovers automatically once the underlying issue (secret / sharing) is fixed.
   useEffect(() => {
     let cancelled = false;
     revalidateFn({ data: { program } })

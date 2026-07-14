@@ -1,5 +1,3 @@
-import { createFileRoute } from "@tanstack/react-router";
-
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
@@ -26,20 +24,15 @@ import {
   refreshProgramAgent,
   deleteProgramAgent,
   loadAgent,
-  type ProgramAgent,
 } from "@/lib/agents.functions";
 import type { ProgramId } from "@/programs/registry";
-
-export const Route = createFileRoute("/agents")({
-  component: AgentsPage,
-});
 
 function maskId(id: string) {
   if (id.length <= 14) return id;
   return `${id.slice(0, 6)}…${id.slice(-4)}`;
 }
 
-function AgentsPage() {
+export function AgentsSection() {
   return (
     <div className="space-y-6">
       <Panel
@@ -286,7 +279,3 @@ function AddAgentDialog({
     </Dialog>
   );
 }
-
-// Re-export for typing clarity if needed elsewhere
-export type { ProgramAgent };
-
