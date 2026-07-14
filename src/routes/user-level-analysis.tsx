@@ -126,9 +126,14 @@ function UserLevelAnalysis() {
     if (!file) return;
     const text = await file.text();
     try {
-      const { seekers: s, meta: m } = saveUploadedCsv(file.name, text);
+      const { seekers: s, meta: m, persisted } = saveUploadedCsv(file.name, text);
       setSeekers(s);
       setMeta(m);
+      if (!persisted) {
+        alert(
+          `Loaded ${s.length} rows from "${file.name}", but it was too large to save in browser storage. It will remain active until you reload the page.`,
+        );
+      }
     } catch (err) {
       alert("Failed to parse CSV: " + (err instanceof Error ? err.message : String(err)));
     } finally {

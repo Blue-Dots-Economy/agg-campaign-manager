@@ -178,14 +178,29 @@ export function loadSeekers(): { seekers: Seeker[]; meta: CsvMeta } {
   };
 }
 
-export function saveUploadedCsv(name: string, text: string): { seekers: Seeker[]; meta: CsvMeta } {
+export function saveUploadedCsv(
+  name: string,
+  text: string,
+): { seekers: Seeker[]; meta: CsvMeta; persisted: boolean } {
   const seekers = parseSeekersCsv(text);
+  let persisted = false;
   const meta: CsvMeta = { name, uploadedAt: new Date().toISOString(), rows: seekers.length };
   if (typeof window !== "undefined") {
-    window.localStorage.setItem(STORAGE_KEY, text);
-    window.localStorage.setItem(META_KEY, JSON.stringify(meta));
+    try {
+      window.localStorage.setItem(STORAGE_KEY, text);
+      window.localStorage.setItem(META_KEY, JSON.stringify({ ...meta, persisted: true }));
+      persisted = true;
+    } catch {
+      // Quota exceeded — CSV too large for localStorage. Keep in-memory only.
+      try {
+        window.localStorage.removeItem(STORAGE_KEY);
+        window.localStorage.removeItem(META_KEY);
+      } catch {
+        /* ignore */
+      }
+    }
   }
-  return { seekers, meta };
+  return { seekers, meta, persisted };
 }
 
 export function resetToBundled(): { seekers: Seeker[]; meta: CsvMeta } {
