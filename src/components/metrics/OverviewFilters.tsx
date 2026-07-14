@@ -92,7 +92,8 @@ export function OverviewFilters({
     value.dateFrom ||
     value.dateTo ||
     value.state !== "all" ||
-    (showCampaignType && value.campaignType !== "all");
+    (showCampaignType && value.campaignType !== "all") ||
+    (showChannel && value.channel !== "all");
 
   return (
     <div className="flex flex-wrap items-center gap-2">
