@@ -359,9 +359,9 @@ function UserLevelAnalysis() {
               Icon={CheckCircle2}
             />
             <MetricTile
-              label="Made Connections"
+              label="Applications"
               value={stats.withApps.toLocaleString()}
-              description="Seekers with applications"
+              description="Profiles with applications"
               Icon={Send}
             />
           </div>
@@ -371,14 +371,14 @@ function UserLevelAnalysis() {
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
             <MetricTile label="Total Seekers" value={stats.uniqueUsers.toLocaleString()} description="Unique user IDs" Icon={Users} />
             <MetricTile
-              label="Avg Profiles per User"
-              value={stats.avgProfilesPerUser}
-              description="Profiles managed each"
+              label="% Users > 1 Profile"
+              value={`${stats.pctUsersMultiProfile}%`}
+              description="Users managing multiple profiles"
               Icon={TrendingUp}
             />
             <MetricTile
-              label="Avg Applications / Seeker"
-              value={stats.avgAppsPerSeeker}
+              label="% Users with ≥1 Application"
+              value={`${stats.pctUsersWithApps}%`}
               description={`${stats.newLast7} new in last 7 days`}
               Icon={Activity}
             />
