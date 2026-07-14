@@ -123,6 +123,14 @@ function toPct(v: string | undefined): number {
   return Number.isFinite(n) ? n : 0;
 }
 
+/** Default exclusion: rows flagged as test data are dropped from any linked sheet/CSV.
+ * Treats "1", "1.0", "true", "yes", "y" (case-insensitive) as test = 1 flags. */
+function isTestRow(v: string | undefined): boolean {
+  if (!v) return false;
+  const normalized = v.trim().toLowerCase();
+  return ["1", "1.0", "true", "yes", "y"].includes(normalized);
+}
+
 function computeStatus(profileAge: number | null, lastAppliedAge: number | null): Seeker["status"] {
   const p = profileAge ?? 9999;
   if (p <= 7) return "New";
@@ -177,7 +185,7 @@ export function parseSeekersCsv(text: string): Seeker[] {
     const r = rows[i];
     const id = (r[cId] ?? "").trim();
     if (!id) continue;
-    if (cTest !== -1 && (r[cTest] ?? "").trim() === "1") continue;
+    if (cTest !== -1 && isTestRow(r[cTest])) continue;
     const completion = toPct(r[cCompl]);
     const profileStatus: Seeker["profileStatus"] = completion >= 100 ? "Complete" : "Incomplete";
     const profileAge = toIntOrNull(r[cPAge]);
