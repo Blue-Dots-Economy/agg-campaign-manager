@@ -376,22 +376,27 @@ function UserLevelAnalysis() {
         </div>
       </div>
 
-      {/* Seekers banner */}
-      <div className="rounded-xl border bg-card p-5 flex items-center gap-6">
-        <div className="flex items-center gap-4">
-          <div className="h-12 w-12 rounded-xl bg-violet-100 flex items-center justify-center text-violet-600">
-            <Users className="h-5 w-5" />
-          </div>
-          <div>
-            <div className="text-xs font-semibold tracking-wider text-muted-foreground uppercase">Seekers</div>
-            <div className="text-xl font-semibold">
-              {stats.total.toLocaleString()} <span className="text-muted-foreground font-normal">total</span>
+      {/* Radius metrics banner */}
+      <div className="rounded-xl border bg-card p-5 flex flex-col sm:flex-row items-start sm:items-center gap-6">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 flex-1">
+          <div className="flex items-center gap-4">
+            <div className="h-12 w-12 rounded-xl bg-violet-100 flex items-center justify-center text-violet-600">
+              <Search className="h-5 w-5" />
+            </div>
+            <div>
+              <div className="text-xs font-semibold tracking-wider text-muted-foreground uppercase">Avg Job Search Radius</div>
+              <div className="text-xl font-semibold text-muted-foreground">Coming soon</div>
             </div>
           </div>
-        </div>
-        <div className="h-10 w-px bg-border" />
-        <div className="text-sm text-muted-foreground flex-1">
-          Lifecycle and profile health across your network
+          <div className="flex items-center gap-4">
+            <div className="h-12 w-12 rounded-xl bg-emerald-100 flex items-center justify-center text-emerald-600">
+              <Send className="h-5 w-5" />
+            </div>
+            <div>
+              <div className="text-xs font-semibold tracking-wider text-muted-foreground uppercase">Avg Job Application Radius</div>
+              <div className="text-xl font-semibold text-muted-foreground">Coming soon</div>
+            </div>
+          </div>
         </div>
         <Button variant="outline" className="gap-2" onClick={() => refetch()} disabled={isFetching}>
           <RefreshCw className={`h-4 w-4 ${isFetching ? "animate-spin" : ""}`} />
