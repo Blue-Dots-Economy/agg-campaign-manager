@@ -169,6 +169,14 @@ function UserLevelAnalysis() {
     const profilesPerUser = new Map<string, number>();
     const usersWithApps = new Set<string>();
     let newLast7 = 0;
+    let total0 = 0;
+    let totalGt0 = 0;
+    let shortlisted0 = 0;
+    let shortlistedGt0 = 0;
+    let rejected0 = 0;
+    let rejectedGt0 = 0;
+    let pending0 = 0;
+    let pendingGt0 = 0;
     for (const s of seekers) {
       byStatus[s.status]++;
       if (s.profileStatus === "Complete") complete++;
@@ -180,6 +188,11 @@ function UserLevelAnalysis() {
         if (s.applications > 0) usersWithApps.add(s.userId);
       }
       if (s.profileAge !== null && s.profileAge <= 7) newLast7++;
+      const pending = Math.max(0, s.applications - s.shortlisted - s.rejected);
+      if (s.applications === 0) total0++; else totalGt0++;
+      if (s.shortlisted === 0) shortlisted0++; else shortlistedGt0++;
+      if (s.rejected === 0) rejected0++; else rejectedGt0++;
+      if (pending === 0) pending0++; else pendingGt0++;
     }
     const uniqueUsers = profilesPerUser.size;
     let usersMulti = 0;
@@ -199,6 +212,16 @@ function UserLevelAnalysis() {
       avgAppsPerSeeker: total ? (totalApps / total).toFixed(2) : "0",
       avgCompletion: total ? Math.round(totalCompletion / total) : 0,
       newLast7,
+      appliedCounts: {
+        total0,
+        totalGt0,
+        shortlisted0,
+        shortlistedGt0,
+        rejected0,
+        rejectedGt0,
+        pending0,
+        pendingGt0,
+      },
     };
   }, [seekers]);
 
