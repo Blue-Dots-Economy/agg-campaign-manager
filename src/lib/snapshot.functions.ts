@@ -825,7 +825,7 @@ export interface CampaignDropCausesPayload {
 
 export const fetchCampaignDropCauses = createServerFn({ method: "GET" })
   .inputValidator(
-    (d: { campaign: string; state?: string; dateFrom?: string | null; dateTo?: string | null }) => d,
+    (d: { campaign: string; state?: string; dateFrom?: string | null; dateTo?: string | null; channel?: string }) => d,
   )
   .handler(async ({ data }): Promise<CampaignDropCausesPayload> => {
     const empty: CampaignDropCausesPayload = {
@@ -841,6 +841,7 @@ export const fetchCampaignDropCauses = createServerFn({ method: "GET" })
         _state: data.state && data.state !== "all" ? data.state : "all",
         _date_from: data.dateFrom ?? null,
         _date_to: data.dateTo ?? null,
+        _channel: data.channel ?? "all",
       });
       if (error) throw new Error(error.message);
       if (!rpcData || typeof rpcData !== "object") return empty;
