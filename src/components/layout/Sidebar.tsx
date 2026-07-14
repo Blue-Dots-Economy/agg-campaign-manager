@@ -47,8 +47,7 @@ export function Sidebar() {
             <Briefcase className="h-5 w-5" />
           </div>
           <div>
-            <div className="text-[15px] font-semibold leading-tight">Operation Rozgar</div>
-            <div className="text-[11px] opacity-80 leading-tight mt-0.5">{config.subtitle}</div>
+            <div className="text-[11px] opacity-80 leading-tight">{config.subtitle}</div>
           </div>
         </div>
 

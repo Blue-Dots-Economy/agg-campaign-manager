@@ -47,7 +47,7 @@ export function MobileNav() {
       </SheetTrigger>
       <SheetContent side="left" className="w-72 p-0 flex flex-col">
         <SheetHeader className="px-5 pt-5 pb-3">
-          <SheetTitle>Operation Rozgar</SheetTitle>
+          <SheetTitle className="sr-only">Menu</SheetTitle>
         </SheetHeader>
 
         <div className="px-5 pb-4">
