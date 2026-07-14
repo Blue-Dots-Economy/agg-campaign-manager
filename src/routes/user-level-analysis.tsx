@@ -102,6 +102,7 @@ function UserLevelAnalysis() {
   const [isFetching, setIsFetching] = useState(false);
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
+  const [profileFilter, setProfileFilter] = useState<string>("all");
   const [selected, setSelected] = useState<Seeker | null>(null);
   const fileRef = useRef<HTMLInputElement | null>(null);
 
@@ -159,7 +160,8 @@ function UserLevelAnalysis() {
     let withApps = 0;
     let totalApps = 0;
     let totalCompletion = 0;
-    const uniqueUsers = new Set<string>();
+    const profilesPerUser = new Map<string, number>();
+    const usersWithApps = new Set<string>();
     let newLast7 = 0;
     for (const s of seekers) {
       byStatus[s.status]++;
@@ -167,17 +169,24 @@ function UserLevelAnalysis() {
       if (s.applications > 0) withApps++;
       totalApps += s.applications;
       totalCompletion += s.profileCompletion;
-      if (s.userId) uniqueUsers.add(s.userId);
+      if (s.userId) {
+        profilesPerUser.set(s.userId, (profilesPerUser.get(s.userId) ?? 0) + 1);
+        if (s.applications > 0) usersWithApps.add(s.userId);
+      }
       if (s.profileAge !== null && s.profileAge <= 7) newLast7++;
     }
+    const uniqueUsers = profilesPerUser.size;
+    let usersMulti = 0;
+    for (const count of profilesPerUser.values()) if (count > 1) usersMulti++;
     return {
       total,
       byStatus,
       complete,
       completePct: total ? Math.round((complete / total) * 100) : 0,
       withApps,
-      uniqueUsers: uniqueUsers.size,
-      avgProfilesPerUser: uniqueUsers.size ? (total / uniqueUsers.size).toFixed(2) : "0",
+      uniqueUsers,
+      pctUsersMultiProfile: uniqueUsers ? Math.round((usersMulti / uniqueUsers) * 100) : 0,
+      pctUsersWithApps: uniqueUsers ? Math.round((usersWithApps.size / uniqueUsers) * 100) : 0,
       avgAppsPerSeeker: total ? (totalApps / total).toFixed(2) : "0",
       avgCompletion: total ? Math.round(totalCompletion / total) : 0,
       newLast7,
@@ -188,10 +197,11 @@ function UserLevelAnalysis() {
     const q = search.trim().toLowerCase();
     return seekers.filter((s) => {
       if (statusFilter !== "all" && s.status.toLowerCase().replace(" ", "-") !== statusFilter) return false;
+      if (profileFilter !== "all" && s.profileStatus.toLowerCase() !== profileFilter) return false;
       if (q && !(s.id.toLowerCase().includes(q) || s.userId.toLowerCase().includes(q) || s.name.toLowerCase().includes(q))) return false;
       return true;
     });
-  }, [seekers, search, statusFilter]);
+  }, [seekers, search, statusFilter, profileFilter]);
 
   const lifecycle = [
     {
@@ -351,9 +361,9 @@ function UserLevelAnalysis() {
               Icon={CheckCircle2}
             />
             <MetricTile
-              label="Made Connections"
+              label="Applications"
               value={stats.withApps.toLocaleString()}
-              description="Seekers with applications"
+              description="Profiles with applications"
               Icon={Send}
             />
           </div>
@@ -363,14 +373,14 @@ function UserLevelAnalysis() {
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
             <MetricTile label="Total Seekers" value={stats.uniqueUsers.toLocaleString()} description="Unique user IDs" Icon={Users} />
             <MetricTile
-              label="Avg Profiles per User"
-              value={stats.avgProfilesPerUser}
-              description="Profiles managed each"
+              label="% Users > 1 Profile"
+              value={`${stats.pctUsersMultiProfile}%`}
+              description="Users managing multiple profiles"
               Icon={TrendingUp}
             />
             <MetricTile
-              label="Avg Applications / Seeker"
-              value={stats.avgAppsPerSeeker}
+              label="% Users with ≥1 Application"
+              value={`${stats.pctUsersWithApps}%`}
               description={`${stats.newLast7} new in last 7 days`}
               Icon={Activity}
             />
@@ -390,6 +400,16 @@ function UserLevelAnalysis() {
               onChange={(e) => setSearch(e.target.value)}
             />
           </div>
+          <Select value={profileFilter} onValueChange={setProfileFilter}>
+            <SelectTrigger className="w-[180px]">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All profiles</SelectItem>
+              <SelectItem value="complete">Complete</SelectItem>
+              <SelectItem value="incomplete">Incomplete</SelectItem>
+            </SelectContent>
+          </Select>
           <Select value={statusFilter} onValueChange={setStatusFilter}>
             <SelectTrigger className="w-[180px]">
               <SelectValue />
