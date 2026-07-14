@@ -11,16 +11,47 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from "@/components/ui/accordion";
 import { toast } from "sonner";
 import { CheckCircle2, AlertCircle, Gauge, ExternalLink, ShieldAlert } from "lucide-react";
 import { getConcurrencyCap, setConcurrencyCap, CONCURRENCY_CAP_DEFAULT } from "@/lib/concurrency-cap";
+import { ConnectionsSection } from "@/components/settings/ConnectionsSection";
+import { AgentsSection } from "@/components/settings/AgentsSection";
 
 export const Route = createFileRoute("/settings")({
   component: Settings,
 });
 
-
 function Settings() {
+  return (
+    <div className="space-y-6">
+      <header>
+        <h1 className="text-2xl font-semibold tracking-tight">Settings</h1>
+        <p className="text-sm text-muted-foreground mt-1">Connections, agents, and program configuration.</p>
+      </header>
+      <Tabs defaultValue="connections">
+        <TabsList>
+          <TabsTrigger value="connections">Connections</TabsTrigger>
+          <TabsTrigger value="agents">Agents</TabsTrigger>
+          <TabsTrigger value="general">General</TabsTrigger>
+          <TabsTrigger value="reference">Reference</TabsTrigger>
+        </TabsList>
+        <TabsContent value="connections" className="mt-4"><ConnectionsSection /></TabsContent>
+        <TabsContent value="agents" className="mt-4"><AgentsSection /></TabsContent>
+        <TabsContent value="general" className="mt-4"><GeneralSettings /></TabsContent>
+        <TabsContent value="reference" className="mt-4"><ReferenceSettings /></TabsContent>
+      </Tabs>
+    </div>
+  );
+}
+
+function GeneralSettings() {
   const { config, programId } = useProgram();
   const overrides = useProgramOverrides(programId);
 
@@ -101,10 +132,7 @@ function Settings() {
 
       <ExportStagingPanel program={programId} />
 
-
-
-
-      <Panel title={`${config.label} settings`} description="Per-program configuration (saved locally for this session)">
+      <Panel title="Program defaults" description={`${config.label} · fallbacks used when a program has no agent/sheet configured above.`}>
         <div className="grid gap-4 sm:grid-cols-2">
           <div className="sm:col-span-2">
             <Label htmlFor="agent" className="text-xs">Raya agent id</Label>
@@ -139,9 +167,18 @@ function Settings() {
           </div>
         </div>
       </Panel>
+    </div>
+  );
+}
 
-      <div className="grid gap-4 lg:grid-cols-2">
-        <Panel title="KPI definitions" description="Drives the Overview cards">
+function ReferenceSettings() {
+  const { config } = useProgram();
+  return (
+    <Accordion type="single" collapsible defaultValue="kpis" className="space-y-2">
+      <AccordionItem value="kpis" className="rounded-xl border bg-card px-4">
+        <AccordionTrigger>KPI definitions</AccordionTrigger>
+        <AccordionContent>
+          <p className="text-xs text-muted-foreground mb-3">Drives the Overview cards</p>
           <ul className="divide-y">
             {config.kpis.map((k) => (
               <li key={k.key} className="flex items-center justify-between py-2.5 text-sm">
@@ -155,9 +192,13 @@ function Settings() {
               </li>
             ))}
           </ul>
-        </Panel>
+        </AccordionContent>
+      </AccordionItem>
 
-        <Panel title="Drop-reason buckets" description="Per-program taxonomy">
+      <AccordionItem value="drops" className="rounded-xl border bg-card px-4">
+        <AccordionTrigger>Drop-reason buckets</AccordionTrigger>
+        <AccordionContent>
+          <p className="text-xs text-muted-foreground mb-3">Per-program taxonomy</p>
           <div className="flex flex-wrap gap-2">
             {config.dropReasons.map((r) => (
               <Badge key={r} variant="secondary" className="bg-muted text-foreground font-mono">
@@ -165,19 +206,25 @@ function Settings() {
               </Badge>
             ))}
           </div>
-        </Panel>
-      </div>
+        </AccordionContent>
+      </AccordionItem>
 
-      <Panel title="Column schema" description={`${config.columns.length} columns expected in the ${config.label} master sheet`}>
-        <div className="flex flex-wrap gap-1.5">
-          {config.columns.map((c, i) => (
-            <span key={c} className="text-[11px] font-mono px-2 py-1 rounded bg-muted text-foreground">
-              {i + 1}. {c}
-            </span>
-          ))}
-        </div>
-      </Panel>
-    </div>
+      <AccordionItem value="columns" className="rounded-xl border bg-card px-4">
+        <AccordionTrigger>Column schema</AccordionTrigger>
+        <AccordionContent>
+          <p className="text-xs text-muted-foreground mb-3">
+            {config.columns.length} columns expected in the {config.label} master sheet
+          </p>
+          <div className="flex flex-wrap gap-1.5">
+            {config.columns.map((c, i) => (
+              <span key={c} className="text-[11px] font-mono px-2 py-1 rounded bg-muted text-foreground">
+                {i + 1}. {c}
+              </span>
+            ))}
+          </div>
+        </AccordionContent>
+      </AccordionItem>
+    </Accordion>
   );
 }
 
@@ -308,4 +355,3 @@ function ExportStagingPanel({ program }: { program: "kkb" | "dkb" }) {
     </Panel>
   );
 }
-
