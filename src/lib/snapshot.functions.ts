@@ -744,6 +744,7 @@ export const fetchDkbDropAnalysis = createServerFn({ method: "GET" })
         _date_to: data.dateTo ?? null,
         _campaign_type: data.campaignType ?? "all",
         _campaign: data.campaign ?? null,
+        _channel: data.channel ?? "all",
       });
       if (error) throw new Error(error.message);
       if (!rpcData || typeof rpcData !== "object") return empty;
