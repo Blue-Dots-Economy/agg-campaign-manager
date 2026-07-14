@@ -65,6 +65,21 @@ function normaliseSpeaker(s: string): "Bot" | "Employer" {
   return "Employer";
 }
 
+const ENCOURAGERS = [
+  "Nice work!",
+  "Another one down!",
+  "On a roll!",
+  "Great catch!",
+  "Keep it going!",
+  "Smooth — next!",
+];
+function praise(count: number, hasNext: boolean, total: number): string {
+  if (!hasNext) return `🎉 Batch complete — you reviewed all ${total}! Incredible work.`;
+  if (count > 0 && count % 25 === 0) return `🏆 ${count} reviews this session — you're crushing it!`;
+  if (count > 0 && count % 10 === 0) return `🔥 ${count} in a row — you're on fire!`;
+  return ENCOURAGERS[count % ENCOURAGERS.length];
+}
+
 function TranscriptReview() {
   const { callId } = Route.useParams();
   const { bulk } = Route.useSearch();
