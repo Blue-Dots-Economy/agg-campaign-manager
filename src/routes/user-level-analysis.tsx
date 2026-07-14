@@ -191,19 +191,6 @@ function UserLevelAnalysis() {
       newLast7,
     };
   }, [seekers]);
-    return {
-      total,
-      byStatus,
-      complete,
-      completePct: total ? Math.round((complete / total) * 100) : 0,
-      withApps,
-      uniqueUsers: uniqueUsers.size,
-      avgProfilesPerUser: uniqueUsers.size ? (total / uniqueUsers.size).toFixed(2) : "0",
-      avgAppsPerSeeker: total ? (totalApps / total).toFixed(2) : "0",
-      avgCompletion: total ? Math.round(totalCompletion / total) : 0,
-      newLast7,
-    };
-  }, [seekers]);
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
