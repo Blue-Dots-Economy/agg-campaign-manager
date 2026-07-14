@@ -220,8 +220,15 @@ export async function performSync(program: ProgramId, opts?: { force?: boolean }
       call_duration_seconds: number | null;
       applications_count: number | null;
       data: CallRow;
+      row_hash: string;
       synced_at: string;
     };
+
+    // Stable content hash — excludes synced_at (always changes) and row_hash itself.
+    function computeRowHash(r: Omit<UpsertRow, "row_hash" | "synced_at">): string {
+      return createHash("sha1").update(JSON.stringify(r)).digest("hex");
+    }
+
 
 
     const BATCH = 500;
