@@ -24,8 +24,6 @@ const NAV = [
   { to: "/review", label: "Review hub", icon: Headphones },
   { to: "/campaigns", label: "Campaigns", icon: Megaphone },
   { to: "/launch", label: "Launch", icon: Rocket },
-  { to: "/connections", label: "Connections", icon: Plug },
-  { to: "/agents", label: "Agents", icon: Bot },
   { to: "/reviewers", label: "Reviewers", icon: UserCog, adminOnly: true },
   { to: "/settings", label: "Settings", icon: Settings },
 ] as const;
