@@ -438,6 +438,22 @@ function UserLevelAnalysis() {
           )}
         </div>
       </div>
+
+      <Dialog open={!!selected} onOpenChange={(open) => !open && setSelected(null)}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle className="font-mono text-sm">
+              Profile {selected?.id}
+            </DialogTitle>
+            <DialogDescription className="font-mono text-xs">
+              User ID: {selected?.userId || "—"}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="py-10 text-center text-sm text-muted-foreground">
+            Profile fields will be shown here once confirmed.
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
