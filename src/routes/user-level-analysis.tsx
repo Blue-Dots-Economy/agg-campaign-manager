@@ -1,8 +1,14 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { Users, UserPlus, AlertTriangle, PauseCircle, Copy, CheckCircle2, Send, TrendingUp, Activity, RefreshCw, Languages, Moon, Search } from "lucide-react";
+import { Users, UserPlus, AlertTriangle, PauseCircle, Copy, CheckCircle2, Send, TrendingUp, Activity, RefreshCw, Languages, Moon, Search, ChevronDown } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import {
   Select,
   SelectContent,
@@ -168,6 +174,27 @@ function UserLevelAnalysis() {
           </p>
         </div>
         <div className="flex items-center gap-2">
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="outline" className="gap-2">
+                <RefreshCw className="h-4 w-4" />
+                Sync data
+                <ChevronDown className="h-4 w-4" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem asChild>
+                <a
+                  href="https://docs.google.com/spreadsheets/d/1J2WDeSOCaIVz2KvWMmI9dVE4iTh_Dqbt8Aqb6423a2U/edit?usp=sharing"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  UP Job Seekers
+                </a>
+              </DropdownMenuItem>
+              <DropdownMenuItem disabled>KA Job Seekers</DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
           <Button className="gap-2">
             <UserPlus className="h-4 w-4" />
             Add Participants
