@@ -138,6 +138,7 @@ function ReviewHub() {
       if (filters.city !== "All" && c.city_campaign !== filters.city) return false;
       if (filters.outcome !== "All" && c.call_outcome !== filters.outcome) return false;
       if (filters.dropReason !== "All" && c.drop_reason !== filters.dropReason) return false;
+      if (dataset === "kkb" && filters.channel !== "All" && String(c.channel || "outbound").toLowerCase() !== filters.channel.toLowerCase()) return false;
       const sec = Number(c.call_duration_seconds) || 0;
       if (!durationBucket(sec, filters.duration)) return false;
       if (filters.intent !== "All") {
