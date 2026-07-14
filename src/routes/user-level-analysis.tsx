@@ -41,6 +41,13 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+} from "@/components/ui/dialog";
 import { getUpSeekers, type Seeker } from "@/lib/upSeekers.functions";
 
 const seekersQuery = queryOptions({
