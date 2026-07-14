@@ -56,6 +56,7 @@ import {
   loadSeekersAsync,
   saveUploadedCsv,
   resetToBundled,
+  PROFILE_FIELD_LABELS,
   type Seeker,
   type CsvMeta,
 } from "@/lib/upSeekersCsv";
