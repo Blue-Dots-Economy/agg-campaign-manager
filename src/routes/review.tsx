@@ -18,6 +18,7 @@ export const Route = createFileRoute("/review")({
 const OUTCOME_OPTIONS = ["All", "Completed", "Early Disconnect"];
 const DURATION_OPTIONS = ["All", "< 30s", "30s – 1m", "1 – 2m", "2 – 5m", "> 5m"];
 const INTENT_OPTIONS = ["All", "High Intent Score", "Low Intent Score"];
+const CHANNEL_OPTIONS = ["All", "Outbound", "Inbound"];
 const FILTER_KEY = "review_filters_v1";
 const BULK_KEY = "bulk_review_queue";
 
@@ -25,12 +26,12 @@ type Tab = "all" | "pending" | "reviewed";
 interface Filters {
   day: string; date: string[]; campaign: string; lang: string; city: string;
   outcome: string; duration: string; intent: string; dropReason: string;
-  tab: Tab; search: string;
+  channel: string; tab: Tab; search: string;
 }
 const DEFAULT_FILTERS: Filters = {
   day: "All", date: [], campaign: "All", lang: "All", city: "All",
   outcome: "All", duration: "All", intent: "All", dropReason: "All",
-  tab: "pending", search: "",
+  channel: "All", tab: "pending", search: "",
 };
 
 function parseIst(s: string): number {
@@ -137,6 +138,7 @@ function ReviewHub() {
       if (filters.city !== "All" && c.city_campaign !== filters.city) return false;
       if (filters.outcome !== "All" && c.call_outcome !== filters.outcome) return false;
       if (filters.dropReason !== "All" && c.drop_reason !== filters.dropReason) return false;
+      if (dataset === "kkb" && filters.channel !== "All" && String(c.channel || "outbound").toLowerCase() !== filters.channel.toLowerCase()) return false;
       const sec = Number(c.call_duration_seconds) || 0;
       if (!durationBucket(sec, filters.duration)) return false;
       if (filters.intent !== "All") {
@@ -247,6 +249,7 @@ function ReviewHub() {
         </div>
 
         <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-2">
+          {dataset === "kkb" && <SelectFilter value={filters.channel} onChange={(v) => set("channel", v)} options={CHANNEL_OPTIONS} placeholder="Channel" />}
           <SelectFilter value={filters.day} onChange={(v) => set("day", v)} options={["All", ...options.days]} placeholder="Day" />
           <SelectFilter value={filters.campaign} onChange={(v) => set("campaign", v)} options={["All", ...options.campaigns]} placeholder="Campaign" />
           <SelectFilter value={filters.lang} onChange={(v) => set("lang", v)} options={["All", ...options.langs]} placeholder="Language" />

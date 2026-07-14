@@ -68,7 +68,8 @@ function CompletedCampaigns() {
   const { config } = useProgram();
   const isDkb = config.id === "dkb";
   const successLabel = isDkb ? "Active providers" : "Converted";
-  const { data, isLoading } = useCampaignList(config, {});
+  const [channel, setChannel] = useState<"all" | "outbound" | "inbound">("all");
+  const { data, isLoading } = useCampaignList(config, { channel });
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(1);
   useEffect(() => { setPage(1); }, [search]);
@@ -92,9 +93,32 @@ function CompletedCampaigns() {
           <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">Completed campaigns</h2>
           <p className="text-xs text-muted-foreground mt-1">Drill into one campaign and compare it to its region's average.</p>
         </div>
-        <div className="relative w-72 max-w-full">
-          <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-          <Input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search by campaign name" className="pl-8 h-9" />
+        <div className="flex items-center gap-2">
+          {!isDkb && (
+            <div className="inline-flex rounded-md border border-border bg-card p-0.5 text-xs">
+              {([
+                { value: "all" as const, label: "All calls" },
+                { value: "outbound" as const, label: "Outbound" },
+                { value: "inbound" as const, label: "Inbound" },
+              ]).map((opt) => (
+                <button
+                  key={opt.value}
+                  type="button"
+                  onClick={() => setChannel(opt.value)}
+                  className={cn(
+                    "px-3 py-1.5 rounded transition-colors",
+                    channel === opt.value ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground"
+                  )}
+                >
+                  {opt.label}
+                </button>
+              ))}
+            </div>
+          )}
+          <div className="relative w-72 max-w-full">
+            <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <Input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search by campaign name" className="pl-8 h-9" />
+          </div>
         </div>
       </div>
       {isLoading && !data ? <LoadingState /> : (
