@@ -618,6 +618,7 @@ export type Database = {
         Args: {
           _campaign?: string
           _campaign_type?: string
+          _channel?: string
           _date_from?: string
           _date_to?: string
           _program: string
@@ -629,6 +630,7 @@ export type Database = {
         Args: {
           _campaign?: string
           _campaign_type?: string
+          _channel?: string
           _date_from?: string
           _date_to?: string
           _program: string
@@ -640,6 +642,7 @@ export type Database = {
         Args: {
           _campaign?: string
           _campaign_type?: string
+          _channel?: string
           _date_from?: string
           _date_to?: string
           _program: string
