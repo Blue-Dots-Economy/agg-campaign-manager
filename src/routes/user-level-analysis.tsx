@@ -28,6 +28,8 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
   DropdownMenuSeparator,
+  DropdownMenuCheckboxItem,
+  DropdownMenuLabel,
 } from "@/components/ui/dropdown-menu";
 import {
   Select,
@@ -104,7 +106,7 @@ function UserLevelAnalysis() {
   const [isFetching, setIsFetching] = useState(false);
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
-  const [profileFilter, setProfileFilter] = useState<string>("all");
+  const [profileFilter, setProfileFilter] = useState<string[]>([]);
   const [appliedFilter, setAppliedFilter] = useState<string>("all");
   const [selected, setSelected] = useState<Seeker | null>(null);
   const [profileInfoOpen, setProfileInfoOpen] = useState(false);
@@ -204,7 +206,30 @@ function UserLevelAnalysis() {
     const q = search.trim().toLowerCase();
     return seekers.filter((s) => {
       if (statusFilter !== "all" && s.status.toLowerCase().replace(" ", "-") !== statusFilter) return false;
-      if (profileFilter !== "all" && s.profileStatus.toLowerCase() !== profileFilter) return false;
+      if (profileFilter.length > 0) {
+        const wantComplete = profileFilter.includes("complete");
+        const wantedFields = profileFilter.filter((f) => f !== "complete");
+        if (wantComplete && wantedFields.length === 0) {
+          if (s.profileStatus !== "Complete") return false;
+        } else if (!wantComplete && wantedFields.length > 0) {
+          // must be incomplete AND missing any of the selected fields
+          if (s.profileStatus === "Complete") return false;
+          const missing = new Set(
+            s.profileFieldChecks.filter((f) => !f.passed).map((f) => f.label),
+          );
+          if (!wantedFields.some((f) => missing.has(f))) return false;
+        } else if (wantComplete && wantedFields.length > 0) {
+          // complete OR incomplete-with-selected-missing-field
+          if (s.profileStatus === "Complete") {
+            // pass
+          } else {
+            const missing = new Set(
+              s.profileFieldChecks.filter((f) => !f.passed).map((f) => f.label),
+            );
+            if (!wantedFields.some((f) => missing.has(f))) return false;
+          }
+        }
+      }
       if (appliedFilter !== "all") {
         const pending = Math.max(0, s.applications - s.shortlisted - s.rejected);
         if (appliedFilter === "shortlisted" && s.shortlisted <= 0) return false;
@@ -418,16 +443,55 @@ function UserLevelAnalysis() {
               onChange={(e) => setSearch(e.target.value)}
             />
           </div>
-          <Select value={profileFilter} onValueChange={setProfileFilter}>
-            <SelectTrigger className="w-[170px]">
-              <SelectValue placeholder="Profile Status" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">Profile: All</SelectItem>
-              <SelectItem value="complete">Complete</SelectItem>
-              <SelectItem value="incomplete">Incomplete</SelectItem>
-            </SelectContent>
-          </Select>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="outline" className="w-[210px] justify-between font-normal">
+                <span className="truncate">
+                  {profileFilter.length === 0
+                    ? "Profile: All"
+                    : profileFilter.length === 1
+                      ? `Profile: ${profileFilter[0] === "complete" ? "Complete" : `Missing ${profileFilter[0]}`}`
+                      : `Profile: ${profileFilter.length} selected`}
+                </span>
+                <ChevronDown className="h-4 w-4 opacity-60" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="start" className="w-[260px]">
+              <DropdownMenuItem onSelect={(e) => { e.preventDefault(); setProfileFilter([]); }}>
+                Clear (show all)
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuCheckboxItem
+                checked={profileFilter.includes("complete")}
+                onCheckedChange={(checked) =>
+                  setProfileFilter((prev) =>
+                    checked ? [...prev, "complete"] : prev.filter((v) => v !== "complete"),
+                  )
+                }
+                onSelect={(e) => e.preventDefault()}
+              >
+                Complete
+              </DropdownMenuCheckboxItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuLabel className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+                Incomplete — missing field
+              </DropdownMenuLabel>
+              {PROFILE_FIELD_LABELS.map((label) => (
+                <DropdownMenuCheckboxItem
+                  key={label}
+                  checked={profileFilter.includes(label)}
+                  onCheckedChange={(checked) =>
+                    setProfileFilter((prev) =>
+                      checked ? [...prev, label] : prev.filter((v) => v !== label),
+                    )
+                  }
+                  onSelect={(e) => e.preventDefault()}
+                >
+                  {label}
+                </DropdownMenuCheckboxItem>
+              ))}
+            </DropdownMenuContent>
+          </DropdownMenu>
           <Select value={appliedFilter} onValueChange={setAppliedFilter}>
             <SelectTrigger className="w-[180px]">
               <SelectValue placeholder="Applied Status" />
