@@ -185,18 +185,24 @@ function TranscriptReview() {
       await submitFn({ data: { review } });
       qc.invalidateQueries({ queryKey: ["review-map"] });
       qc.invalidateQueries({ queryKey: ["existing-reviews", callIdStr, jobIdStr] });
-      toast.success("Review submitted");
+      const newCount = sessionReviewed + 1;
+      setSessionReviewed(newCount);
+      try { window.sessionStorage.setItem("reviews_done_session", String(newCount)); } catch { /* ignore */ }
       if (bulkMode) {
         try {
           const raw = sessionStorage.getItem("bulk_review_queue");
           const queue: string[] = raw ? JSON.parse(raw) : [];
           const idx = queue.indexOf(callId);
           const next = idx >= 0 && idx < queue.length - 1 ? queue[idx + 1] : null;
+          const remaining = queue.length - (idx + 1);
+          toast.success(praise(newCount, !!next, queue.length), next ? { description: `${remaining} ${remaining === 1 ? "call" : "calls"} to go` } : undefined);
           if (next) { navigate({ to: "/review/$callId", params: { callId: next }, search: { bulk: "1" } }); return; }
           sessionStorage.removeItem("bulk_review_queue");
-          toast.success("Bulk review complete");
+          navigate({ to: "/review" });
+          return;
         } catch { /* ignore */ }
       }
+      toast.success("Review submitted — nice work!");
       navigate({ to: "/review" });
     } catch (e) {
       toast.error(`Failed to submit: ${e instanceof Error ? e.message : "Try again."}`);
