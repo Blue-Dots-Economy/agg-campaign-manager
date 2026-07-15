@@ -258,6 +258,14 @@ export function DkbOverviewMetrics({
       >
         <div className="grid items-stretch gap-4 lg:grid-cols-5">
           <div className="lg:col-span-3">
+            <div className="mb-3 inline-flex rounded-md border border-border bg-card p-0.5 text-xs">
+              {([["providers", "Providers"], ["openings", "Openings"], ["calls", "Calls"]] as const).map(([v, label]) => (
+                <button key={v} type="button" onClick={() => setDview(v)}
+                  className={cn("px-3 py-1.5 rounded transition-colors", dview === v ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground")}>
+                  {label}
+                </button>
+              ))}
+            </div>
             {funnelStages.length > 0 ? (
               <VerticalFunnel stages={funnelStages} fill pickedUpKey="picked" onStageClick={onFunnelStageClick} />
             ) : (
