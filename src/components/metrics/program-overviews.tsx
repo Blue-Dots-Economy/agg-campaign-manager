@@ -106,77 +106,47 @@ export function KkbOverviewMetrics({
       ? (previous.productiveCalls / previous.totalCalls) * 100
       : null;
 
-  const pct = (n: number, d: number) => (d > 0 ? (n / d) * 100 : 0);
-  const dropPct = (n: number, d: number) => (d > 0 ? Math.max(0, (1 - n / d) * 100) : 0);
-
-  const stages: VerticalFunnelStage[] = [
-    {
-      key: "calls",
-      label: "Calls made",
-      description: "All dialled attempts",
-      value: m.totalCalls,
-      color: "blue",
-      sub: "100.0%",
-      nextAnnotation: `-${dropPct(m.answeredCalls, m.totalCalls).toFixed(1)}% no pickup`,
-      avgDurationSec: stageDurations?.["calls"],
-    },
-    {
-      key: "picked",
-      label: "Picked up",
-      description: "Seeker answered",
-      value: m.answeredCalls,
-      color: "green",
-      nextAnnotation: `-${dropPct(m.engagedCalls, m.answeredCalls).toFixed(1)}% drop after pickup`,
-      avgDurationSec: stageDurations?.["picked"],
-    },
-    {
-      key: "engaged",
-      label: "Engaged",
-      description: "3+ real conversation turns",
-      value: m.engagedCalls,
-      color: "green",
-      nextAnnotation: `-${dropPct(m.jobsShownCalls, m.engagedCalls).toFixed(1)}% don't reach jobs`,
-      avgDurationSec: stageDurations?.["engaged"],
-    },
-    {
-      key: "jobs",
-      label: "Jobs shown",
-      description: "Bot presented openings",
-      value: m.jobsShownCalls,
-      color: "amber",
-      nextAnnotation: "High-intent subset",
-      avgDurationSec: stageDurations?.["jobs"],
-    },
-    {
-      key: "intent",
-      label: "High-Intent (≥5)",
-      description: "Intent score ≥ 5",
-      value: m.highIntentCalls,
-      color: "coral",
-      nextAnnotation: `-${dropPct(m.applicationsTotal, m.highIntentCalls).toFixed(1)}% never apply`,
-      avgDurationSec: stageDurations?.["intent"],
-    },
-    {
-      key: "apps",
-      label: "Applications",
-      description: `${m.applicationsSubmitted.toLocaleString()} submitted + ${m.applicationsBlocked.toLocaleString()} blocked`,
-      value: m.applicationsTotal,
-      color: "coral",
-      nextAnnotation: m.hasInterviewData
-        ? `${pct(m.interviewCount, m.applicationsTotal).toFixed(1)}% → interview`
-        : undefined,
-      avgDurationSec: stageDurations?.["apps"],
-    },
+  const [view, setView] = useState<"hybrid" | "calls" | "seekers">("hybrid");
+  const callsByStage: Record<string, number> = {
+    calls: m.totalCalls, picked: m.answeredCalls, engaged: m.engagedCalls,
+    jobs: m.jobsShownCalls, intent: m.highIntentCalls, apps: m.applicationsTotal,
+  };
+  const seekersByStage: Record<string, number> = {
+    calls: m.seekers, picked: m.answeredSeekers, engaged: m.engagedSeekers,
+    jobs: m.jobsShownSeekers, intent: m.highIntentSeekers, apps: m.applicationsSeekers,
+  };
+  const seekerStageKeys = new Set(["engaged", "jobs", "intent", "apps"]);
+  const dimOf = (key: string): "calls" | "seekers" =>
+    view === "calls" ? "calls" : view === "seekers" ? "seekers" : seekerStageKeys.has(key) ? "seekers" : "calls";
+  const valOf = (key: string): number =>
+    (dimOf(key) === "seekers" ? seekersByStage[key] : callsByStage[key]) ?? 0;
+  const dropLabels: Record<string, string> = {
+    calls: "no pickup", picked: "drop after pickup", engaged: "don't reach jobs",
+    jobs: "reach high-intent", intent: "never apply",
+  };
+  const stageDefs: Array<{ key: string; label: string; description: string; color: FunnelColor }> = [
+    { key: "calls", label: "Calls made", description: "All dialled attempts", color: "blue" },
+    { key: "picked", label: "Picked up", description: "Seeker answered", color: "green" },
+    { key: "engaged", label: "Engaged", description: "3+ real conversation turns", color: "green" },
+    { key: "jobs", label: "Jobs shown", description: "Bot presented openings", color: "amber" },
+    { key: "intent", label: "High-Intent (≥5)", description: "Intent score ≥ 5", color: "coral" },
+    { key: "apps", label: "Applications", description: `${m.applicationsSubmitted.toLocaleString()} submitted + ${m.applicationsBlocked.toLocaleString()} blocked`, color: "coral" },
   ];
-  if (m.hasInterviewData) {
-    stages.push({
-      key: "interview",
-      label: "Interview",
-      description: "Ghaziabad only",
-      value: m.interviewCount,
-      color: "purple",
-    });
-  }
+  const stages: VerticalFunnelStage[] = stageDefs.map((s, i) => {
+    const value = valOf(s.key);
+    const next = stageDefs[i + 1];
+    const nextVal = next ? valOf(next.key) : null;
+    const dropAnn =
+      next && value > 0 && nextVal != null
+        ? `-${Math.max(0, (1 - nextVal / value) * 100).toFixed(1)}% ${dropLabels[s.key] ?? "drop"}`
+        : undefined;
+    return {
+      key: s.key, label: s.label, description: s.description, value, color: s.color,
+      unit: dimOf(s.key) === "seekers" ? "seekers" : undefined,
+      nextAnnotation: dropAnn,
+      avgDurationSec: stageDurations?.[s.key],
+    };
+  });
 
   return (
     <div className="space-y-8">
