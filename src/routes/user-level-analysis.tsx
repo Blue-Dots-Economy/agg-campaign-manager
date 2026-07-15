@@ -196,7 +196,6 @@ function UserLevelAnalysis() {
   }, [seekers, dateRange]);
 
   const stats = useMemo(() => {
-  const stats = useMemo(() => {
     const total = dateScopedSeekers.length;
     const byStatus = { New: 0, Active: 0, "At Risk": 0, Inactive: 0 } as Record<Seeker["status"], number>;
     let complete = 0;
@@ -218,7 +217,7 @@ function UserLevelAnalysis() {
     let emailCount = 0;
     let phoneCount = 0;
 
-    for (const s of seekers) {
+    for (const s of dateScopedSeekers) {
       byStatus[s.status]++;
       if (s.profileStatus === "Complete") complete++;
       if (s.applications > 0) withApps++;
