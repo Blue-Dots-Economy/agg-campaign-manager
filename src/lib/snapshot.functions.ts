@@ -298,8 +298,8 @@ export async function performSync(program: ProgramId, opts?: { force?: boolean }
               // rows whose content hasn't changed. Only upsert the diff.
               const callIds = pageRows.map((r) => r.call_id);
               const existingHashes = new Map<string, string | null>();
-              for (let i = 0; i < callIds.length; i += 1000) {
-                const slice = callIds.slice(i, i + 1000);
+              for (let i = 0; i < callIds.length; i += 200) {
+                const slice = callIds.slice(i, i + 200);
                 const { data: existing, error: exErr } = await client
                   .from("call_rows")
                   .select("call_id, row_hash")
@@ -343,8 +343,8 @@ export async function performSync(program: ProgramId, opts?: { force?: boolean }
               // Bump synced_at on unchanged rows so the reconcile-delete below
               // doesn't drop them. Narrow single-column update — much lighter
               // than re-upserting the full JSONB row.
-              for (let i = 0; i < unchangedIds.length; i += 1000) {
-                const slice = unchangedIds.slice(i, i + 1000);
+              for (let i = 0; i < unchangedIds.length; i += 200) {
+                const slice = unchangedIds.slice(i, i + 200);
                 const { error: touchErr } = await client
                   .from("call_rows")
                   .update({ synced_at: nowIso })
