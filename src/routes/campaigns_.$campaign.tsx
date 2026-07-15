@@ -22,9 +22,14 @@ import {
 export const Route = createFileRoute("/campaigns_/$campaign")({
   validateSearch: (s: Record<string, unknown>) => ({
     date: typeof s.date === "string" ? s.date : undefined,
+    channel:
+      s.channel === "outbound" || s.channel === "inbound" || s.channel === "all"
+        ? s.channel
+        : undefined,
   }),
   component: CampaignReviewDetail,
 });
+
 
 function parseDate(s: string | null): Date | null {
   if (!s) return null;
