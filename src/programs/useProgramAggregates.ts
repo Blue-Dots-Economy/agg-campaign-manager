@@ -32,7 +32,7 @@ export interface OverviewFilters {
   channel?: string;           // 'all' | 'outbound' | 'inbound'
 }
 
-const STALE_AFTER_MS = 15 * 60_000; // 15 minutes — on-load freshness trigger
+const STALE_AFTER_MS = 4 * 60 * 60_000; // 4 hours — on-load freshness trigger
 
 export function useProgramAggregates(config: ProgramConfig, filters?: OverviewFilters) {
   const fn = useServerFn(fetchProgramAggregates);
