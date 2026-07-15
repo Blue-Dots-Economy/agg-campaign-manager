@@ -126,7 +126,7 @@ function CompletedCampaigns() {
           {recent.length > 0 && (
             <div className="space-y-3">
               <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Latest · review pending</h3>
-              <div className="grid gap-3 md:grid-cols-2">{recent.map((c) => <CampaignCard key={`${c.campaignType}__${c.campaignDate ?? "nd"}`} campaign={c} successLabel={successLabel} highlighted />)}</div>
+              <div className="grid gap-3 md:grid-cols-2">{recent.map((c) => <CampaignCard key={`${c.campaignType}__${c.campaignDate ?? "nd"}`} campaign={c} successLabel={successLabel} channel={channel} highlighted />)}</div>
             </div>
           )}
           <div className="space-y-3">
