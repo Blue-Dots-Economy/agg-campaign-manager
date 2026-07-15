@@ -180,6 +180,9 @@ export async function performSync(program: ProgramId, opts?: { force?: boolean }
       tab_name: string | null;
       channel: string | null;
     }>;
+    // Process small/inbound tabs first so they complete and reconcile even if a
+    // large tab (e.g. 27k-row outbound) later exhausts the runtime budget.
+    list.sort((a, b) => (a.channel === "inbound" ? 0 : 1) - (b.channel === "inbound" ? 0 : 1));
 
     const errors: SyncResult["errors"] = [];
     type UpsertRow = {
@@ -220,40 +223,39 @@ export async function performSync(program: ProgramId, opts?: { force?: boolean }
     const PAGE = 10000;
     let lastSyncedAt = new Date().toISOString();
     let statusWritten = false;
-
-    // Presence set (every call_id seen across all sheets this run) + the
-    // pre-run content-hash map. Declared here so the reconcile step (after the
-    // connection loop) can use them.
-    const seen = new Set<string>();
-    const existingHashes = new Map<string, string | null>();
-    let didRead = false;
+    let totalRows = 0;
 
     try {
       if (process.env.GOOGLE_SERVICE_ACCOUNT_JSON && list.length > 0) {
         const { readSheet } = await import("./sheets.server");
 
-        // Preload all existing content-hashes for this program in ONE read.
-        {
-          const { data: ex, error: exErr } = await client
-            .from("call_rows")
-            .select("call_id, row_hash")
-            .eq("program", program)
-            .limit(200000);
-          if (exErr) {
-            errors.push({ id: "_hash_lookup", name: "snapshot", message: exErr.message });
-          } else {
-            for (const r of ex ?? []) {
-              existingHashes.set(r.call_id as string, (r.row_hash as string | null) ?? null);
-            }
-          }
-        }
-
         for (const c of list) {
-          let pageStart = 2;
+          const connSeen = new Set<string>();
+          const existingHashes = new Map<string, string | null>();
+          let connReadOk = true;
           let totalMappedForConn = 0;
           let effectiveTabForConn: string | null = null;
           try {
-            while (true) {
+            // Existing hashes for THIS connection only (keyed by call_id).
+            {
+              const { data: ex, error: exErr } = await client
+                .from("call_rows")
+                .select("call_id, row_hash")
+                .eq("program", program)
+                .eq("connection_id", c.id)
+                .limit(200000);
+              if (exErr) {
+                errors.push({ id: "_hash_lookup", name: c.name, message: exErr.message });
+                connReadOk = false;
+              } else {
+                for (const r of ex ?? []) {
+                  existingHashes.set(r.call_id as string, (r.row_hash as string | null) ?? null);
+                }
+              }
+            }
+
+            let pageStart = 2;
+            while (connReadOk) {
               const { headers, rows, effectiveTab } = await readSheet(
                 c.sheet_id,
                 c.tab_name ?? undefined,
@@ -262,15 +264,14 @@ export async function performSync(program: ProgramId, opts?: { force?: boolean }
               );
               effectiveTabForConn = effectiveTab;
               if (rows.length === 0) break;
-              didRead = true;
 
               const nowIso = new Date().toISOString();
               const toUpsert: UpsertRow[] = [];
               for (let i = 0; i < rows.length; i++) {
                 const mapped = mapRow(headers, rows[i]);
                 const callId = mapped.call_id?.trim() || `${c.id}:${pageStart - 2 + i}`;
-                if (seen.has(callId)) continue;
-                seen.add(callId);
+                if (connSeen.has(callId)) continue;
+                connSeen.add(callId);
                 const base = {
                   program,
                   connection_id: c.id,
@@ -312,12 +313,15 @@ export async function performSync(program: ProgramId, opts?: { force?: boolean }
                   .from("call_rows")
                   .upsert(slice, { onConflict: "program,call_id" });
                 if (error) {
-                  errors.push({ id: "_upsert", name: "snapshot", message: error.message });
+                  errors.push({ id: "_upsert", name: c.name, message: error.message });
                   pageUpsertFailed = true;
                   break;
                 }
               }
-              if (pageUpsertFailed) break;
+              if (pageUpsertFailed) {
+                connReadOk = false;
+                break;
+              }
 
               await client
                 .from("program_sync_state")
@@ -329,10 +333,33 @@ export async function performSync(program: ProgramId, opts?: { force?: boolean }
               pageStart += PAGE;
             }
 
+            // Per-connection reconcile: delete rows for THIS connection whose
+            // call_id is no longer in the tab. Scoped by connection_id, so it can
+            // never touch another connection's rows. Only when this connection's
+            // read fully succeeded and returned rows.
+            if (connReadOk && connSeen.size > 0) {
+              const toDelete = [...existingHashes.keys()].filter((id) => !connSeen.has(id));
+              for (let i = 0; i < toDelete.length; i += 200) {
+                const slice = toDelete.slice(i, i + 200);
+                const { error: delErr } = await client
+                  .from("call_rows")
+                  .delete()
+                  .eq("program", program)
+                  .eq("connection_id", c.id)
+                  .in("call_id", slice);
+                if (delErr) {
+                  errors.push({ id: "_reconcile", name: c.name, message: delErr.message });
+                  break;
+                }
+              }
+            }
+
+            totalRows += connSeen.size;
+
             const patch: Record<string, unknown> = {
-              status: "connected",
+              status: connReadOk ? "connected" : "error",
               row_count: totalMappedForConn,
-              last_error: null,
+              last_error: connReadOk ? null : (errors[errors.length - 1]?.message ?? "sync error"),
               last_synced_at: new Date().toISOString(),
             };
             if (effectiveTabForConn && effectiveTabForConn !== (c.tab_name ?? "")) {
@@ -351,28 +378,6 @@ export async function performSync(program: ProgramId, opts?: { force?: boolean }
               })
               .eq("id", c.id);
           }
-          if (errors.some((e) => e.id === "_upsert")) break;
-        }
-      }
-
-      // Reconcile deletions by SET DIFFERENCE: any call_id that existed before
-      // but is no longer present in any sheet this run gets removed. Strongly
-      // guarded — only on a fully clean run that actually read sheet rows, so a
-      // transient sheet failure can never wipe the snapshot. The delete set is
-      // normally tiny (just rows removed from the sheet).
-      if (errors.length === 0 && didRead && seen.size > 0) {
-        const toDelete = [...existingHashes.keys()].filter((id) => !seen.has(id));
-        for (let i = 0; i < toDelete.length; i += 200) {
-          const slice = toDelete.slice(i, i + 200);
-          const { error: delErr } = await client
-            .from("call_rows")
-            .delete()
-            .eq("program", program)
-            .in("call_id", slice);
-          if (delErr) {
-            errors.push({ id: "_reconcile", name: "snapshot", message: delErr.message });
-            break;
-          }
         }
       }
 
@@ -381,7 +386,7 @@ export async function performSync(program: ProgramId, opts?: { force?: boolean }
       await client.from("program_sync_state").upsert({
         program,
         last_synced_at: lastSyncedAt,
-        row_count: seen.size,
+        row_count: totalRows,
         status: errors.length > 0 ? "partial" : "ok",
         last_error: errors.length > 0 ? errors[0].message : null,
         updated_at: lastSyncedAt,
@@ -392,7 +397,7 @@ export async function performSync(program: ProgramId, opts?: { force?: boolean }
         await client.from("program_sync_state").upsert({
           program,
           last_synced_at: lastSyncedAt,
-          row_count: seen.size,
+          row_count: totalRows,
           status: errors.length > 0 ? "partial" : "ok",
           last_error: errors.length > 0 ? errors[0].message : null,
           updated_at: lastSyncedAt,
@@ -403,7 +408,7 @@ export async function performSync(program: ProgramId, opts?: { force?: boolean }
     return {
       ok: errors.length === 0,
       program,
-      rowCount: seen.size,
+      rowCount: totalRows,
       connectionCount: list.length,
       errors,
       lastSyncedAt,
