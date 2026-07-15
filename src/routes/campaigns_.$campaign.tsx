@@ -113,8 +113,9 @@ function CampaignReviewDetail() {
               navigate({
                 to: "/campaigns/$campaign",
                 params: { campaign: type },
-                search: { date: d || undefined },
+                search: { date: d || undefined, channel: channel ?? undefined },
               });
+
             }}
           >
             <SelectTrigger className="h-9">
