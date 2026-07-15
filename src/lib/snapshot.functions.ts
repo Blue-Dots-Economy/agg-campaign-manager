@@ -136,20 +136,9 @@ export async function performSync(program: ProgramId, opts?: { force?: boolean }
     const client = sb();
 
     const runStart = new Date().toISOString();
-    // 4-min stale threshold. A healthy sync heartbeats updated_at every page
-    // (~30-40s), so this never reclaims a live run; but if a sync is hard-killed
-    // by the Workers runtime limit (finally never runs, lock never released),
-    // the next attempt reclaims it after 4 min instead of being blocked for 15.
     const staleThresholdIso = new Date(Date.now() - 4 * 60_000).toISOString();
 
-    // Atomic lock claim. A single conditional UPDATE either flips status to
-    // "syncing" (we won the lock) or matches zero rows (someone else holds a
-    // fresh lock). PostgreSQL re-checks the WHERE predicate after row-locking,
-    // so only ONE concurrent caller can win — no check-then-act race.
-    // We claim if the row is NOT currently "syncing", OR its lock is stale
-    // (updated_at older than 15 min — a crashed/stuck previous run).
     {
-      // Ensure the row exists so the conditional UPDATE has something to match.
       await client
         .from("program_sync_state")
         .upsert({ program }, { onConflict: "program", ignoreDuplicates: true });
@@ -162,7 +151,6 @@ export async function performSync(program: ProgramId, opts?: { force?: boolean }
         .select("program, last_synced_at, row_count");
 
       if (claimErr || !claimed || claimed.length === 0) {
-        // Another sync holds a fresh lock — skip cleanly instead of stacking.
         const { data: cur } = await client
           .from("program_sync_state")
           .select("last_synced_at, row_count")
@@ -224,24 +212,42 @@ export async function performSync(program: ProgramId, opts?: { force?: boolean }
       synced_at: string;
     };
 
-    // Stable content hash — excludes synced_at (always changes) and row_hash itself.
     function computeRowHash(r: Omit<UpsertRow, "row_hash" | "synced_at">): string {
       return createHash("sha1").update(JSON.stringify(r)).digest("hex");
     }
 
-
-
     const BATCH = 500;
     const PAGE = 10000;
-    let completedRows = 0;
-    let count: number | null = null;
     let lastSyncedAt = new Date().toISOString();
     let statusWritten = false;
+
+    // Presence set (every call_id seen across all sheets this run) + the
+    // pre-run content-hash map. Declared here so the reconcile step (after the
+    // connection loop) can use them.
+    const seen = new Set<string>();
+    const existingHashes = new Map<string, string | null>();
+    let didRead = false;
 
     try {
       if (process.env.GOOGLE_SERVICE_ACCOUNT_JSON && list.length > 0) {
         const { readSheet } = await import("./sheets.server");
-        const seen = new Set<string>();
+
+        // Preload all existing content-hashes for this program in ONE read.
+        {
+          const { data: ex, error: exErr } = await client
+            .from("call_rows")
+            .select("call_id, row_hash")
+            .eq("program", program)
+            .limit(200000);
+          if (exErr) {
+            errors.push({ id: "_hash_lookup", name: "snapshot", message: exErr.message });
+          } else {
+            for (const r of ex ?? []) {
+              existingHashes.set(r.call_id as string, (r.row_hash as string | null) ?? null);
+            }
+          }
+        }
+
         for (const c of list) {
           let pageStart = 2;
           let totalMappedForConn = 0;
@@ -256,9 +262,10 @@ export async function performSync(program: ProgramId, opts?: { force?: boolean }
               );
               effectiveTabForConn = effectiveTab;
               if (rows.length === 0) break;
+              didRead = true;
 
-              const pageRows: UpsertRow[] = [];
               const nowIso = new Date().toISOString();
+              const toUpsert: UpsertRow[] = [];
               for (let i = 0; i < rows.length; i++) {
                 const mapped = mapRow(headers, rows[i]);
                 const callId = mapped.call_id?.trim() || `${c.id}:${pageStart - 2 + i}`;
@@ -291,37 +298,10 @@ export async function performSync(program: ProgramId, opts?: { force?: boolean }
                   applications_count: Number.isFinite(mapped.applications_count) ? mapped.applications_count : null,
                   data: mapped,
                 };
-                pageRows.push({ ...base, row_hash: computeRowHash(base), synced_at: nowIso });
-              }
-
-              // Incremental: fetch existing hashes for these call_ids and skip
-              // rows whose content hasn't changed. Only upsert the diff.
-              const callIds = pageRows.map((r) => r.call_id);
-              const existingHashes = new Map<string, string | null>();
-              for (let i = 0; i < callIds.length; i += 200) {
-                const slice = callIds.slice(i, i + 200);
-                const { data: existing, error: exErr } = await client
-                  .from("call_rows")
-                  .select("call_id, row_hash")
-                  .eq("program", program)
-                  .in("call_id", slice);
-                if (exErr) {
-                  errors.push({ id: "_hash_lookup", name: "snapshot", message: exErr.message });
-                  break;
-                }
-                for (const row of existing ?? []) {
-                  existingHashes.set(row.call_id as string, (row.row_hash as string | null) ?? null);
-                }
-              }
-
-              const toUpsert: UpsertRow[] = [];
-              const unchangedIds: string[] = [];
-              for (const r of pageRows) {
-                const prev = existingHashes.get(r.call_id);
-                if (prev !== undefined && prev === r.row_hash) {
-                  unchangedIds.push(r.call_id);
-                } else {
-                  toUpsert.push(r);
+                const row_hash = computeRowHash(base);
+                const prev = existingHashes.get(callId);
+                if (prev === undefined || prev !== row_hash) {
+                  toUpsert.push({ ...base, row_hash, synced_at: nowIso });
                 }
               }
 
@@ -336,28 +316,9 @@ export async function performSync(program: ProgramId, opts?: { force?: boolean }
                   pageUpsertFailed = true;
                   break;
                 }
-                completedRows += slice.length;
               }
               if (pageUpsertFailed) break;
 
-              // Bump synced_at on unchanged rows so the reconcile-delete below
-              // doesn't drop them. Narrow single-column update — much lighter
-              // than re-upserting the full JSONB row.
-              for (let i = 0; i < unchangedIds.length; i += 200) {
-                const slice = unchangedIds.slice(i, i + 200);
-                const { error: touchErr } = await client
-                  .from("call_rows")
-                  .update({ synced_at: nowIso })
-                  .eq("program", program)
-                  .in("call_id", slice);
-                if (touchErr) {
-                  errors.push({ id: "_touch", name: "snapshot", message: touchErr.message });
-                  break;
-                }
-                completedRows += slice.length;
-              }
-
-              // Heartbeat so the stale-lock guard sees fresh updated_at.
               await client
                 .from("program_sync_state")
                 .update({ updated_at: new Date().toISOString() })
@@ -367,7 +328,6 @@ export async function performSync(program: ProgramId, opts?: { force?: boolean }
               if (rows.length < PAGE) break;
               pageStart += PAGE;
             }
-
 
             const patch: Record<string, unknown> = {
               status: "connected",
@@ -395,46 +355,44 @@ export async function performSync(program: ProgramId, opts?: { force?: boolean }
         }
       }
 
-      // Write status FIRST, eagerly, so a near-limit runtime kill during the
-      // reconcile-delete (which scans call_rows and is the slowest step on
-      // large sheets) can't leave the lock stuck at "syncing".
-      count = completedRows;
+      // Reconcile deletions by SET DIFFERENCE: any call_id that existed before
+      // but is no longer present in any sheet this run gets removed. Strongly
+      // guarded — only on a fully clean run that actually read sheet rows, so a
+      // transient sheet failure can never wipe the snapshot. The delete set is
+      // normally tiny (just rows removed from the sheet).
+      if (errors.length === 0 && didRead && seen.size > 0) {
+        const toDelete = [...existingHashes.keys()].filter((id) => !seen.has(id));
+        for (let i = 0; i < toDelete.length; i += 200) {
+          const slice = toDelete.slice(i, i + 200);
+          const { error: delErr } = await client
+            .from("call_rows")
+            .delete()
+            .eq("program", program)
+            .in("call_id", slice);
+          if (delErr) {
+            errors.push({ id: "_reconcile", name: "snapshot", message: delErr.message });
+            break;
+          }
+        }
+      }
+
       lastSyncedAt = new Date().toISOString();
       statusWritten = true;
       await client.from("program_sync_state").upsert({
         program,
         last_synced_at: lastSyncedAt,
-        row_count: completedRows,
+        row_count: seen.size,
         status: errors.length > 0 ? "partial" : "ok",
         last_error: errors.length > 0 ? errors[0].message : null,
         updated_at: lastSyncedAt,
       });
-
-      // Reconcile deletions: rows that weren't touched in this run are no
-      // longer in the sheet. Best-effort — wrapped so a timeout here doesn't
-      // throw away the successful status write above. Only delete on a clean
-      // run so a transient sheet failure can't wipe the snapshot.
-      if (errors.length === 0 && completedRows > 0) {
-        try {
-          await client
-            .from("call_rows")
-            .delete()
-            .eq("program", program)
-            .lt("synced_at", runStart);
-        } catch {
-          /* ignore — status is already written; next run will reconcile */
-        }
-      }
-
     } finally {
-      // Safety net: only if the eager write above didn't run (e.g. an exception
-      // before reconcile). Keeps the lock from sticking at "syncing".
       if (!statusWritten) {
         lastSyncedAt = new Date().toISOString();
         await client.from("program_sync_state").upsert({
           program,
           last_synced_at: lastSyncedAt,
-          row_count: completedRows,
+          row_count: seen.size,
           status: errors.length > 0 ? "partial" : "ok",
           last_error: errors.length > 0 ? errors[0].message : null,
           updated_at: lastSyncedAt,
@@ -442,18 +400,14 @@ export async function performSync(program: ProgramId, opts?: { force?: boolean }
       }
     }
 
-
-
-
     return {
       ok: errors.length === 0,
       program,
-      rowCount: count ?? completedRows,
+      rowCount: seen.size,
       connectionCount: list.length,
       errors,
       lastSyncedAt,
     };
-
   })();
   inflight.set(program, p);
   try {
