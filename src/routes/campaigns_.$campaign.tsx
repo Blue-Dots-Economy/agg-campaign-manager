@@ -174,10 +174,11 @@ function CampaignReviewDetail() {
 
       <ProgramAnalytics
         config={config}
-        filters={{ state: "all", dateFrom: scopeDate, dateTo: scopeDate, campaignType: "all", channel: "all" }}
+        filters={{ state: "all", dateFrom: scopeDate, dateTo: scopeDate, campaignType: "all", channel: channelFilter }}
         campaign={current.campaignType}
         comparison={{ mode: "state-average", region, label }}
       />
+
     </div>
   );
 }
