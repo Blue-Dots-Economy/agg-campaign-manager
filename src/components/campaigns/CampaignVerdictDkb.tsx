@@ -63,13 +63,14 @@ interface Finding {
 interface Props {
   campaign: string;
   region: string | null;
-  filters?: Pick<OverviewFilters, "dateFrom" | "dateTo">;
+  filters?: Pick<OverviewFilters, "dateFrom" | "dateTo" | "channel">;
 }
 
 export function CampaignVerdictDkb({ campaign, region, filters }: Props) {
   const { config } = useProgram();
   const dateFrom = filters?.dateFrom ?? null;
   const dateTo = filters?.dateTo ?? null;
+  const channel = filters?.channel ?? "all";
 
   const baselineState = region ?? "all";
   const regionLabel = region ?? "program";
@@ -81,13 +82,16 @@ export function CampaignVerdictDkb({ campaign, region, filters }: Props) {
     dateTo,
     campaignType: "all",
     campaign,
+    channel,
   });
   const regionAgg = useProgramAggregates(config, {
     state: baselineState,
     dateFrom,
     dateTo,
     campaignType: "all",
+    channel,
   });
+
   const causes = useDkbCampaignInsights(campaign, { dateFrom, dateTo });
 
   const { worked, didnt, phaseShare, sampleCalls } = useMemo(() => {

@@ -126,7 +126,7 @@ function CompletedCampaigns() {
           {recent.length > 0 && (
             <div className="space-y-3">
               <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Latest · review pending</h3>
-              <div className="grid gap-3 md:grid-cols-2">{recent.map((c) => <CampaignCard key={`${c.campaignType}__${c.campaignDate ?? "nd"}`} campaign={c} successLabel={successLabel} highlighted />)}</div>
+              <div className="grid gap-3 md:grid-cols-2">{recent.map((c) => <CampaignCard key={`${c.campaignType}__${c.campaignDate ?? "nd"}`} campaign={c} successLabel={successLabel} channel={channel} highlighted />)}</div>
             </div>
           )}
           <div className="space-y-3">
@@ -142,7 +142,7 @@ function CompletedCampaigns() {
             </div>
             <Panel>
               <ul className="divide-y divide-border">
-                {pageRows.length === 0 ? <li className="py-6 text-center text-sm text-muted-foreground">No campaigns match your search.</li> : pageRows.map((c) => <CampaignRow key={`${c.campaignType}__${c.campaignDate ?? "nd"}`} campaign={c} successLabel={successLabel} />)}
+                {pageRows.length === 0 ? <li className="py-6 text-center text-sm text-muted-foreground">No campaigns match your search.</li> : pageRows.map((c) => <CampaignRow key={`${c.campaignType}__${c.campaignDate ?? "nd"}`} campaign={c} successLabel={successLabel} channel={channel} />)}
               </ul>
             </Panel>
             {all.length > 0 && <p className="text-[11px] text-muted-foreground text-right tabular-nums">{all.length} campaign{all.length === 1 ? "" : "s"}</p>}
@@ -153,9 +153,9 @@ function CompletedCampaigns() {
   );
 }
 
-function CampaignCard({ campaign, successLabel, highlighted }: { campaign: CampaignLike; successLabel: string; highlighted?: boolean }) {
+function CampaignCard({ campaign, successLabel, channel, highlighted }: { campaign: CampaignLike; successLabel: string; channel: "all" | "outbound" | "inbound"; highlighted?: boolean }) {
   return (
-    <Link to="/campaigns/$campaign" params={{ campaign: campaign.campaignType }} search={{ date: campaign.campaignDate ?? undefined }} className={cn("group block rounded-xl border bg-card p-5 transition-colors hover:bg-muted/40", highlighted ? "border-primary border-2 shadow-sm" : "border-border")}>
+    <Link to="/campaigns/$campaign" params={{ campaign: campaign.campaignType }} search={{ date: campaign.campaignDate ?? undefined, channel: channel === "all" ? undefined : channel }} className={cn("group block rounded-xl border bg-card p-5 transition-colors hover:bg-muted/40", highlighted ? "border-primary border-2 shadow-sm" : "border-border")}>
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
           <div className="flex items-center gap-2 flex-wrap"><h3 className="font-semibold truncate">{humanizeCampaignType(campaign.campaignType)}</h3>{highlighted && <span className="rounded-full bg-primary px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-primary-foreground">New</span>}</div>
@@ -172,10 +172,11 @@ function CampaignCard({ campaign, successLabel, highlighted }: { campaign: Campa
     </Link>
   );
 }
-function CampaignRow({ campaign, successLabel }: { campaign: CampaignLike; successLabel: string }) {
+function CampaignRow({ campaign, successLabel, channel }: { campaign: CampaignLike; successLabel: string; channel: "all" | "outbound" | "inbound" }) {
   return (
     <li>
-      <Link to="/campaigns/$campaign" params={{ campaign: campaign.campaignType }} search={{ date: campaign.campaignDate ?? undefined }} className="group flex items-center gap-4 py-3 px-1 hover:bg-muted/40 rounded-md transition-colors">
+      <Link to="/campaigns/$campaign" params={{ campaign: campaign.campaignType }} search={{ date: campaign.campaignDate ?? undefined, channel: channel === "all" ? undefined : channel }} className="group flex items-center gap-4 py-3 px-1 hover:bg-muted/40 rounded-md transition-colors">
+
         <div className="min-w-0 flex-1"><div className="font-medium truncate">{humanizeCampaignType(campaign.campaignType)}</div><div className="text-xs text-muted-foreground mt-0.5">{formatDate(campaign.campaignDate)}{campaign.region ? ` · ${campaign.region}` : ""}</div></div>
         <div className="hidden sm:grid grid-cols-4 gap-6 text-xs text-right">
           <Metric label="Calls" value={campaign.totalCalls.toLocaleString()} align="right" />

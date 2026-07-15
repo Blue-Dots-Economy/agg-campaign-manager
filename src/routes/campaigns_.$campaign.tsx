@@ -22,9 +22,14 @@ import {
 export const Route = createFileRoute("/campaigns_/$campaign")({
   validateSearch: (s: Record<string, unknown>) => ({
     date: typeof s.date === "string" ? s.date : undefined,
+    channel:
+      s.channel === "outbound" || s.channel === "inbound" || s.channel === "all"
+        ? s.channel
+        : undefined,
   }),
   component: CampaignReviewDetail,
 });
+
 
 function parseDate(s: string | null): Date | null {
   if (!s) return null;
@@ -35,10 +40,12 @@ function parseDate(s: string | null): Date | null {
 
 function CampaignReviewDetail() {
   const { campaign: rawCampaign } = Route.useParams();
-  const { date } = Route.useSearch();
+  const { date, channel } = Route.useSearch();
+  const channelFilter = channel ?? "all";
   const navigate = useNavigate();
   const { config } = useProgram();
-  const { data: campaigns, isLoading } = useCampaignList(config, {});
+  const { data: campaigns, isLoading } = useCampaignList(config, { channel: channelFilter });
+
 
   const sorted = useMemo(
     () =>
@@ -70,7 +77,7 @@ function CampaignReviewDetail() {
 
   const region = current.region ?? null;
   const scopeDate = current.campaignDate ?? null;
-  const detailFilters = { dateFrom: scopeDate, dateTo: scopeDate };
+  const detailFilters = { dateFrom: scopeDate, dateTo: scopeDate, channel: channelFilter };
   const dateLabel = (() => {
     const d = parseDate(current.campaignDate);
     return d ? format(d, "MMM d, yyyy") : "—";
@@ -106,8 +113,9 @@ function CampaignReviewDetail() {
               navigate({
                 to: "/campaigns/$campaign",
                 params: { campaign: type },
-                search: { date: d || undefined },
+                search: { date: d || undefined, channel: channel ?? undefined },
               });
+
             }}
           >
             <SelectTrigger className="h-9">
@@ -166,10 +174,11 @@ function CampaignReviewDetail() {
 
       <ProgramAnalytics
         config={config}
-        filters={{ state: "all", dateFrom: scopeDate, dateTo: scopeDate, campaignType: "all", channel: "all" }}
+        filters={{ state: "all", dateFrom: scopeDate, dateTo: scopeDate, campaignType: "all", channel: channelFilter }}
         campaign={current.campaignType}
         comparison={{ mode: "state-average", region, label }}
       />
+
     </div>
   );
 }

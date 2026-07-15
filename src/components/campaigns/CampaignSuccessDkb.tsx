@@ -14,8 +14,9 @@ interface Props {
   language: string | null;
   region: string | null;
   campaignDate: string | null;
-  filters?: Pick<OverviewFilters, "dateFrom" | "dateTo">;
+  filters?: Pick<OverviewFilters, "dateFrom" | "dateTo" | "channel">;
 }
+
 
 function outcomeRate(m: Partial<DkbMetrics> | undefined | null): number | null {
   if (!m) return null;
@@ -51,6 +52,7 @@ export function CampaignSuccessDkb({
   const { config } = useProgram();
   const dateFrom = filters?.dateFrom ?? null;
   const dateTo = filters?.dateTo ?? null;
+  const channel = filters?.channel ?? "all";
 
   const thisAgg = useProgramAggregates(config, {
     state: "all",
@@ -58,6 +60,7 @@ export function CampaignSuccessDkb({
     dateTo,
     campaignType: "all",
     campaign,
+    channel,
   });
   const baselineState = region ?? "all";
   const regionLabel = region ?? "program";
@@ -66,8 +69,9 @@ export function CampaignSuccessDkb({
     dateFrom,
     dateTo,
     campaignType: "all",
+    channel,
   });
-  const list = useCampaignList(config, {});
+  const list = useCampaignList(config, { channel });
 
   const prevEntry = useMemo(() => {
     const items = list.data ?? [];
@@ -87,7 +91,9 @@ export function CampaignSuccessDkb({
     dateTo: prevEntry?.campaignDate ?? null,
     campaignType: "all",
     campaign: prevEntry?.campaignType ?? null,
+    channel,
   });
+
 
   const thisM = thisAgg.data?.metrics as Partial<DkbMetrics> | undefined;
   const regionM = regionAgg.data?.metrics as Partial<DkbMetrics> | undefined;

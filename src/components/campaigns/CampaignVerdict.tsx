@@ -86,13 +86,14 @@ interface Finding {
 interface Props {
   campaign: string;
   region: string | null;
-  filters?: Pick<OverviewFilters, "dateFrom" | "dateTo">;
+  filters?: Pick<OverviewFilters, "dateFrom" | "dateTo" | "channel">;
 }
 
 export function CampaignVerdict({ campaign, region, filters }: Props) {
   const { config } = useProgram();
   const dateFrom = filters?.dateFrom ?? null;
   const dateTo = filters?.dateTo ?? null;
+  const channel = filters?.channel ?? "all";
 
   const campaignAgg = useProgramAggregates(config, {
     state: "all",
@@ -100,14 +101,17 @@ export function CampaignVerdict({ campaign, region, filters }: Props) {
     dateTo,
     campaignType: "all",
     campaign,
+    channel,
   });
   const regionAgg = useProgramAggregates(config, {
     state: region ?? "all",
     dateFrom,
     dateTo,
     campaignType: "all",
+    channel,
   });
   const causes = useCampaignInsights(campaign, { dateFrom, dateTo });
+
 
   const { worked, didnt, phaseShare, hiTop, sampleCalls } = useMemo(() => {
     const cm = (campaignAgg.data?.metrics ?? {}) as Metrics;

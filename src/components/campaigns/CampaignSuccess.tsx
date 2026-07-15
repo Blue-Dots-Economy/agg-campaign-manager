@@ -14,8 +14,9 @@ interface Props {
   language: string | null;
   region: string | null;
   campaignDate: string | null;
-  filters?: Pick<OverviewFilters, "dateFrom" | "dateTo">;
+  filters?: Pick<OverviewFilters, "dateFrom" | "dateTo" | "channel">;
 }
+
 
 function score(m: Partial<KkbMetrics> | undefined | null): number | null {
   if (!m) return null;
@@ -50,6 +51,7 @@ export function CampaignSuccess({
   const { config } = useProgram();
   const dateFrom = filters?.dateFrom ?? null;
   const dateTo = filters?.dateTo ?? null;
+  const channel = filters?.channel ?? "all";
 
   const thisAgg = useProgramAggregates(config, {
     state: "all",
@@ -57,14 +59,16 @@ export function CampaignSuccess({
     dateTo,
     campaignType: "all",
     campaign,
+    channel,
   });
   const regionAgg = useProgramAggregates(config, {
     state: region ?? "all",
     dateFrom,
     dateTo,
     campaignType: "all",
+    channel,
   });
-  const list = useCampaignList(config, {});
+  const list = useCampaignList(config, { channel });
 
   const prevEntry = useMemo(() => {
     const items = list.data ?? [];
@@ -84,7 +88,9 @@ export function CampaignSuccess({
     dateTo: prevEntry?.campaignDate ?? null,
     campaignType: "all",
     campaign: prevEntry?.campaignType ?? null,
+    channel,
   });
+
 
   const thisM = thisAgg.data?.metrics as Partial<KkbMetrics> | undefined;
   const regionM = regionAgg.data?.metrics as Partial<KkbMetrics> | undefined;
