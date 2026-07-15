@@ -77,7 +77,7 @@ function CampaignReviewDetail() {
 
   const region = current.region ?? null;
   const scopeDate = current.campaignDate ?? null;
-  const detailFilters = { dateFrom: scopeDate, dateTo: scopeDate };
+  const detailFilters = { dateFrom: scopeDate, dateTo: scopeDate, channel: channelFilter };
   const dateLabel = (() => {
     const d = parseDate(current.campaignDate);
     return d ? format(d, "MMM d, yyyy") : "—";
