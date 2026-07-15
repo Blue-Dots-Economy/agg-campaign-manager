@@ -39,6 +39,10 @@ export interface KkbMetrics {
   failedSeekers: number;
   didNotApply: number;
   totalApplications: number;
+  engagedSeekers: number;
+  jobsShownSeekers: number;
+  highIntentSeekers: number;
+  applicationsSeekers: number;
 }
 
 export interface DkbProviderFunnelStage {
