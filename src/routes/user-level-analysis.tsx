@@ -178,23 +178,42 @@ function UserLevelAnalysis() {
 
 
   const dateScopedSeekers = useMemo(() => {
-    if (!dateRange?.from && !dateRange?.to) return seekers;
+    const hasJoined = Boolean(dateRange?.from || dateRange?.to);
+    const hasApplied = Boolean(appliedRange?.from || appliedRange?.to);
+    if (!hasJoined && !hasApplied) return seekers;
+
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const appliedFrom = appliedRange?.from ? new Date(appliedRange.from) : null;
+    if (appliedFrom) appliedFrom.setHours(0, 0, 0, 0);
+    const appliedTo = appliedRange?.to ? new Date(appliedRange.to) : appliedFrom;
+    if (appliedTo) appliedTo.setHours(23, 59, 59, 999);
+
     return seekers.filter((s) => {
-      const d = parseCreatedOn(s.createdOn);
-      if (!d) return false;
-      if (dateRange.from) {
-        const from = new Date(dateRange.from);
-        from.setHours(0, 0, 0, 0);
-        if (d < from) return false;
+      if (hasJoined) {
+        const d = parseCreatedOn(s.createdOn);
+        if (!d) return false;
+        if (dateRange?.from) {
+          const from = new Date(dateRange.from);
+          from.setHours(0, 0, 0, 0);
+          if (d < from) return false;
+        }
+        if (dateRange?.to) {
+          const to = new Date(dateRange.to);
+          to.setHours(23, 59, 59, 999);
+          if (d > to) return false;
+        }
       }
-      if (dateRange.to) {
-        const to = new Date(dateRange.to);
-        to.setHours(23, 59, 59, 999);
-        if (d > to) return false;
+      if (hasApplied) {
+        if (s.lastAppliedAge === null) return false;
+        const appliedDate = new Date(today);
+        appliedDate.setDate(appliedDate.getDate() - s.lastAppliedAge);
+        if (appliedFrom && appliedDate < appliedFrom) return false;
+        if (appliedTo && appliedDate > appliedTo) return false;
       }
       return true;
     });
-  }, [seekers, dateRange]);
+  }, [seekers, dateRange, appliedRange]);
 
   const stats = useMemo(() => {
     const total = dateScopedSeekers.length;
