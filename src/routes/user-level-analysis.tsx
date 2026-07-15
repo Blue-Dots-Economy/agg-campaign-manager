@@ -395,14 +395,14 @@ function UserLevelAnalysis() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-start justify-between gap-4">
+      <div className="space-y-4">
         <div>
           <h1 className="text-3xl font-bold tracking-tight">My Bluedots</h1>
           <p className="text-sm text-muted-foreground mt-1">
-            Discovery &amp; services network for People with Disabilities
+            Activity &amp; Status of the Bluedots
           </p>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           <input
             ref={fileRef}
             type="file"
