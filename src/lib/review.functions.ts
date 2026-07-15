@@ -46,13 +46,23 @@ export const fetchReviewCalls = createServerFn({ method: "GET" })
   .inputValidator((data: { dataset: ReviewDataset }) => data)
   .handler(async ({ data }): Promise<Array<Record<string, string>>> => {
     const client = sb();
-    const { data: rows, error } = await client
-      .from("call_rows")
-      .select("call_id, campaign_day, campaign_date, campaign_type, language, city_campaign, call_outcome, call_duration_seconds, intent_score, drop_reason, job_status, phone, channel, data")
-      .eq("program", data.dataset)
-      .limit(50000);
-    if (error) throw new Error(error.message);
-    return (rows ?? []).map((r: Record<string, unknown>) => {
+    const cols = "call_id, campaign_day, campaign_date, campaign_type, language, city_campaign, call_outcome, call_duration_seconds, intent_score, drop_reason, job_status, phone, channel, data";
+    const rows: Record<string, unknown>[] = [];
+    let _from = 0;
+    while (true) {
+      const { data: batch, error } = await client
+        .from("call_rows")
+        .select(cols)
+        .eq("program", data.dataset)
+        .order("call_id", { ascending: true })
+        .range(_from, _from + 999);
+      if (error) throw new Error(error.message);
+      const b = (batch ?? []) as Record<string, unknown>[];
+      rows.push(...b);
+      if (b.length === 0 || rows.length >= 100000) break;
+      _from += b.length;
+    }
+    return rows.map((r: Record<string, unknown>) => {
       const d = (r.data ?? {}) as Record<string, unknown>;
       const raw = (d.raw ?? {}) as Record<string, unknown>;
       const pick = (...keys: string[]) => {
