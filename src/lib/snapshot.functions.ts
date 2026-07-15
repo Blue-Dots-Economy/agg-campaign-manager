@@ -237,20 +237,28 @@ export async function performSync(program: ProgramId, opts?: { force?: boolean }
           let effectiveTabForConn: string | null = null;
           try {
             // Existing hashes for THIS connection only (keyed by call_id).
+            // Paginate with .range() — PostgREST caps single responses (~1000 rows).
             {
-              const { data: ex, error: exErr } = await client
-                .from("call_rows")
-                .select("call_id, row_hash")
-                .eq("program", program)
-                .eq("connection_id", c.id)
-                .limit(200000);
-              if (exErr) {
-                errors.push({ id: "_hash_lookup", name: c.name, message: exErr.message });
-                connReadOk = false;
-              } else {
-                for (const r of ex ?? []) {
+              let hFrom = 0;
+              while (true) {
+                const { data: ex, error: exErr } = await client
+                  .from("call_rows")
+                  .select("call_id, row_hash")
+                  .eq("program", program)
+                  .eq("connection_id", c.id)
+                  .order("call_id", { ascending: true })
+                  .range(hFrom, hFrom + 999);
+                if (exErr) {
+                  errors.push({ id: "_hash_lookup", name: c.name, message: exErr.message });
+                  connReadOk = false;
+                  break;
+                }
+                const b = ex ?? [];
+                for (const r of b) {
                   existingHashes.set(r.call_id as string, (r.row_hash as string | null) ?? null);
                 }
+                if (b.length === 0) break;
+                hFrom += b.length;
               }
             }
 
