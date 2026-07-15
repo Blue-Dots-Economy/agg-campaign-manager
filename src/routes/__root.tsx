@@ -132,7 +132,7 @@ function AuthGate({ children }: { children: ReactNode }) {
   useEffect(() => {
     if (!hydrated) return;
     if (!isAuthenticated && !isLogin) navigate({ to: "/login" });
-    else if (isAuthenticated && isLogin) navigate({ to: "/" });
+    else if (isAuthenticated && isLogin) navigate({ to: "/user-level-analysis" });
   }, [hydrated, isAuthenticated, isLogin, navigate]);
 
   if (!hydrated) return null;

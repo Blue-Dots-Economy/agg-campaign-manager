@@ -21,7 +21,7 @@ function LoginPage() {
   const onSubmit = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     const ok = await login(email, password);
-    if (ok) navigate({ to: "/" });
+    if (ok) navigate({ to: "/user-level-analysis" });
     else setError(true);
   };
 
