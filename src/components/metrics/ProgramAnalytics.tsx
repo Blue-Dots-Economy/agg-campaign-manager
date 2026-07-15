@@ -212,6 +212,7 @@ export function ProgramAnalytics({
           campaignType: filters.campaignType,
           campaign: campaign ?? null,
           stage,
+          channel: filters.channel,
         },
       });
       ids = res?.ids ?? [];
