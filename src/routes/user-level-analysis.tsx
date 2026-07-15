@@ -176,6 +176,25 @@ function UserLevelAnalysis() {
 
 
 
+  const dateScopedSeekers = useMemo(() => {
+    if (!dateRange?.from && !dateRange?.to) return seekers;
+    return seekers.filter((s) => {
+      const d = parseCreatedOn(s.createdOn);
+      if (!d) return false;
+      if (dateRange.from) {
+        const from = new Date(dateRange.from);
+        from.setHours(0, 0, 0, 0);
+        if (d < from) return false;
+      }
+      if (dateRange.to) {
+        const to = new Date(dateRange.to);
+        to.setHours(23, 59, 59, 999);
+        if (d > to) return false;
+      }
+      return true;
+    });
+  }, [seekers, dateRange]);
+
   const stats = useMemo(() => {
     const total = seekers.length;
     const byStatus = { New: 0, Active: 0, "At Risk": 0, Inactive: 0 } as Record<Seeker["status"], number>;
