@@ -595,6 +595,7 @@ function normalizeMetricsRaw(value: unknown): ProgramMetricsRaw {
           label: String(o.label ?? ""),
           providers: Number(o.providers ?? 0) || 0,
           openings: Number(o.openings ?? 0) || 0,
+          calls: Number(o.calls ?? 0) || 0,
         }];
       });
     }
