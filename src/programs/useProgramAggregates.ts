@@ -157,12 +157,16 @@ export function useSyncProgram(programId: ProgramId) {
         silent: vars?.silent ?? false,
       })),
     onSuccess: (res) => {
-      qc.invalidateQueries({ queryKey: ["program-aggregates", programId] });
-      qc.invalidateQueries({ queryKey: ["campaign-day-rows", programId] });
+      // Invalidate every query — a sync can change the rows underlying
+      // aggregates, campaign lists, drop analysis, funnel durations, and
+      // campaign cause breakdowns. Narrow key invalidation missed most of
+      // these and made Refresh feel like a no-op.
+      qc.invalidateQueries();
       if (res.silent) return;
       if (res.skipped) return; // a sync was already running — nothing to brag about
       if (res.ok) toast.success(`Synced · ${res.rowCount} rows`);
       else if (res.errors.length > 0) toast.error(res.errors[0].message);
+
     },
     onError: (e, vars) => {
       if (vars?.silent) return;
