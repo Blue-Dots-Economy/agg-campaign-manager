@@ -131,7 +131,7 @@ export function AudioPlayer({ src, companyName, duration, datetime }: AudioPlaye
             {speed}x
           </button>
           {speedOpen && (
-            <div className="absolute right-0 z-10 mt-1 w-20 overflow-hidden rounded-md border border-border bg-popover shadow-md">
+            <div className="absolute bottom-full right-0 z-50 mb-1 w-20 overflow-hidden rounded-md border border-border bg-popover shadow-md">
               {SPEEDS.map((s) => (
                 <button
                   key={s}
