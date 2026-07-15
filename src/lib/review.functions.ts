@@ -23,18 +23,23 @@ function normKey(h: string): string {
 
 async function resolveSheet(
   dataset: ReviewDataset,
+  channel?: string,
 ): Promise<{ sheet_id: string; tab_name: string | null }> {
   const client = sb();
   const { data, error } = await client
     .from("sheet_connections")
-    .select("sheet_id, tab_name")
+    .select("sheet_id, tab_name, channel")
     .eq("program", dataset)
-    .eq("enabled", true)
-    .limit(1);
+    .eq("enabled", true);
   if (error) throw new Error(`sheet_connections lookup failed: ${error.message}`);
-  const row = (data ?? [])[0];
-  if (!row) throw new Error(`No enabled sheet connection for dataset '${dataset}'`);
-  return { sheet_id: row.sheet_id as string, tab_name: (row.tab_name as string | null) ?? null };
+  const rows = (data ?? []) as Array<{ sheet_id: string; tab_name: string | null; channel: string | null }>;
+  if (rows.length === 0) throw new Error(`No enabled sheet connection for dataset '${dataset}'`);
+  const want = channel ?? "outbound";
+  const pick =
+    rows.find((r) => (r.channel ?? "outbound") === want) ??
+    rows.find((r) => (r.channel ?? "outbound") === "outbound") ??
+    rows[0];
+  return { sheet_id: pick.sheet_id, tab_name: pick.tab_name ?? null };
 }
 
 export const fetchReviewCalls = createServerFn({ method: "GET" })
@@ -81,7 +86,15 @@ export const fetchReviewCalls = createServerFn({ method: "GET" })
 export const fetchCallDetail = createServerFn({ method: "GET" })
   .inputValidator((data: { dataset: ReviewDataset; callId: string }) => data)
   .handler(async ({ data }) => {
-    const { sheet_id, tab_name } = await resolveSheet(data.dataset);
+    const client = sb();
+    const { data: row } = await client
+      .from("call_rows")
+      .select("channel")
+      .eq("program", data.dataset)
+      .eq("call_id", data.callId)
+      .maybeSingle();
+    const channel = (row?.channel as string | undefined) ?? "outbound";
+    const { sheet_id, tab_name } = await resolveSheet(data.dataset, channel);
     const detail = await getCallDetail(sheet_id, tab_name ?? undefined, data.callId);
     return (
       detail ?? { call_transcript: "", final_summary: "", call_recording_url: "", effectiveTab: "" }
