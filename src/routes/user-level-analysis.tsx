@@ -458,6 +458,54 @@ function UserLevelAnalysis() {
               />
             </PopoverContent>
           </Popover>
+          <Popover>
+            <PopoverTrigger asChild>
+              <Button
+                variant="outline"
+                className={cn(
+                  "w-[260px] justify-start text-left font-normal",
+                  !appliedRange?.from && "text-muted-foreground",
+                )}
+              >
+                <CalendarIcon className="mr-2 h-4 w-4" />
+                {appliedRange?.from ? (
+                  appliedRange.to ? (
+                    <>
+                      Applied: {format(appliedRange.from, "LLL d, y")} – {format(appliedRange.to, "LLL d, y")}
+                    </>
+                  ) : (
+                    <>Applied: {format(appliedRange.from, "LLL d, y")}</>
+                  )
+                ) : (
+                  <span>Applied: Any date</span>
+                )}
+                {appliedRange?.from && (
+                  <span
+                    role="button"
+                    tabIndex={0}
+                    onClick={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      setAppliedRange(undefined);
+                    }}
+                    className="ml-auto text-xs text-muted-foreground hover:text-foreground"
+                  >
+                    Clear
+                  </span>
+                )}
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-auto p-0" align="end">
+              <Calendar
+                mode="range"
+                selected={appliedRange}
+                onSelect={setAppliedRange}
+                numberOfMonths={2}
+                initialFocus
+                className={cn("p-3 pointer-events-auto")}
+              />
+            </PopoverContent>
+          </Popover>
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button variant="outline" className="gap-2">
