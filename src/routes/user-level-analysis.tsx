@@ -176,8 +176,27 @@ function UserLevelAnalysis() {
 
 
 
+  const dateScopedSeekers = useMemo(() => {
+    if (!dateRange?.from && !dateRange?.to) return seekers;
+    return seekers.filter((s) => {
+      const d = parseCreatedOn(s.createdOn);
+      if (!d) return false;
+      if (dateRange.from) {
+        const from = new Date(dateRange.from);
+        from.setHours(0, 0, 0, 0);
+        if (d < from) return false;
+      }
+      if (dateRange.to) {
+        const to = new Date(dateRange.to);
+        to.setHours(23, 59, 59, 999);
+        if (d > to) return false;
+      }
+      return true;
+    });
+  }, [seekers, dateRange]);
+
   const stats = useMemo(() => {
-    const total = seekers.length;
+    const total = dateScopedSeekers.length;
     const byStatus = { New: 0, Active: 0, "At Risk": 0, Inactive: 0 } as Record<Seeker["status"], number>;
     let complete = 0;
     let withApps = 0;
@@ -198,7 +217,7 @@ function UserLevelAnalysis() {
     let emailCount = 0;
     let phoneCount = 0;
 
-    for (const s of seekers) {
+    for (const s of dateScopedSeekers) {
       byStatus[s.status]++;
       if (s.profileStatus === "Complete") complete++;
       if (s.applications > 0) withApps++;
@@ -262,11 +281,11 @@ function UserLevelAnalysis() {
         pendingGt0,
       },
     };
-  }, [seekers]);
+  }, [dateScopedSeekers]);
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
-    return seekers.filter((s) => {
+    return dateScopedSeekers.filter((s) => {
       if (statusFilter !== "all" && s.status.toLowerCase().replace(" ", "-") !== statusFilter) return false;
       if (profileFilter.length > 0) {
         const wantComplete = profileFilter.includes("complete");
@@ -305,24 +324,10 @@ function UserLevelAnalysis() {
           (appliedFilters.includes("pending-gt0") && pending > 0);
         if (!matches) return false;
       }
-      if (dateRange?.from || dateRange?.to) {
-        const d = parseCreatedOn(s.createdOn);
-        if (!d) return false;
-        if (dateRange.from) {
-          const from = new Date(dateRange.from);
-          from.setHours(0, 0, 0, 0);
-          if (d < from) return false;
-        }
-        if (dateRange.to) {
-          const to = new Date(dateRange.to);
-          to.setHours(23, 59, 59, 999);
-          if (d > to) return false;
-        }
-      }
       if (q && !(s.id.toLowerCase().includes(q) || s.userId.toLowerCase().includes(q) || s.name.toLowerCase().includes(q))) return false;
       return true;
     });
-  }, [seekers, search, statusFilter, profileFilter, appliedFilters, dateRange]);
+  }, [dateScopedSeekers, search, statusFilter, profileFilter, appliedFilters]);
 
   const lifecycle = [
     {
@@ -385,6 +390,54 @@ function UserLevelAnalysis() {
             className="hidden"
             onChange={handleFileChosen}
           />
+          <Popover>
+            <PopoverTrigger asChild>
+              <Button
+                variant="outline"
+                className={cn(
+                  "w-[260px] justify-start text-left font-normal",
+                  !dateRange?.from && "text-muted-foreground",
+                )}
+              >
+                <CalendarIcon className="mr-2 h-4 w-4" />
+                {dateRange?.from ? (
+                  dateRange.to ? (
+                    <>
+                      Joined: {format(dateRange.from, "LLL d, y")} – {format(dateRange.to, "LLL d, y")}
+                    </>
+                  ) : (
+                    <>Joined: {format(dateRange.from, "LLL d, y")}</>
+                  )
+                ) : (
+                  <span>Joined: Any date</span>
+                )}
+                {dateRange?.from && (
+                  <span
+                    role="button"
+                    tabIndex={0}
+                    onClick={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      setDateRange(undefined);
+                    }}
+                    className="ml-auto text-xs text-muted-foreground hover:text-foreground"
+                  >
+                    Clear
+                  </span>
+                )}
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-auto p-0" align="end">
+              <Calendar
+                mode="range"
+                selected={dateRange}
+                onSelect={setDateRange}
+                numberOfMonths={2}
+                initialFocus
+                className={cn("p-3 pointer-events-auto")}
+              />
+            </PopoverContent>
+          </Popover>
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button variant="outline" className="gap-2">
@@ -708,54 +761,6 @@ function UserLevelAnalysis() {
               </DropdownMenuCheckboxItem>
             </DropdownMenuContent>
           </DropdownMenu>
-          <Popover>
-            <PopoverTrigger asChild>
-              <Button
-                variant="outline"
-                className={cn(
-                  "w-[240px] justify-start text-left font-normal",
-                  !dateRange?.from && "text-muted-foreground",
-                )}
-              >
-                <CalendarIcon className="mr-2 h-4 w-4" />
-                {dateRange?.from ? (
-                  dateRange.to ? (
-                    <>
-                      Joined: {format(dateRange.from, "LLL d, y")} – {format(dateRange.to, "LLL d, y")}
-                    </>
-                  ) : (
-                    <>Joined: {format(dateRange.from, "LLL d, y")}</>
-                  )
-                ) : (
-                  <span>Joined: Any date</span>
-                )}
-                {dateRange?.from && (
-                  <span
-                    role="button"
-                    tabIndex={0}
-                    onClick={(e) => {
-                      e.preventDefault();
-                      e.stopPropagation();
-                      setDateRange(undefined);
-                    }}
-                    className="ml-auto text-xs text-muted-foreground hover:text-foreground"
-                  >
-                    Clear
-                  </span>
-                )}
-              </Button>
-            </PopoverTrigger>
-            <PopoverContent className="w-auto p-0" align="start">
-              <Calendar
-                mode="range"
-                selected={dateRange}
-                onSelect={setDateRange}
-                numberOfMonths={2}
-                initialFocus
-                className={cn("p-3 pointer-events-auto")}
-              />
-            </PopoverContent>
-          </Popover>
           <Select value={statusFilter} onValueChange={setStatusFilter}>
             <SelectTrigger className="w-[170px]">
               <SelectValue placeholder="User Status" />
