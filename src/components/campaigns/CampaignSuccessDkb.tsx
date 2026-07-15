@@ -14,8 +14,9 @@ interface Props {
   language: string | null;
   region: string | null;
   campaignDate: string | null;
-  filters?: Pick<OverviewFilters, "dateFrom" | "dateTo">;
+  filters?: Pick<OverviewFilters, "dateFrom" | "dateTo" | "channel">;
 }
+
 
 function outcomeRate(m: Partial<DkbMetrics> | undefined | null): number | null {
   if (!m) return null;
