@@ -142,7 +142,7 @@ function CompletedCampaigns() {
             </div>
             <Panel>
               <ul className="divide-y divide-border">
-                {pageRows.length === 0 ? <li className="py-6 text-center text-sm text-muted-foreground">No campaigns match your search.</li> : pageRows.map((c) => <CampaignRow key={`${c.campaignType}__${c.campaignDate ?? "nd"}`} campaign={c} successLabel={successLabel} />)}
+                {pageRows.length === 0 ? <li className="py-6 text-center text-sm text-muted-foreground">No campaigns match your search.</li> : pageRows.map((c) => <CampaignRow key={`${c.campaignType}__${c.campaignDate ?? "nd"}`} campaign={c} successLabel={successLabel} channel={channel} />)}
               </ul>
             </Panel>
             {all.length > 0 && <p className="text-[11px] text-muted-foreground text-right tabular-nums">{all.length} campaign{all.length === 1 ? "" : "s"}</p>}
