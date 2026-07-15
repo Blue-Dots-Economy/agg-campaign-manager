@@ -196,7 +196,8 @@ function UserLevelAnalysis() {
   }, [seekers, dateRange]);
 
   const stats = useMemo(() => {
-    const total = seekers.length;
+  const stats = useMemo(() => {
+    const total = dateScopedSeekers.length;
     const byStatus = { New: 0, Active: 0, "At Risk": 0, Inactive: 0 } as Record<Seeker["status"], number>;
     let complete = 0;
     let withApps = 0;
