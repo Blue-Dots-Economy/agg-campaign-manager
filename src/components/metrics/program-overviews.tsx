@@ -1,3 +1,5 @@
+import { useState } from "react";
+import { cn } from "@/lib/utils";
 import { MetricSection, SplitBar } from "@/components/metrics/primitives";
 import { MetricCard } from "@/components/metrics/MetricCard";
 import { VerticalFunnel, type VerticalFunnelStage, type FunnelColor } from "@/components/metrics/VerticalFunnel";
