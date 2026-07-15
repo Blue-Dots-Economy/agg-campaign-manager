@@ -151,16 +151,16 @@ export function KkbOverviewMetrics({
   return (
     <div className="space-y-8">
       <MetricSection title="Outcome metrics" subtitle="Funnel from calls made to applications">
+        <div className="mb-4 inline-flex rounded-md border border-border bg-card p-0.5 text-xs">
+          {([["hybrid", "Calls → Seekers"], ["calls", "Total calls"], ["seekers", "Unique seekers"]] as const).map(([v, label]) => (
+            <button key={v} type="button" onClick={() => setView(v)}
+              className={cn("px-3 py-1.5 rounded transition-colors", view === v ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground")}>
+              {label}
+            </button>
+          ))}
+        </div>
         <div className="grid items-stretch gap-4 lg:grid-cols-5">
           <div className="lg:col-span-3">
-            <div className="mb-3 inline-flex rounded-md border border-border bg-card p-0.5 text-xs">
-              {([["hybrid", "Calls → Seekers"], ["calls", "Total calls"], ["seekers", "Unique seekers"]] as const).map(([v, label]) => (
-                <button key={v} type="button" onClick={() => setView(v)}
-                  className={cn("px-3 py-1.5 rounded transition-colors", view === v ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground")}>
-                  {label}
-                </button>
-              ))}
-            </div>
             <VerticalFunnel stages={stages} fill pickedUpKey="picked" onStageClick={onFunnelStageClick} />
           </div>
 
@@ -256,16 +256,16 @@ export function DkbOverviewMetrics({
         title="Outcome metrics"
         subtitle="Provider funnel — Called → Picked up → Engaged → Actively hiring"
       >
+        <div className="mb-4 inline-flex rounded-md border border-border bg-card p-0.5 text-xs">
+          {([["providers", "Providers"], ["openings", "Openings"], ["calls", "Calls"]] as const).map(([v, label]) => (
+            <button key={v} type="button" onClick={() => setDview(v)}
+              className={cn("px-3 py-1.5 rounded transition-colors", dview === v ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground")}>
+              {label}
+            </button>
+          ))}
+        </div>
         <div className="grid items-stretch gap-4 lg:grid-cols-5">
           <div className="lg:col-span-3">
-            <div className="mb-3 inline-flex rounded-md border border-border bg-card p-0.5 text-xs">
-              {([["providers", "Providers"], ["openings", "Openings"], ["calls", "Calls"]] as const).map(([v, label]) => (
-                <button key={v} type="button" onClick={() => setDview(v)}
-                  className={cn("px-3 py-1.5 rounded transition-colors", dview === v ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground")}>
-                  {label}
-                </button>
-              ))}
-            </div>
             {funnelStages.length > 0 ? (
               <VerticalFunnel stages={funnelStages} fill pickedUpKey="picked" onStageClick={onFunnelStageClick} />
             ) : (
