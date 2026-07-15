@@ -153,9 +153,9 @@ function CompletedCampaigns() {
   );
 }
 
-function CampaignCard({ campaign, successLabel, highlighted }: { campaign: CampaignLike; successLabel: string; highlighted?: boolean }) {
+function CampaignCard({ campaign, successLabel, channel, highlighted }: { campaign: CampaignLike; successLabel: string; channel: "all" | "outbound" | "inbound"; highlighted?: boolean }) {
   return (
-    <Link to="/campaigns/$campaign" params={{ campaign: campaign.campaignType }} search={{ date: campaign.campaignDate ?? undefined }} className={cn("group block rounded-xl border bg-card p-5 transition-colors hover:bg-muted/40", highlighted ? "border-primary border-2 shadow-sm" : "border-border")}>
+    <Link to="/campaigns/$campaign" params={{ campaign: campaign.campaignType }} search={{ date: campaign.campaignDate ?? undefined, channel: channel === "all" ? undefined : channel }} className={cn("group block rounded-xl border bg-card p-5 transition-colors hover:bg-muted/40", highlighted ? "border-primary border-2 shadow-sm" : "border-border")}>
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
           <div className="flex items-center gap-2 flex-wrap"><h3 className="font-semibold truncate">{humanizeCampaignType(campaign.campaignType)}</h3>{highlighted && <span className="rounded-full bg-primary px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-primary-foreground">New</span>}</div>
@@ -172,10 +172,11 @@ function CampaignCard({ campaign, successLabel, highlighted }: { campaign: Campa
     </Link>
   );
 }
-function CampaignRow({ campaign, successLabel }: { campaign: CampaignLike; successLabel: string }) {
+function CampaignRow({ campaign, successLabel, channel }: { campaign: CampaignLike; successLabel: string; channel: "all" | "outbound" | "inbound" }) {
   return (
     <li>
-      <Link to="/campaigns/$campaign" params={{ campaign: campaign.campaignType }} search={{ date: campaign.campaignDate ?? undefined }} className="group flex items-center gap-4 py-3 px-1 hover:bg-muted/40 rounded-md transition-colors">
+      <Link to="/campaigns/$campaign" params={{ campaign: campaign.campaignType }} search={{ date: campaign.campaignDate ?? undefined, channel: channel === "all" ? undefined : channel }} className="group flex items-center gap-4 py-3 px-1 hover:bg-muted/40 rounded-md transition-colors">
+
         <div className="min-w-0 flex-1"><div className="font-medium truncate">{humanizeCampaignType(campaign.campaignType)}</div><div className="text-xs text-muted-foreground mt-0.5">{formatDate(campaign.campaignDate)}{campaign.region ? ` · ${campaign.region}` : ""}</div></div>
         <div className="hidden sm:grid grid-cols-4 gap-6 text-xs text-right">
           <Metric label="Calls" value={campaign.totalCalls.toLocaleString()} align="right" />
