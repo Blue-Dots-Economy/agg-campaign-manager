@@ -125,6 +125,7 @@ function UserLevelAnalysis() {
   const [profileFilter, setProfileFilter] = useState<string[]>([]);
   const [appliedFilters, setAppliedFilters] = useState<string[]>([]);
   const [dateRange, setDateRange] = useState<DateRange | undefined>(undefined);
+  const [appliedRange, setAppliedRange] = useState<DateRange | undefined>(undefined);
   const [selected, setSelected] = useState<Seeker | null>(null);
   const [profileInfoOpen, setProfileInfoOpen] = useState(false);
   const fileRef = useRef<HTMLInputElement | null>(null);
@@ -177,23 +178,42 @@ function UserLevelAnalysis() {
 
 
   const dateScopedSeekers = useMemo(() => {
-    if (!dateRange?.from && !dateRange?.to) return seekers;
+    const hasJoined = Boolean(dateRange?.from || dateRange?.to);
+    const hasApplied = Boolean(appliedRange?.from || appliedRange?.to);
+    if (!hasJoined && !hasApplied) return seekers;
+
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const appliedFrom = appliedRange?.from ? new Date(appliedRange.from) : null;
+    if (appliedFrom) appliedFrom.setHours(0, 0, 0, 0);
+    const appliedTo = appliedRange?.to ? new Date(appliedRange.to) : appliedFrom;
+    if (appliedTo) appliedTo.setHours(23, 59, 59, 999);
+
     return seekers.filter((s) => {
-      const d = parseCreatedOn(s.createdOn);
-      if (!d) return false;
-      if (dateRange.from) {
-        const from = new Date(dateRange.from);
-        from.setHours(0, 0, 0, 0);
-        if (d < from) return false;
+      if (hasJoined) {
+        const d = parseCreatedOn(s.createdOn);
+        if (!d) return false;
+        if (dateRange?.from) {
+          const from = new Date(dateRange.from);
+          from.setHours(0, 0, 0, 0);
+          if (d < from) return false;
+        }
+        if (dateRange?.to) {
+          const to = new Date(dateRange.to);
+          to.setHours(23, 59, 59, 999);
+          if (d > to) return false;
+        }
       }
-      if (dateRange.to) {
-        const to = new Date(dateRange.to);
-        to.setHours(23, 59, 59, 999);
-        if (d > to) return false;
+      if (hasApplied) {
+        if (s.lastAppliedAge === null) return false;
+        const appliedDate = new Date(today);
+        appliedDate.setDate(appliedDate.getDate() - s.lastAppliedAge);
+        if (appliedFrom && appliedDate < appliedFrom) return false;
+        if (appliedTo && appliedDate > appliedTo) return false;
       }
       return true;
     });
-  }, [seekers, dateRange]);
+  }, [seekers, dateRange, appliedRange]);
 
   const stats = useMemo(() => {
     const total = dateScopedSeekers.length;
@@ -432,6 +452,54 @@ function UserLevelAnalysis() {
                 mode="range"
                 selected={dateRange}
                 onSelect={setDateRange}
+                numberOfMonths={2}
+                initialFocus
+                className={cn("p-3 pointer-events-auto")}
+              />
+            </PopoverContent>
+          </Popover>
+          <Popover>
+            <PopoverTrigger asChild>
+              <Button
+                variant="outline"
+                className={cn(
+                  "w-[260px] justify-start text-left font-normal",
+                  !appliedRange?.from && "text-muted-foreground",
+                )}
+              >
+                <CalendarIcon className="mr-2 h-4 w-4" />
+                {appliedRange?.from ? (
+                  appliedRange.to ? (
+                    <>
+                      Applied: {format(appliedRange.from, "LLL d, y")} – {format(appliedRange.to, "LLL d, y")}
+                    </>
+                  ) : (
+                    <>Applied: {format(appliedRange.from, "LLL d, y")}</>
+                  )
+                ) : (
+                  <span>Applied: Any date</span>
+                )}
+                {appliedRange?.from && (
+                  <span
+                    role="button"
+                    tabIndex={0}
+                    onClick={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      setAppliedRange(undefined);
+                    }}
+                    className="ml-auto text-xs text-muted-foreground hover:text-foreground"
+                  >
+                    Clear
+                  </span>
+                )}
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-auto p-0" align="end">
+              <Calendar
+                mode="range"
+                selected={appliedRange}
+                onSelect={setAppliedRange}
                 numberOfMonths={2}
                 initialFocus
                 className={cn("p-3 pointer-events-auto")}
