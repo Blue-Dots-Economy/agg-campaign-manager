@@ -50,6 +50,7 @@ export interface DkbProviderFunnelStage {
   label: string;
   providers: number;
   openings: number;
+  calls: number;
 }
 
 export interface DkbMetrics {
