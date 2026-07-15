@@ -228,29 +228,24 @@ export function DkbOverviewMetrics({
   const highIntentTotal = (perDay ?? []).reduce((sum, p) => sum + (p.high_intent ?? 0), 0);
   const prevHighIntent: number | null = null;
 
+  const [dview, setDview] = useState<"providers" | "openings" | "calls">("providers");
   const funnelData = m.providerFunnel ?? [];
-  const calledProviders = funnelData[0]?.providers ?? 0;
   const colors: FunnelColor[] = ["blue", "green", "green", "coral", "purple"];
-  const pct = (n: number, d: number) => (d > 0 ? (n / d) * 100 : 0);
-  const drop = (n: number, d: number) => (d > 0 ? Math.max(0, (1 - n / d) * 100) : 0);
 
+  const primaryOf = (s: DkbProviderFunnelStage) => dview === "openings" ? s.openings : dview === "calls" ? s.calls : s.providers;
+  const secondaryOf = (s: DkbProviderFunnelStage) => dview === "providers" ? s.openings : s.providers;
+  const unitLabel = dview === "openings" ? "openings" : dview === "calls" ? "calls" : "providers";
+  const secondaryLabel = dview === "providers" ? "openings" : "providers";
   const funnelStages: VerticalFunnelStage[] = funnelData.map((s, i) => {
     const prevStage = i > 0 ? funnelData[i - 1] : undefined;
-    const ofCalled = pct(s.providers, calledProviders);
-    const step = i === 0 ? 0 : drop(s.providers, prevStage?.providers ?? 0);
+    const base = primaryOf(funnelData[0]);
+    const ofBase = base > 0 ? (primaryOf(s) / base) * 100 : 0;
+    const step = i === 0 || !prevStage ? 0 : Math.max(0, (1 - primaryOf(s) / (primaryOf(prevStage) || 1)) * 100);
     return {
-      key: s.key,
-      label: s.label,
-      value: s.providers,
-      unit: "providers",
-      secondaryValue: s.openings,
-      secondaryLabel: "openings",
+      key: s.key, label: s.label, value: primaryOf(s), unit: unitLabel,
+      secondaryValue: secondaryOf(s), secondaryLabel,
       color: colors[i] ?? "blue",
-      sub:
-        i === 0
-          ? "100% of called"
-          : `${ofCalled.toFixed(1)}% of called  ·  −${step.toFixed(1)}% step`,
-      nextAnnotation: i < funnelData.length - 1 ? undefined : undefined,
+      sub: i === 0 ? `100% of called` : `${ofBase.toFixed(1)}% of called  ·  −${step.toFixed(1)}% step`,
       avgDurationSec: stageDurations?.[s.key],
     };
   });
