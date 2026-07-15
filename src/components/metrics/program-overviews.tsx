@@ -1,3 +1,5 @@
+import { useState } from "react";
+import { cn } from "@/lib/utils";
 import { MetricSection, SplitBar } from "@/components/metrics/primitives";
 import { MetricCard } from "@/components/metrics/MetricCard";
 import { VerticalFunnel, type VerticalFunnelStage, type FunnelColor } from "@/components/metrics/VerticalFunnel";
@@ -37,6 +39,10 @@ export interface KkbMetrics {
   failedSeekers: number;
   didNotApply: number;
   totalApplications: number;
+  engagedSeekers: number;
+  jobsShownSeekers: number;
+  highIntentSeekers: number;
+  applicationsSeekers: number;
 }
 
 export interface DkbProviderFunnelStage {
@@ -44,6 +50,7 @@ export interface DkbProviderFunnelStage {
   label: string;
   providers: number;
   openings: number;
+  calls: number;
 }
 
 export interface DkbMetrics {
@@ -99,85 +106,64 @@ export function KkbOverviewMetrics({
       ? (previous.productiveCalls / previous.totalCalls) * 100
       : null;
 
-  const pct = (n: number, d: number) => (d > 0 ? (n / d) * 100 : 0);
-  const dropPct = (n: number, d: number) => (d > 0 ? Math.max(0, (1 - n / d) * 100) : 0);
-
-  const stages: VerticalFunnelStage[] = [
-    {
-      key: "calls",
-      label: "Calls made",
-      description: "All dialled attempts",
-      value: m.totalCalls,
-      color: "blue",
-      sub: "100.0%",
-      nextAnnotation: `-${dropPct(m.answeredCalls, m.totalCalls).toFixed(1)}% no pickup`,
-      avgDurationSec: stageDurations?.["calls"],
-    },
-    {
-      key: "picked",
-      label: "Picked up",
-      description: "Seeker answered",
-      value: m.answeredCalls,
-      color: "green",
-      nextAnnotation: `-${dropPct(m.engagedCalls, m.answeredCalls).toFixed(1)}% drop after pickup`,
-      avgDurationSec: stageDurations?.["picked"],
-    },
-    {
-      key: "engaged",
-      label: "Engaged",
-      description: "3+ real conversation turns",
-      value: m.engagedCalls,
-      color: "green",
-      nextAnnotation: `-${dropPct(m.jobsShownCalls, m.engagedCalls).toFixed(1)}% don't reach jobs`,
-      avgDurationSec: stageDurations?.["engaged"],
-    },
-    {
-      key: "jobs",
-      label: "Jobs shown",
-      description: "Bot presented openings",
-      value: m.jobsShownCalls,
-      color: "amber",
-      nextAnnotation: "High-intent subset",
-      avgDurationSec: stageDurations?.["jobs"],
-    },
-    {
-      key: "intent",
-      label: "High-Intent (≥5)",
-      description: "Intent score ≥ 5",
-      value: m.highIntentCalls,
-      color: "coral",
-      nextAnnotation: `-${dropPct(m.applicationsTotal, m.highIntentCalls).toFixed(1)}% never apply`,
-      avgDurationSec: stageDurations?.["intent"],
-    },
-    {
-      key: "apps",
-      label: "Applications",
-      description: `${m.applicationsSubmitted.toLocaleString()} submitted + ${m.applicationsBlocked.toLocaleString()} blocked`,
-      value: m.applicationsTotal,
-      color: "coral",
-      nextAnnotation: m.hasInterviewData
-        ? `${pct(m.interviewCount, m.applicationsTotal).toFixed(1)}% → interview`
-        : undefined,
-      avgDurationSec: stageDurations?.["apps"],
-    },
+  const [view, setView] = useState<"hybrid" | "calls" | "seekers">("hybrid");
+  const callsByStage: Record<string, number> = {
+    calls: m.totalCalls, picked: m.answeredCalls, engaged: m.engagedCalls,
+    jobs: m.jobsShownCalls, intent: m.highIntentCalls, apps: m.applicationsTotal,
+  };
+  const seekersByStage: Record<string, number> = {
+    calls: m.seekers, picked: m.answeredSeekers, engaged: m.engagedSeekers,
+    jobs: m.jobsShownSeekers, intent: m.highIntentSeekers, apps: m.applicationsSeekers,
+  };
+  const seekerStageKeys = new Set(["engaged", "jobs", "intent", "apps"]);
+  const dimOf = (key: string): "calls" | "seekers" =>
+    view === "calls" ? "calls" : view === "seekers" ? "seekers" : seekerStageKeys.has(key) ? "seekers" : "calls";
+  const valOf = (key: string): number =>
+    (dimOf(key) === "seekers" ? seekersByStage[key] : callsByStage[key]) ?? 0;
+  const dropLabels: Record<string, string> = {
+    calls: "no pickup", picked: "drop after pickup", engaged: "don't reach jobs",
+    jobs: "reach high-intent", intent: "never apply",
+  };
+  const stageDefs: Array<{ key: string; label: string; description: string; color: FunnelColor }> = [
+    { key: "calls", label: "Calls made", description: "All dialled attempts", color: "blue" },
+    { key: "picked", label: "Picked up", description: "Seeker answered", color: "green" },
+    { key: "engaged", label: "Engaged", description: "3+ real conversation turns", color: "green" },
+    { key: "jobs", label: "Jobs shown", description: "Bot presented openings", color: "amber" },
+    { key: "intent", label: "High-Intent (≥5)", description: "Intent score ≥ 5", color: "coral" },
+    { key: "apps", label: "Applications", description: `${m.applicationsSubmitted.toLocaleString()} submitted + ${m.applicationsBlocked.toLocaleString()} blocked`, color: "coral" },
   ];
-  if (m.hasInterviewData) {
-    stages.push({
-      key: "interview",
-      label: "Interview",
-      description: "Ghaziabad only",
-      value: m.interviewCount,
-      color: "purple",
-    });
-  }
+  const stages: VerticalFunnelStage[] = stageDefs.map((s, i) => {
+    const value = valOf(s.key);
+    const next = stageDefs[i + 1];
+    const nextVal = next ? valOf(next.key) : null;
+    const dropAnn =
+      next && value > 0 && nextVal != null
+        ? `-${Math.max(0, (1 - nextVal / value) * 100).toFixed(1)}% ${dropLabels[s.key] ?? "drop"}`
+        : undefined;
+    return {
+      key: s.key, label: s.label, description: s.description, value, color: s.color,
+      unit: dimOf(s.key) === "seekers" ? "seekers" : undefined,
+      nextAnnotation: dropAnn,
+      avgDurationSec: stageDurations?.[s.key],
+    };
+  });
 
   return (
     <div className="space-y-8">
       <MetricSection title="Outcome metrics" subtitle="Funnel from calls made to applications">
         <div className="grid items-stretch gap-4 lg:grid-cols-5">
           <div className="lg:col-span-3">
+            <div className="mb-3 inline-flex rounded-md border border-border bg-card p-0.5 text-xs">
+              {([["hybrid", "Calls → Seekers"], ["calls", "Total calls"], ["seekers", "Unique seekers"]] as const).map(([v, label]) => (
+                <button key={v} type="button" onClick={() => setView(v)}
+                  className={cn("px-3 py-1.5 rounded transition-colors", view === v ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground")}>
+                  {label}
+                </button>
+              ))}
+            </div>
             <VerticalFunnel stages={stages} fill pickedUpKey="picked" onStageClick={onFunnelStageClick} />
           </div>
+
 
           <div className="grid gap-3 lg:col-span-2 lg:grid-cols-1">
             <SplitBar answered={m.answeredCalls} unanswered={m.unansweredCalls} />
@@ -242,29 +228,24 @@ export function DkbOverviewMetrics({
   const highIntentTotal = (perDay ?? []).reduce((sum, p) => sum + (p.high_intent ?? 0), 0);
   const prevHighIntent: number | null = null;
 
+  const [dview, setDview] = useState<"providers" | "openings" | "calls">("providers");
   const funnelData = m.providerFunnel ?? [];
-  const calledProviders = funnelData[0]?.providers ?? 0;
   const colors: FunnelColor[] = ["blue", "green", "green", "coral", "purple"];
-  const pct = (n: number, d: number) => (d > 0 ? (n / d) * 100 : 0);
-  const drop = (n: number, d: number) => (d > 0 ? Math.max(0, (1 - n / d) * 100) : 0);
 
+  const primaryOf = (s: DkbProviderFunnelStage) => dview === "openings" ? s.openings : dview === "calls" ? s.calls : s.providers;
+  const secondaryOf = (s: DkbProviderFunnelStage) => dview === "providers" ? s.openings : s.providers;
+  const unitLabel = dview === "openings" ? "openings" : dview === "calls" ? "calls" : "providers";
+  const secondaryLabel = dview === "providers" ? "openings" : "providers";
   const funnelStages: VerticalFunnelStage[] = funnelData.map((s, i) => {
     const prevStage = i > 0 ? funnelData[i - 1] : undefined;
-    const ofCalled = pct(s.providers, calledProviders);
-    const step = i === 0 ? 0 : drop(s.providers, prevStage?.providers ?? 0);
+    const base = primaryOf(funnelData[0]);
+    const ofBase = base > 0 ? (primaryOf(s) / base) * 100 : 0;
+    const step = i === 0 || !prevStage ? 0 : Math.max(0, (1 - primaryOf(s) / (primaryOf(prevStage) || 1)) * 100);
     return {
-      key: s.key,
-      label: s.label,
-      value: s.providers,
-      unit: "providers",
-      secondaryValue: s.openings,
-      secondaryLabel: "openings",
+      key: s.key, label: s.label, value: primaryOf(s), unit: unitLabel,
+      secondaryValue: secondaryOf(s), secondaryLabel,
       color: colors[i] ?? "blue",
-      sub:
-        i === 0
-          ? "100% of called"
-          : `${ofCalled.toFixed(1)}% of called  ·  −${step.toFixed(1)}% step`,
-      nextAnnotation: i < funnelData.length - 1 ? undefined : undefined,
+      sub: i === 0 ? `100% of called` : `${ofBase.toFixed(1)}% of called  ·  −${step.toFixed(1)}% step`,
       avgDurationSec: stageDurations?.[s.key],
     };
   });
@@ -277,6 +258,14 @@ export function DkbOverviewMetrics({
       >
         <div className="grid items-stretch gap-4 lg:grid-cols-5">
           <div className="lg:col-span-3">
+            <div className="mb-3 inline-flex rounded-md border border-border bg-card p-0.5 text-xs">
+              {([["providers", "Providers"], ["openings", "Openings"], ["calls", "Calls"]] as const).map(([v, label]) => (
+                <button key={v} type="button" onClick={() => setDview(v)}
+                  className={cn("px-3 py-1.5 rounded transition-colors", dview === v ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground")}>
+                  {label}
+                </button>
+              ))}
+            </div>
             {funnelStages.length > 0 ? (
               <VerticalFunnel stages={funnelStages} fill pickedUpKey="picked" onStageClick={onFunnelStageClick} />
             ) : (
