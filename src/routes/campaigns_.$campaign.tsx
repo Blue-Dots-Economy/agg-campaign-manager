@@ -40,10 +40,12 @@ function parseDate(s: string | null): Date | null {
 
 function CampaignReviewDetail() {
   const { campaign: rawCampaign } = Route.useParams();
-  const { date } = Route.useSearch();
+  const { date, channel } = Route.useSearch();
+  const channelFilter = channel ?? "all";
   const navigate = useNavigate();
   const { config } = useProgram();
-  const { data: campaigns, isLoading } = useCampaignList(config, {});
+  const { data: campaigns, isLoading } = useCampaignList(config, { channel: channelFilter });
+
 
   const sorted = useMemo(
     () =>
