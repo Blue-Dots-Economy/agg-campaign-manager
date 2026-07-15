@@ -521,6 +521,7 @@ export interface ProviderFunnelStage {
   label: string;
   providers: number;
   openings: number;
+  calls: number;
 }
 export interface ProgramMetricsRaw {
   program?: string;
