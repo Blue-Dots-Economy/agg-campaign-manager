@@ -19,7 +19,8 @@ import {
   AccordionTrigger,
 } from "@/components/ui/accordion";
 import { toast } from "sonner";
-import { CheckCircle2, AlertCircle, Gauge, ExternalLink, ShieldAlert } from "lucide-react";
+import { CheckCircle2, AlertCircle, Gauge, ExternalLink, ShieldAlert, Sun, Moon, Monitor } from "lucide-react";
+import { useTheme, type Theme } from "@/lib/theme";
 import { getConcurrencyCap, setConcurrencyCap, CONCURRENCY_CAP_DEFAULT } from "@/lib/concurrency-cap";
 import { ConnectionsSection } from "@/components/settings/ConnectionsSection";
 import { AgentsSection } from "@/components/settings/AgentsSection";
@@ -86,6 +87,7 @@ function GeneralSettings() {
 
   return (
     <div className="space-y-6">
+      <AppearancePanel />
       <Panel title="Raya API key" description="Stored as a backend secret · never sent to the browser">
         {keyConfigured === null ? (
           <p className="text-sm text-muted-foreground">Checking…</p>
@@ -173,6 +175,36 @@ function GeneralSettings() {
         </div>
       </Panel>
     </div>
+  );
+}
+
+function AppearancePanel() {
+  const { theme, setTheme } = useTheme();
+  const opts: { value: Theme; label: string; icon: typeof Sun }[] = [
+    { value: "light", label: "Light", icon: Sun },
+    { value: "dark", label: "Dark", icon: Moon },
+    { value: "system", label: "System", icon: Monitor },
+  ];
+  return (
+    <Panel title="Appearance" description="Choose a light or dark theme, or follow your system setting.">
+      <div className="inline-flex rounded-lg border border-border bg-card p-1">
+        {opts.map((o) => {
+          const Icon = o.icon;
+          const active = theme === o.value;
+          return (
+            <button
+              key={o.value}
+              type="button"
+              onClick={() => setTheme(o.value)}
+              className={`inline-flex items-center gap-2 rounded-md px-3 py-1.5 text-sm font-medium transition-colors ${active ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground"}`}
+            >
+              <Icon className="h-4 w-4" />
+              {o.label}
+            </button>
+          );
+        })}
+      </div>
+    </Panel>
   );
 }
 
