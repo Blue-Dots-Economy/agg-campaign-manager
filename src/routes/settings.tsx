@@ -19,7 +19,8 @@ import {
   AccordionTrigger,
 } from "@/components/ui/accordion";
 import { toast } from "sonner";
-import { CheckCircle2, AlertCircle, Gauge, ExternalLink, ShieldAlert } from "lucide-react";
+import { CheckCircle2, AlertCircle, Gauge, ExternalLink, ShieldAlert, Sun, Moon, Monitor } from "lucide-react";
+import { useTheme, type Theme } from "@/lib/theme";
 import { getConcurrencyCap, setConcurrencyCap, CONCURRENCY_CAP_DEFAULT } from "@/lib/concurrency-cap";
 import { ConnectionsSection } from "@/components/settings/ConnectionsSection";
 import { AgentsSection } from "@/components/settings/AgentsSection";
