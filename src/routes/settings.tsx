@@ -87,6 +87,7 @@ function GeneralSettings() {
 
   return (
     <div className="space-y-6">
+      <AppearancePanel />
       <Panel title="Raya API key" description="Stored as a backend secret · never sent to the browser">
         {keyConfigured === null ? (
           <p className="text-sm text-muted-foreground">Checking…</p>
