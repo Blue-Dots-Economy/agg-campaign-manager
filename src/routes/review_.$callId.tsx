@@ -367,7 +367,7 @@ function TranscriptReview() {
               <ul className="mt-3 space-y-1.5">
                 {flags.map((f, i) => (
                   <li key={i} className="flex items-start gap-2 rounded-lg border border-border bg-muted/40 p-2 text-xs">
-                    <button onClick={() => scrollToTurn(f.turn)} className="shrink-0 rounded-full bg-red-100 px-2 py-0.5 font-semibold text-red-700 hover:bg-red-200">Turn {f.turn}</button>
+                    <button onClick={() => scrollToTurn(f.turn)} className="shrink-0 rounded-full bg-red-500/15 px-2 py-0.5 font-semibold text-red-700 dark:text-red-400 hover:bg-red-500/25">Turn {f.turn}</button>
                     <span className="flex-1 text-foreground/80">{f.note}</span>
                     <button onClick={() => setFlags((p) => p.filter((_, j) => j !== i))} className="text-muted-foreground hover:text-foreground"><X className="h-3.5 w-3.5" /></button>
                   </li>

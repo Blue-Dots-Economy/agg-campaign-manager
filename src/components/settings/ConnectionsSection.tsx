@@ -243,7 +243,7 @@ function StatusBadge({
     );
   if (status === "error") {
     const badge = (
-      <Badge className="bg-red-100 text-red-700 hover:bg-red-100 cursor-help">
+      <Badge className="bg-red-500/15 text-red-700 dark:text-red-400 hover:bg-red-500/25 cursor-help">
         <AlertCircle className="mr-1 h-3 w-3" /> error
       </Badge>
     );
@@ -423,7 +423,7 @@ function ConnectDialog({ program, onCreated }: { program: ProgramId; onCreated: 
           {testResult && (
             <div
               className={`rounded-md px-3 py-2 text-sm ${
-                testResult.ok ? "bg-brand-soft text-brand" : "bg-red-50 text-red-700"
+                testResult.ok ? "bg-brand-soft text-brand" : "bg-red-500/15 text-red-700 dark:text-red-400"
               }`}
             >
               {testResult.ok ? `Connected · ${testResult.rows} rows` : testResult.error}

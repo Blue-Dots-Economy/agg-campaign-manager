@@ -368,7 +368,7 @@ function LaunchWizard() {
             <div className="flex items-center gap-2 text-sm text-muted-foreground"><Loader2 className="h-4 w-4 animate-spin" /> Loading agents…</div>
           )}
           {agentsQuery.error && (
-            <div className="rounded-md bg-red-50 px-3 py-2 text-sm text-red-700">
+            <div className="rounded-md bg-red-500/15 px-3 py-2 text-sm text-red-700 dark:text-red-400">
               {(agentsQuery.error as Error).message}
             </div>
           )}
@@ -430,7 +430,7 @@ function LaunchWizard() {
 
       {step === 4 && (
         <Panel title="Step 5 · Concurrency & retries" description="How aggressively Raya should dial">
-          <div className="mb-4 max-w-2xl rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-800 flex items-start gap-2">
+          <div className="mb-4 max-w-2xl rounded-md border border-amber-500/30 bg-amber-500/15 px-3 py-2 text-sm text-amber-800 dark:text-amber-300 flex items-start gap-2">
             <AlertTriangle className="h-4 w-4 mt-0.5 shrink-0" />
             <div>
               Raya rate limit: <strong>1 call per 20 seconds</strong> by default. Keep concurrency low or launches will be throttled (HTTP 429).
@@ -439,9 +439,9 @@ function LaunchWizard() {
           <div className={cn(
             "mb-4 max-w-2xl rounded-md border px-3 py-2 text-sm flex items-start gap-2",
             available === 0
-              ? "border-red-200 bg-red-50 text-red-700"
+              ? "border-red-500/30 bg-red-500/15 text-red-700 dark:text-red-400"
               : available <= 5
-                ? "border-amber-200 bg-amber-50 text-amber-800"
+                ? "border-amber-500/30 bg-amber-500/15 text-amber-800 dark:text-amber-300"
                 : "border-brand/20 bg-brand-soft text-brand",
           )}>
             <Gauge className="h-4 w-4 mt-0.5 shrink-0" />
@@ -578,7 +578,7 @@ function LaunchWizard() {
               </div>
             )}
             {launchError && (
-              <div className="rounded-md bg-red-50 text-red-700 px-3 py-2 text-sm flex items-start gap-2">
+              <div className="rounded-md bg-red-500/15 text-red-700 dark:text-red-400 px-3 py-2 text-sm flex items-start gap-2">
                 <AlertTriangle className="h-4 w-4 mt-0.5 shrink-0" />
                 <div className="whitespace-pre-line">{launchError}</div>
               </div>
@@ -709,10 +709,10 @@ function UploadStep({
           <div className="flex flex-wrap items-center gap-2">
             <Badge className="bg-brand-soft text-brand hover:bg-brand-soft">{report.valid} valid</Badge>
             <Badge variant="secondary">{report.total} total</Badge>
-            {report.invalid > 0 && <Badge className="bg-red-100 text-red-700 hover:bg-red-100">{report.invalid} problems</Badge>}
+            {report.invalid > 0 && <Badge className="bg-red-500/15 text-red-700 dark:text-red-400 hover:bg-red-500/25">{report.invalid} problems</Badge>}
           </div>
           {report.missingCols.length > 0 && (
-            <div className="rounded-md bg-red-50 text-red-700 px-3 py-2 text-sm">
+            <div className="rounded-md bg-red-500/15 text-red-700 dark:text-red-400 px-3 py-2 text-sm">
               Missing required column{report.missingCols.length === 1 ? "" : "s"}: <span className="font-mono">{report.missingCols.join(", ")}</span>
             </div>
           )}
