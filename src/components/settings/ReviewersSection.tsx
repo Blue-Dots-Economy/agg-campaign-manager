@@ -61,7 +61,7 @@ export function ReviewersSection() {
             {list.map((e) => (
               <li key={e} className="flex items-center justify-between gap-3 py-2.5">
                 <span className="text-sm text-foreground">{e}</span>
-                <button onClick={() => remove(e)} disabled={busy} className="inline-flex items-center gap-1 rounded-md px-2 py-1 text-xs text-rose-600 hover:bg-rose-50 disabled:opacity-50" title="Remove reviewer">
+                <button onClick={() => remove(e)} disabled={busy} className="inline-flex items-center gap-1 rounded-md px-2 py-1 text-xs text-rose-600 dark:text-rose-400 hover:bg-rose-500/10 disabled:opacity-50" title="Remove reviewer">
                   <Trash2 className="h-3.5 w-3.5" /> Remove
                 </button>
               </li>

@@ -7,7 +7,7 @@ import { getReviewKey, REVIEW_THRESHOLD, type JobReviewStatus, type ReviewCall }
 function ReviewerChip({ status }: { status?: JobReviewStatus }) {
   const n = status?.unique_reviewers ?? 0;
   const reviewed = !!status?.is_reviewed;
-  const cls = reviewed ? "bg-emerald-100 text-emerald-700" : n > 0 ? "bg-amber-100 text-amber-700" : "bg-muted text-muted-foreground";
+  const cls = reviewed ? "bg-emerald-500/15 text-emerald-700 dark:text-emerald-400" : n > 0 ? "bg-amber-500/15 text-amber-700 dark:text-amber-400" : "bg-muted text-muted-foreground";
   return <span className={cn("inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-medium", cls)}>{reviewed && <CheckCircle2 className="h-3 w-3" />}{n}/{REVIEW_THRESHOLD} reviewers</span>;
 }
 
@@ -26,7 +26,7 @@ export function CallCard({ call, reviewStatus }: { call: ReviewCall; reviewStatu
             <StatusChip status={call.job_status} />
             <OutcomeChip outcome={call.call_outcome} />
             <ReviewerChip status={reviewStatus} />
-            {youReviewed && <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2.5 py-0.5 text-xs font-medium text-emerald-700 ring-1 ring-emerald-200">You reviewed this</span>}
+            {youReviewed && <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/15 px-2.5 py-0.5 text-xs font-medium text-emerald-700 dark:text-emerald-400 ring-1 ring-emerald-500/30">You reviewed this</span>}
           </div>
           <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground">
             <span>{call.call_datetime_ist}</span>
@@ -35,7 +35,7 @@ export function CallCard({ call, reviewStatus }: { call: ReviewCall; reviewStatu
           </div>
         </div>
         <div className="flex shrink-0 items-center self-center">
-          <button type="button" onClick={go} className={cn("inline-flex items-center gap-1.5 rounded-full px-5 py-2.5 text-sm font-medium transition", youReviewed ? "bg-emerald-50 text-emerald-700 ring-1 ring-emerald-200 hover:bg-emerald-100" : isReviewed ? "bg-muted text-muted-foreground ring-1 ring-border hover:bg-muted/80" : "border border-primary text-primary hover:bg-primary/5")}>
+          <button type="button" onClick={go} className={cn("inline-flex items-center gap-1.5 rounded-full px-5 py-2.5 text-sm font-medium transition", youReviewed ? "bg-emerald-500/15 text-emerald-700 dark:text-emerald-400 ring-1 ring-emerald-500/30 hover:bg-emerald-500/25" : isReviewed ? "bg-muted text-muted-foreground ring-1 ring-border hover:bg-muted/80" : "border border-primary text-primary hover:bg-primary/5")}>
             {youReviewed || isReviewed ? <><CheckCircle2 className="h-4 w-4" /> View Review</> : <><FileText className="h-4 w-4" /> Review</>}
           </button>
         </div>

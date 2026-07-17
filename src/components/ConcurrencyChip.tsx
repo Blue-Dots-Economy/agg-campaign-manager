@@ -13,9 +13,9 @@ export function ConcurrencyChip() {
 
   const tone =
     available === 0
-      ? "border-red-200 bg-red-50 text-red-700"
+      ? "border-red-500/30 bg-red-500/15 text-red-700 dark:text-red-400"
       : available <= 5
-        ? "border-amber-200 bg-amber-50 text-amber-800"
+        ? "border-amber-500/30 bg-amber-500/15 text-amber-800 dark:text-amber-300"
         : "border-brand/20 bg-brand-soft text-brand";
   const barTone =
     available === 0 ? "bg-red-500" : available <= 5 ? "bg-amber-500" : "bg-brand";
@@ -38,7 +38,7 @@ export function ConcurrencyChip() {
       <span className="whitespace-nowrap">
         Concurrency {isLoading ? "…" : `${used} / ${cap}`}
       </span>
-      <span className="hidden sm:block h-1.5 w-14 rounded-full bg-white/60 overflow-hidden">
+      <span className="hidden sm:block h-1.5 w-14 rounded-full bg-foreground/10 overflow-hidden">
         <span className={cn("block h-full transition-all", barTone)} style={{ width: `${pct}%` }} />
       </span>
     </div>

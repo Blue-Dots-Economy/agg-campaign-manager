@@ -74,10 +74,10 @@ export const Route = createFileRoute("/user-level-analysis")({
 });
 
 const STATUS_STYLES: Record<Seeker["status"], string> = {
-  New: "bg-emerald-50 text-emerald-700 border-emerald-200",
-  Active: "bg-blue-50 text-blue-700 border-blue-200",
-  "At Risk": "bg-amber-50 text-amber-700 border-amber-200",
-  Inactive: "bg-rose-50 text-rose-700 border-rose-200",
+  New: "bg-emerald-500/15 text-emerald-700 dark:text-emerald-400 border-emerald-500/30",
+  Active: "bg-blue-500/15 text-blue-700 dark:text-blue-400 border-blue-500/30",
+  "At Risk": "bg-amber-500/15 text-amber-700 dark:text-amber-400 border-amber-500/30",
+  Inactive: "bg-rose-500/15 text-rose-700 dark:text-rose-400 border-rose-500/30",
 };
 
 // Parses "M/D/YYYY" or "MM/DD/YYYY" strings from the CSV into a Date at midnight.
@@ -356,7 +356,7 @@ function UserLevelAnalysis() {
       description: "Profile age ≤ 7 days",
       icon: UserPlus,
       accent: "from-emerald-50 to-white",
-      iconBg: "bg-white border border-emerald-200",
+      iconBg: "bg-card border border-emerald-500/30",
       iconColor: "text-emerald-600",
       valueColor: "text-emerald-600",
     },
@@ -366,7 +366,7 @@ function UserLevelAnalysis() {
       description: "Last applied ≤ 30 days",
       icon: Users,
       accent: "from-blue-50 to-white",
-      iconBg: "bg-white border border-blue-200",
+      iconBg: "bg-card border border-blue-500/30",
       iconColor: "text-blue-600",
       valueColor: "text-blue-600",
     },
@@ -376,7 +376,7 @@ function UserLevelAnalysis() {
       description: "Profile > 7d, last applied 31–90d",
       icon: AlertTriangle,
       accent: "from-amber-50 to-white",
-      iconBg: "bg-white border border-amber-200",
+      iconBg: "bg-card border border-amber-500/30",
       iconColor: "text-amber-500",
       valueColor: "text-amber-600",
     },
@@ -386,7 +386,7 @@ function UserLevelAnalysis() {
       description: "Last applied > 90 days or never",
       icon: PauseCircle,
       accent: "from-rose-50 to-white",
-      iconBg: "bg-white border border-rose-200",
+      iconBg: "bg-card border border-rose-500/30",
       iconColor: "text-rose-500",
       valueColor: "text-rose-600",
     },
@@ -554,7 +554,7 @@ function UserLevelAnalysis() {
       <div className="rounded-xl border bg-card p-5 flex flex-col sm:flex-row items-start sm:items-center gap-6">
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 flex-1">
           <div className="flex items-center gap-4">
-            <div className="h-12 w-12 rounded-xl bg-violet-100 flex items-center justify-center text-violet-600">
+            <div className="h-12 w-12 rounded-xl bg-violet-500/15 flex items-center justify-center text-violet-600 dark:text-violet-400">
               <Search className="h-5 w-5" />
             </div>
             <div>
@@ -563,7 +563,7 @@ function UserLevelAnalysis() {
             </div>
           </div>
           <div className="flex items-center gap-4">
-            <div className="h-12 w-12 rounded-xl bg-emerald-100 flex items-center justify-center text-emerald-600">
+            <div className="h-12 w-12 rounded-xl bg-emerald-500/15 flex items-center justify-center text-emerald-600 dark:text-emerald-400">
               <Send className="h-5 w-5" />
             </div>
             <div>
@@ -904,8 +904,8 @@ function UserLevelAnalysis() {
                         variant="outline"
                         className={`rounded-full ${
                           p.profileStatus === "Complete"
-                            ? "bg-emerald-50 text-emerald-700 border-emerald-200"
-                            : "bg-amber-50 text-amber-700 border-amber-200"
+                            ? "bg-emerald-500/15 text-emerald-700 dark:text-emerald-400 border-emerald-500/30"
+                            : "bg-amber-500/15 text-amber-700 dark:text-amber-400 border-amber-500/30"
                         }`}
                       >
                         {p.profileStatus} ({p.profileCompletion}%)
@@ -966,7 +966,7 @@ function UserLevelAnalysis() {
             <div className="space-y-3">
               <div className="text-sm font-medium">Incomplete fields</div>
               {selected.profileFieldChecks.filter((f) => !f.passed).length === 0 ? (
-                <div className="text-sm text-emerald-700 bg-emerald-50 border border-emerald-200 rounded px-3 py-2">
+                <div className="text-sm text-emerald-700 dark:text-emerald-400 bg-emerald-500/15 border border-emerald-500/30 rounded px-3 py-2">
                   All required fields are complete.
                 </div>
               ) : (
@@ -976,7 +976,7 @@ function UserLevelAnalysis() {
                     .map((f) => (
                       <li
                         key={f.label}
-                        className="text-sm flex items-center gap-2 rounded border border-amber-200 bg-amber-50 text-amber-800 px-3 py-1.5"
+                        className="text-sm flex items-center gap-2 rounded border border-amber-500/30 bg-amber-500/15 text-amber-800 dark:text-amber-300 px-3 py-1.5"
                       >
                         <span className="h-1.5 w-1.5 rounded-full bg-amber-500" />
                         {f.label}

@@ -1,11 +1,11 @@
 import { cn } from "@/lib/utils";
 const STATUS_STYLES: Record<string, string> = {
-  Active: "bg-[#D1FAE5] text-[#065F46]", Closed: "bg-[#FEE2E2] text-[#991B1B]",
-  Unverified: "bg-[#FEF3C7] text-[#92400E]", "Not Called": "bg-[#F3F4F6] text-[#374151]",
+  Active: "bg-emerald-500/15 text-emerald-700 dark:text-emerald-300", Closed: "bg-red-500/15 text-red-700 dark:text-red-300",
+  Unverified: "bg-amber-500/15 text-amber-700 dark:text-amber-300", "Not Called": "bg-muted text-muted-foreground",
 };
 const OUTCOME_STYLES: Record<string, string> = {
-  Completed: "bg-[#CCFBF1] text-[#0D9488]", "Early Disconnect": "bg-[#FFEDD5] text-[#C2410C]",
-  "No Answer": "bg-[#F3F4F6] text-[#374151]",
+  Completed: "bg-teal-500/15 text-teal-700 dark:text-teal-300", "Early Disconnect": "bg-orange-500/15 text-orange-700 dark:text-orange-300",
+  "No Answer": "bg-muted text-muted-foreground",
 };
 export function StatusChip({ status }: { status?: string }) {
   if (!status) return null;
