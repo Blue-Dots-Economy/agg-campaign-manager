@@ -178,6 +178,36 @@ function GeneralSettings() {
   );
 }
 
+function AppearancePanel() {
+  const { theme, setTheme } = useTheme();
+  const opts: { value: Theme; label: string; icon: typeof Sun }[] = [
+    { value: "light", label: "Light", icon: Sun },
+    { value: "dark", label: "Dark", icon: Moon },
+    { value: "system", label: "System", icon: Monitor },
+  ];
+  return (
+    <Panel title="Appearance" description="Choose a light or dark theme, or follow your system setting.">
+      <div className="inline-flex rounded-lg border border-border bg-card p-1">
+        {opts.map((o) => {
+          const Icon = o.icon;
+          const active = theme === o.value;
+          return (
+            <button
+              key={o.value}
+              type="button"
+              onClick={() => setTheme(o.value)}
+              className={`inline-flex items-center gap-2 rounded-md px-3 py-1.5 text-sm font-medium transition-colors ${active ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground"}`}
+            >
+              <Icon className="h-4 w-4" />
+              {o.label}
+            </button>
+          );
+        })}
+      </div>
+    </Panel>
+  );
+}
+
 function ReferenceSettings() {
   const { config } = useProgram();
   return (
