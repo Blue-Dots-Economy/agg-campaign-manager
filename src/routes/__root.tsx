@@ -126,6 +126,7 @@ function RootShell({ children }: { children: ReactNode }) {
 import { ProgramProvider } from "../programs/context";
 import { AppShell } from "../components/layout/AppShell";
 import { AuthProvider, useAuth } from "../auth/context";
+import { ThemeProvider } from "../lib/theme";
 import { useNavigate, useRouterState } from "@tanstack/react-router";
 
 function AuthGate({ children }: { children: ReactNode }) {
