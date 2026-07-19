@@ -29,6 +29,7 @@ import {
 import { Panel } from "@/components/Panel";
 import { NoDataState, LoadingState } from "@/components/EmptyState";
 import { DropAnalysisHeatmap } from "@/components/metrics/DropAnalysisHeatmap";
+import { NorthStarMetrics } from "@/components/metrics/NorthStarMetrics";
 import { fetchFunnelCallIds } from "@/lib/snapshot.functions";
 import type { OverviewFilterValue } from "@/components/metrics/OverviewFilters";
 
@@ -243,6 +244,11 @@ export function ProgramAnalytics({
 
   return (
     <div className="space-y-6">
+      {campaign && config.id === "kkb" && (
+        <div className="flex justify-end">
+          <NorthStarMetrics program={config.id} m={metrics as unknown as Record<string, number>} />
+        </div>
+      )}
       {comparison && (
         <div className="text-xs text-muted-foreground">
           Compared to <span className="font-medium text-foreground">{comparison.label} average</span>
