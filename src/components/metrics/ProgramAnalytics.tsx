@@ -244,6 +244,11 @@ export function ProgramAnalytics({
 
   return (
     <div className="space-y-6">
+      {campaign && config.id === "kkb" && (
+        <div className="flex justify-end">
+          <NorthStarMetrics program={config.id} m={metrics as unknown as Record<string, number>} />
+        </div>
+      )}
       {comparison && (
         <div className="text-xs text-muted-foreground">
           Compared to <span className="font-medium text-foreground">{comparison.label} average</span>
