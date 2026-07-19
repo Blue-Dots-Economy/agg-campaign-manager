@@ -29,6 +29,7 @@ import {
 import { Panel } from "@/components/Panel";
 import { NoDataState, LoadingState } from "@/components/EmptyState";
 import { DropAnalysisHeatmap } from "@/components/metrics/DropAnalysisHeatmap";
+import { NorthStarMetrics } from "@/components/metrics/NorthStarMetrics";
 import { fetchFunnelCallIds } from "@/lib/snapshot.functions";
 import type { OverviewFilterValue } from "@/components/metrics/OverviewFilters";
 
