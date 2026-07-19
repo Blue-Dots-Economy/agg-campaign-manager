@@ -194,6 +194,33 @@ export type Database = {
         }
         Relationships: []
       }
+      north_star_config: {
+        Row: {
+          enabled: boolean
+          key: string
+          program: string
+          sort: number
+          threshold: number | null
+          updated_at: string
+        }
+        Insert: {
+          enabled?: boolean
+          key: string
+          program: string
+          sort?: number
+          threshold?: number | null
+          updated_at?: string
+        }
+        Update: {
+          enabled?: boolean
+          key?: string
+          program?: string
+          sort?: number
+          threshold?: number | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
       program_agents: {
         Row: {
           agent_id: string
