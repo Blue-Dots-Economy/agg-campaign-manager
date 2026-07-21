@@ -31,6 +31,8 @@ import { NoDataState, LoadingState } from "@/components/EmptyState";
 import { DropAnalysisHeatmap } from "@/components/metrics/DropAnalysisHeatmap";
 import { NorthStarMetrics } from "@/components/metrics/NorthStarMetrics";
 import { fetchFunnelCallIds } from "@/lib/snapshot.functions";
+import { fetchReviewedCallIds } from "@/lib/review.functions";
+import { useAuth } from "@/auth/context";
 import type { OverviewFilterValue } from "@/components/metrics/OverviewFilters";
 
 async function copyText(text: string): Promise<boolean> {
@@ -169,6 +171,8 @@ export function ProgramAnalytics({
   }, [perDay]);
 
   const fetchIds = useServerFn(fetchFunnelCallIds);
+  const { session } = useAuth();
+  const fetchReviewed = useServerFn(fetchReviewedCallIds);
 
   if (query.isLoading && !data) return <LoadingState />;
 
@@ -226,9 +230,24 @@ export function ProgramAnalytics({
       return;
     }
     if (action === "review") {
-      try { window.sessionStorage.setItem("bulk_review_queue", JSON.stringify(ids)); } catch { /* ignore */ }
-      toast.success(`Reviewing ${ids.length.toLocaleString()} call${ids.length === 1 ? "" : "s"} from this stage`);
-      navigate({ to: "/review/$callId", params: { callId: ids[0] }, search: { bulk: "1" } });
+      let queue = ids;
+      try {
+        const reviewed = await fetchReviewed({ data: { email: session?.email ?? "" } });
+        const done = new Set(reviewed);
+        const remaining = ids.filter((id) => !done.has(id));
+        if (remaining.length === 0) {
+          toast.success(`You've already reviewed all ${ids.length.toLocaleString()} call${ids.length === 1 ? "" : "s"} in this cohort`);
+          return;
+        }
+        queue = remaining;
+      } catch { /* if the lookup fails, fall back to the full cohort */ }
+      const skipped = ids.length - queue.length;
+      try { window.sessionStorage.setItem("bulk_review_queue", JSON.stringify(queue)); } catch { /* ignore */ }
+      toast.success(
+        `Reviewing ${queue.length.toLocaleString()} call${queue.length === 1 ? "" : "s"}`,
+        skipped > 0 ? { description: `Resuming — ${skipped.toLocaleString()} already reviewed by you are skipped.` } : undefined,
+      );
+      navigate({ to: "/review/$callId", params: { callId: queue[0] }, search: { bulk: "1" } });
       return;
     }
     const ok = await copyText(ids.join(", "));

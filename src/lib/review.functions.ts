@@ -124,6 +124,32 @@ export const fetchReviewMap = createServerFn({ method: "GET" }).handler(async ()
   }>;
 });
 
+export const fetchReviewedCallIds = createServerFn({ method: "GET" })
+  .inputValidator((data: { email: string }) => data)
+  .handler(async ({ data }): Promise<string[]> => {
+    const email = (data.email || "").trim().toLowerCase();
+    if (!email) return [];
+    const client = sb();
+    const ids = new Set<string>();
+    let from = 0;
+    while (true) {
+      const { data: batch, error } = await client
+        .from("transcript_reviews")
+        .select("call_id, job_id")
+        .eq("reviewer_email", email)
+        .range(from, from + 999);
+      if (error) throw new Error(error.message);
+      const rows = batch ?? [];
+      for (const r of rows as Array<{ call_id: string | null; job_id: string | null }>) {
+        if (r.call_id) ids.add(String(r.call_id));
+        if (r.job_id) ids.add(String(r.job_id));
+      }
+      if (rows.length === 0) break;
+      from += rows.length;
+    }
+    return Array.from(ids);
+  });
+
 export const fetchExistingReviews = createServerFn({ method: "GET" })
   .inputValidator((data: { callId?: string | null; jobId?: string | null }) => data)
   .handler(async ({ data }) => {
