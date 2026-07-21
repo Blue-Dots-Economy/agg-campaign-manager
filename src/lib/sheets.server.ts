@@ -515,3 +515,50 @@ export async function getCallDetail(
     effectiveTab: tab,
   };
 }
+
+/**
+ * Read reviewer_email + call_id + job_id from a feedback/responses tab and
+ * return the set of call_id and job_id values reviewed by `email`
+ * (case-insensitive). Returns an empty set on any error — must never throw.
+ */
+export async function readReviewedIdsForEmail(
+  sheetId: string,
+  tab: string,
+  email: string,
+): Promise<Set<string>> {
+  const out = new Set<string>();
+  const target = (email || "").trim().toLowerCase();
+  if (!target) return out;
+  try {
+    const token = await getAccessToken();
+    const tabPrefix = quoteTab(tab);
+    const headerRes = await fetch(
+      `https://sheets.googleapis.com/v4/spreadsheets/${sheetId}/values/${tabPrefix}A1:ZZ1`,
+      { headers: { authorization: `Bearer ${token}` } },
+    );
+    if (!headerRes.ok) return out;
+    const headerJson = (await headerRes.json()) as { values?: string[][] };
+    const headers = (headerJson.values?.[0] ?? []).map((h) => normalizeHeader(String(h ?? "")));
+    if (headers.length === 0) return out;
+    const emailCol = headers.indexOf("reviewer_email");
+    const callIdCol = headers.indexOf("call_id");
+    const jobIdCol = headers.indexOf("job_id");
+    if (emailCol < 0) return out;
+    const endCol = colLetter(headers.length - 1);
+    const res = await fetch(
+      `https://sheets.googleapis.com/v4/spreadsheets/${sheetId}/values/${tabPrefix}A2:${endCol}200000?majorDimension=ROWS&valueRenderOption=FORMATTED_VALUE`,
+      { headers: { authorization: `Bearer ${token}` } },
+    );
+    if (!res.ok) return out;
+    const data = (await res.json()) as { values?: unknown[][] };
+    for (const row of data.values ?? []) {
+      const em = String((row[emailCol] ?? "")).trim().toLowerCase();
+      if (em !== target) continue;
+      if (callIdCol >= 0) { const v = String(row[callIdCol] ?? "").trim(); if (v) out.add(v); }
+      if (jobIdCol >= 0) { const v = String(row[jobIdCol] ?? "").trim(); if (v) out.add(v); }
+    }
+  } catch {
+    /* never break resume on a sheet hiccup */
+  }
+  return out;
+}
