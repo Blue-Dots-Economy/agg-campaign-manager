@@ -562,3 +562,43 @@ export async function readReviewedIdsForEmail(
   }
   return out;
 }
+
+/**
+ * Read ALL call_id + job_id values from a feedback/responses tab (every
+ * reviewer). Returns an empty set on any error — must never throw.
+ */
+export async function readAllReviewedIds(
+  sheetId: string,
+  tab: string,
+): Promise<Set<string>> {
+  const out = new Set<string>();
+  try {
+    const token = await getAccessToken();
+    const tabPrefix = quoteTab(tab);
+    const headerRes = await fetch(
+      `https://sheets.googleapis.com/v4/spreadsheets/${sheetId}/values/${tabPrefix}A1:ZZ1`,
+      { headers: { authorization: `Bearer ${token}` } },
+    );
+    if (!headerRes.ok) return out;
+    const headerJson = (await headerRes.json()) as { values?: string[][] };
+    const headers = (headerJson.values?.[0] ?? []).map((h) => normalizeHeader(String(h ?? "")));
+    if (headers.length === 0) return out;
+    const callIdCol = headers.indexOf("call_id");
+    const jobIdCol = headers.indexOf("job_id");
+    if (callIdCol < 0 && jobIdCol < 0) return out;
+    const endCol = colLetter(headers.length - 1);
+    const res = await fetch(
+      `https://sheets.googleapis.com/v4/spreadsheets/${sheetId}/values/${tabPrefix}A2:${endCol}200000?majorDimension=ROWS&valueRenderOption=FORMATTED_VALUE`,
+      { headers: { authorization: `Bearer ${token}` } },
+    );
+    if (!res.ok) return out;
+    const data = (await res.json()) as { values?: unknown[][] };
+    for (const row of data.values ?? []) {
+      if (callIdCol >= 0) { const v = String(row[callIdCol] ?? "").trim(); if (v) out.add(v); }
+      if (jobIdCol >= 0) { const v = String(row[jobIdCol] ?? "").trim(); if (v) out.add(v); }
+    }
+  } catch {
+    /* never break the queue on a sheet hiccup */
+  }
+  return out;
+}

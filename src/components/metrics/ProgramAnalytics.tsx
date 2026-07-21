@@ -31,8 +31,7 @@ import { NoDataState, LoadingState } from "@/components/EmptyState";
 import { DropAnalysisHeatmap } from "@/components/metrics/DropAnalysisHeatmap";
 import { NorthStarMetrics } from "@/components/metrics/NorthStarMetrics";
 import { fetchFunnelCallIds } from "@/lib/snapshot.functions";
-import { fetchReviewedCallIds } from "@/lib/review.functions";
-import { useAuth } from "@/auth/context";
+import { fetchAllReviewedCallIds } from "@/lib/review.functions";
 import type { OverviewFilterValue } from "@/components/metrics/OverviewFilters";
 
 async function copyText(text: string): Promise<boolean> {
@@ -171,8 +170,7 @@ export function ProgramAnalytics({
   }, [perDay]);
 
   const fetchIds = useServerFn(fetchFunnelCallIds);
-  const { session } = useAuth();
-  const fetchReviewed = useServerFn(fetchReviewedCallIds);
+  const fetchAllReviewed = useServerFn(fetchAllReviewedCallIds);
 
   if (query.isLoading && !data) return <LoadingState />;
 
@@ -232,11 +230,11 @@ export function ProgramAnalytics({
     if (action === "review") {
       let queue = ids;
       try {
-        const reviewed = await fetchReviewed({ data: { email: session?.email ?? "", program: config.id as "kkb" | "dkb" } });
+        const reviewed = await fetchAllReviewed({ data: { program: config.id as "kkb" | "dkb" } });
         const done = new Set(reviewed);
         const remaining = ids.filter((id) => !done.has(id));
         if (remaining.length === 0) {
-          toast.success(`You've already reviewed all ${ids.length.toLocaleString()} call${ids.length === 1 ? "" : "s"} in this cohort`);
+          toast.success(`All ${ids.length.toLocaleString()} call${ids.length === 1 ? "" : "s"} in this cohort have already been reviewed`);
           return;
         }
         queue = remaining;
@@ -245,7 +243,7 @@ export function ProgramAnalytics({
       try { window.sessionStorage.setItem("bulk_review_queue", JSON.stringify(queue)); } catch { /* ignore */ }
       toast.success(
         `Reviewing ${queue.length.toLocaleString()} call${queue.length === 1 ? "" : "s"}`,
-        skipped > 0 ? { description: `Resuming — ${skipped.toLocaleString()} already reviewed by you are skipped.` } : undefined,
+        skipped > 0 ? { description: `Resuming — ${skipped.toLocaleString()} already reviewed are skipped.` } : undefined,
       );
       navigate({ to: "/review/$callId", params: { callId: queue[0] }, search: { bulk: "1" } });
       return;
