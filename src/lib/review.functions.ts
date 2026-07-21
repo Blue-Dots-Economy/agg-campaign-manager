@@ -6,6 +6,7 @@ import {
   writeStagingHeaders,
   appendStagingRows,
   readReviewedIdsForEmail,
+  readAllReviewedIds,
 } from "./sheets.server";
 
 export type ReviewDataset = "kkb" | "dkb";
@@ -157,6 +158,38 @@ export const fetchReviewedCallIds = createServerFn({ method: "GET" })
         for (const v of sheetIds) ids.add(v);
       } catch { /* ignore */ }
     }
+    return Array.from(ids);
+  });
+
+/** Every call_id/job_id reviewed by ANY reviewer for a program (DB ∪ sheet). */
+export const fetchAllReviewedCallIds = createServerFn({ method: "GET" })
+  .inputValidator((data: { program: ReviewDataset }) => data)
+  .handler(async ({ data }): Promise<string[]> => {
+    const client = sb();
+    const ids = new Set<string>();
+    // 1) Supabase transcript_reviews for this program (+ legacy null-dataset rows), paginated.
+    let from = 0;
+    while (true) {
+      const { data: batch, error } = await client
+        .from("transcript_reviews")
+        .select("call_id, job_id")
+        .or(`dataset.eq.${data.program},dataset.is.null`)
+        .range(from, from + 999);
+      if (error) throw new Error(error.message);
+      const rows = batch ?? [];
+      for (const r of rows as Array<{ call_id: string | null; job_id: string | null }>) {
+        if (r.call_id) ids.add(String(r.call_id));
+        if (r.job_id) ids.add(String(r.job_id));
+      }
+      if (rows.length === 0) break;
+      from += rows.length;
+    }
+    // 2) Master sheet "Feedback Responses" tab (all reviewers). Never throws.
+    try {
+      const { sheet_id } = await resolveSheet(data.program);
+      const sheetIds = await readAllReviewedIds(sheet_id, "Feedback Responses");
+      for (const v of sheetIds) ids.add(v);
+    } catch { /* ignore */ }
     return Array.from(ids);
   });
 
