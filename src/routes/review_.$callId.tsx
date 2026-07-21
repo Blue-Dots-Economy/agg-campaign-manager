@@ -3,7 +3,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { toast } from "sonner";
-import { ArrowLeft, Loader2, Plus, SkipForward, Star, X, ChevronDown, Check } from "lucide-react";
+import { ArrowLeft, Loader2, Plus, SkipForward, Star, X, ChevronDown, Check, AlertTriangle } from "lucide-react";
 import { useProgram } from "@/programs/context";
 import { useAuth } from "@/auth/context";
 import { useReviewCalls, useExistingReviews } from "@/programs/useProgramAggregates";
@@ -268,6 +268,18 @@ function TranscriptReview() {
           <button onClick={() => bulkInfo.next ? navigate({ to: "/review/$callId", params: { callId: bulkInfo.next }, search: { bulk: "1" } }) : navigate({ to: "/review" })} className="ml-auto inline-flex shrink-0 items-center gap-1 rounded-full border border-border bg-background px-3 py-1.5 text-xs font-medium hover:bg-muted">Skip <SkipForward className="h-3.5 w-3.5" /></button>
         )}
       </div>
+      <div className="flex flex-wrap items-center gap-2">
+        <span className="inline-flex items-center gap-1.5 rounded-full border border-border bg-muted/40 px-2.5 py-1 text-xs text-muted-foreground">
+          <span className={cn("h-1.5 w-1.5 rounded-full", reviewerEmail === "admin@bluedots.com" ? "bg-amber-500" : "bg-emerald-500")} />
+          Reviewing as <span className="font-medium text-foreground">{reviewerEmail || "unknown"}</span>
+        </span>
+      </div>
+      {reviewerEmail === "admin@bluedots.com" && (
+        <div className="flex items-start gap-2 rounded-xl border border-amber-500/30 bg-amber-500/15 px-3 py-2 text-xs text-amber-700 dark:text-amber-400">
+          <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
+          <span>You're signed in as the shared <strong>admin</strong> account. Reviews you submit here are credited to admin, not you — and won't be tracked against your own work. Sign out and sign in with your own email before reviewing.</span>
+        </div>
+      )}
 
       {bulkInfo && (
         <div className="space-y-1.5 rounded-2xl border border-border bg-card px-4 py-3 shadow-sm">
