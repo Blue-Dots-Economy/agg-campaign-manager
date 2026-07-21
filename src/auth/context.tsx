@@ -48,11 +48,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         if (!raw) raw = readCookie(COOKIE_KEY);
         if (raw) {
           const parsed = JSON.parse(raw);
-          if (parsed?.email && (parsed.role === "admin" || parsed.role === "user")) {
+          if (parsed?.email && parsed.role === "user") {
+            // Only reviewer sessions auto-restore (their own email, low risk).
             setSession(parsed);
             // Re-sync both stores so whichever was missing gets refilled.
             try { window.localStorage.setItem(STORAGE_KEY, raw); } catch { /* ignore */ }
             writeCookie(COOKIE_KEY, raw);
+          } else {
+            // Never silently restore an admin (or unknown) session — admin must
+            // log in explicitly every time so a shared browser can't leave the
+            // next person signed in as admin. Clear the stale stored session.
+            try { window.localStorage.removeItem(STORAGE_KEY); } catch { /* ignore */ }
+            clearCookie(COOKIE_KEY);
           }
         }
       } catch { /* ignore */ }
