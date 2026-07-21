@@ -32,6 +32,7 @@ import { DropAnalysisHeatmap } from "@/components/metrics/DropAnalysisHeatmap";
 import { NorthStarMetrics } from "@/components/metrics/NorthStarMetrics";
 import { fetchFunnelCallIds } from "@/lib/snapshot.functions";
 import { fetchAllReviewedCallIds } from "@/lib/review.functions";
+import { useAuth } from "@/auth/context";
 import type { OverviewFilterValue } from "@/components/metrics/OverviewFilters";
 
 async function copyText(text: string): Promise<boolean> {
@@ -171,6 +172,7 @@ export function ProgramAnalytics({
 
   const fetchIds = useServerFn(fetchFunnelCallIds);
   const fetchAllReviewed = useServerFn(fetchAllReviewedCallIds);
+  const { session } = useAuth();
 
   if (query.isLoading && !data) return <LoadingState />;
 
@@ -204,6 +206,12 @@ export function ProgramAnalytics({
   const comparisonLabel = comparison ? `vs ${comparison.label} avg` : undefined;
 
   const handleStageClick = async (stage: string, action: "copy" | "review") => {
+    if (action === "review" && (session?.email ?? "").toLowerCase() === "admin@bluedots.com") {
+      toast.error("Reviewing is disabled for the shared admin account.", {
+        description: "Sign in with your own email to review calls.",
+      });
+      return;
+    }
     let ids: string[] = [];
     try {
       const res = await fetchIds({

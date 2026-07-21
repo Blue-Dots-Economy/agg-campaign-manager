@@ -92,6 +92,7 @@ function TranscriptReview() {
   const dataset = programId;
   const { session } = useAuth();
   const reviewerEmail = (session?.email || "").toLowerCase();
+  const isAdmin = reviewerEmail === "admin@bluedots.com";
 
   const callsQuery = useReviewCalls(dataset);
   const calls = callsQuery.data ?? null;
@@ -165,6 +166,7 @@ function TranscriptReview() {
 
   async function submit() {
     if (!call) return;
+    if (isAdmin) { toast.error("The shared admin account can't submit reviews.", { description: "Sign in with your own email to review." }); return; }
     if (issues.length === 0) { toast.error("Select at least one issue (or 'No Issues')."); return; }
     if (rating === 0) { toast.error("Give an overall rating."); return; }
     if (!reviewerEmail) { toast.error("Session expired. Please sign in again."); return; }
@@ -240,8 +242,8 @@ function TranscriptReview() {
     } catch { return null; }
   })();
   const bulkPct = bulkInfo && bulkInfo.total > 0 ? Math.round((bulkInfo.idx / bulkInfo.total) * 100) : 0;
-  const canSubmit = issues.length > 0 && rating > 0;
-  const submitHint = issues.length === 0 ? "Select at least one issue" : rating === 0 ? "Add an overall rating to submit" : "";
+  const canSubmit = issues.length > 0 && rating > 0 && !isAdmin;
+  const submitHint = isAdmin ? "The admin account can't submit reviews — sign in with your own email" : issues.length === 0 ? "Select at least one issue" : rating === 0 ? "Add an overall rating to submit" : "";
 
   return (
     <div className="space-y-4">
@@ -408,8 +410,8 @@ function TranscriptReview() {
             {!canSubmit && (
               <p className="mb-2 text-center text-[11px] font-medium text-muted-foreground">{submitHint}</p>
             )}
-            <Button onClick={submit} disabled={submitting} className="w-full rounded-full">
-              {submitting ? "Submitting…" : bulkMode ? "Submit & next call" : "Submit Review"}
+            <Button onClick={submit} disabled={submitting || isAdmin} className="w-full rounded-full">
+              {submitting ? "Submitting…" : isAdmin ? "Reviewing disabled for admin" : bulkMode ? "Submit & next call" : "Submit Review"}
             </Button>
           </div>
         </aside>
