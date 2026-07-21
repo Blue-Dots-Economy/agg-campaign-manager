@@ -74,7 +74,7 @@ function LoginPage() {
             <p id="login-error" role="alert" className="text-xs text-rose-600">Not an authorised email, or wrong admin password.</p>
           )}
           <Button type="submit" className="w-full">Sign in</Button>
-          <p className="text-xs text-muted-foreground text-center">Reviewers sign in with your email. Admins also enter a password.</p>
+          <p className="text-xs text-muted-foreground text-center">Reviewers: sign in with your own email and leave the password blank. The password is only for the admin account — please don't use it to review calls.</p>
         </form>
       </div>
     </div>
