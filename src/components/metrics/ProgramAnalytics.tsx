@@ -31,6 +31,8 @@ import { NoDataState, LoadingState } from "@/components/EmptyState";
 import { DropAnalysisHeatmap } from "@/components/metrics/DropAnalysisHeatmap";
 import { NorthStarMetrics } from "@/components/metrics/NorthStarMetrics";
 import { fetchFunnelCallIds } from "@/lib/snapshot.functions";
+import { fetchReviewedCallIds } from "@/lib/review.functions";
+import { useAuth } from "@/auth/context";
 import type { OverviewFilterValue } from "@/components/metrics/OverviewFilters";
 
 async function copyText(text: string): Promise<boolean> {
