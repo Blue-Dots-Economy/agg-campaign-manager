@@ -410,8 +410,8 @@ function TranscriptReview() {
             {!canSubmit && (
               <p className="mb-2 text-center text-[11px] font-medium text-muted-foreground">{submitHint}</p>
             )}
-            <Button onClick={submit} disabled={submitting} className="w-full rounded-full">
-              {submitting ? "Submitting…" : bulkMode ? "Submit & next call" : "Submit Review"}
+            <Button onClick={submit} disabled={submitting || isAdmin} className="w-full rounded-full">
+              {submitting ? "Submitting…" : isAdmin ? "Reviewing disabled for admin" : bulkMode ? "Submit & next call" : "Submit Review"}
             </Button>
           </div>
         </aside>
