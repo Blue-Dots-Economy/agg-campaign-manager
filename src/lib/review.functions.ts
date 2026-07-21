@@ -5,6 +5,7 @@ import {
   readStagingCallIds,
   writeStagingHeaders,
   appendStagingRows,
+  readReviewedIdsForEmail,
 } from "./sheets.server";
 
 export type ReviewDataset = "kkb" | "dkb";
@@ -125,12 +126,13 @@ export const fetchReviewMap = createServerFn({ method: "GET" }).handler(async ()
 });
 
 export const fetchReviewedCallIds = createServerFn({ method: "GET" })
-  .inputValidator((data: { email: string }) => data)
+  .inputValidator((data: { email: string; program?: ReviewDataset }) => data)
   .handler(async ({ data }): Promise<string[]> => {
     const email = (data.email || "").trim().toLowerCase();
     if (!email) return [];
     const client = sb();
     const ids = new Set<string>();
+    // 1) Supabase transcript_reviews (paginated past the ~1000-row cap)
     let from = 0;
     while (true) {
       const { data: batch, error } = await client
@@ -146,6 +148,14 @@ export const fetchReviewedCallIds = createServerFn({ method: "GET" })
       }
       if (rows.length === 0) break;
       from += rows.length;
+    }
+    // 2) Master sheet "Feedback Responses" tab (durable append-only log). Never throws.
+    if (data.program) {
+      try {
+        const { sheet_id } = await resolveSheet(data.program);
+        const sheetIds = await readReviewedIdsForEmail(sheet_id, "Feedback Responses", email);
+        for (const v of sheetIds) ids.add(v);
+      } catch { /* ignore */ }
     }
     return Array.from(ids);
   });

@@ -232,7 +232,7 @@ export function ProgramAnalytics({
     if (action === "review") {
       let queue = ids;
       try {
-        const reviewed = await fetchReviewed({ data: { email: session?.email ?? "" } });
+        const reviewed = await fetchReviewed({ data: { email: session?.email ?? "", program: config.id as "kkb" | "dkb" } });
         const done = new Set(reviewed);
         const remaining = ids.filter((id) => !done.has(id));
         if (remaining.length === 0) {
