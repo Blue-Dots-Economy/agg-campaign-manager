@@ -171,6 +171,8 @@ export function ProgramAnalytics({
   }, [perDay]);
 
   const fetchIds = useServerFn(fetchFunnelCallIds);
+  const { session } = useAuth();
+  const fetchReviewed = useServerFn(fetchReviewedCallIds);
 
   if (query.isLoading && !data) return <LoadingState />;
 
