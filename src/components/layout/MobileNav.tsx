@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { Link, useRouterState, useNavigate } from "@tanstack/react-router";
+import type { LucideIcon } from "lucide-react";
 import {
   LayoutDashboard,
   Megaphone,
@@ -9,6 +10,8 @@ import {
   Users,
   Menu,
   LogOut,
+  ChevronDown,
+  ChevronRight,
 } from "lucide-react";
 import {
   Sheet,
@@ -22,25 +25,126 @@ import { useProgram } from "@/programs/context";
 import { useAuth } from "@/auth/context";
 import { cn } from "@/lib/utils";
 
-const GROUPS = [
+type NavItem = {
+  to: string;
+  label: string;
+  sub?: string;
+  icon: LucideIcon;
+  children?: Omit<NavItem, "sub" | "children">[];
+};
+
+const GROUPS: { title: string; items: NavItem[] }[] = [
   {
     title: "Program, Ops & Biz",
     items: [
-      { to: "/user-level-analysis", label: "User Overview", sub: undefined, icon: Users },
-      { to: "/review", label: "Transcript & Call Review", sub: undefined, icon: Headphones },
-      { to: "/launch", label: "Launch A Campaign", sub: undefined, icon: Rocket },
+      { to: "/user-level-analysis", label: "My Bluedots", icon: Users },
+      { to: "/launch", label: "Launch A Campaign", icon: Rocket },
     ],
   },
   {
     title: "Product & Tech",
     items: [
-      { to: "/", label: "Campaign Analysis", sub: "Make it Bot & Campaign Overview", icon: LayoutDashboard },
-      { to: "/campaigns", label: "Campaign Level Analysis", sub: undefined, icon: Megaphone },
+      {
+        to: "/",
+        label: "Campaign Overview",
+        icon: LayoutDashboard,
+        children: [
+          { to: "/campaigns", label: "Campaign Level Analysis", icon: Megaphone },
+          { to: "/review", label: "Transcripts & Call Review", icon: Headphones },
+        ],
+      },
     ],
   },
-] as const;
+];
 
 const SETTINGS = { to: "/settings", label: "Settings", icon: Settings } as const;
+
+function NavLink({
+  item,
+  collapsed,
+  onToggle,
+  onNavigate,
+}: {
+  item: NavItem;
+  collapsed?: boolean;
+  onToggle?: () => void;
+  onNavigate?: () => void;
+}) {
+  const pathname = useRouterState({ select: (s) => s.location.pathname });
+  const active = item.to === "/" ? pathname === "/" : pathname.startsWith(item.to);
+  const hasChildren = (item.children?.length ?? 0) > 0;
+  const groupActive =
+    hasChildren &&
+    item.children!.some((c) => (c.to === "/" ? pathname === "/" : pathname.startsWith(c.to)));
+
+  return (
+    <div>
+      <div
+        className={cn(
+          "flex items-center gap-3 px-3 py-2 rounded-md text-sm transition-colors",
+          active || groupActive
+            ? "bg-accent text-accent-foreground"
+            : "text-foreground/85 hover:bg-accent/70"
+        )}
+      >
+        <Link
+          to={item.to}
+          onClick={onNavigate}
+          className="flex items-center gap-3 flex-1"
+          aria-current={active ? "page" : undefined}
+        >
+          <item.icon className="h-4 w-4 shrink-0" />
+          <div className="flex flex-col">
+            <span>{item.label}</span>
+            {item.sub && (
+              <span className="text-[11px] leading-tight opacity-70">{item.sub}</span>
+            )}
+          </div>
+        </Link>
+        {hasChildren && (
+          <button
+            type="button"
+            onClick={onToggle}
+            aria-label={collapsed ? "Expand section" : "Collapse section"}
+            className="p-1 rounded-md hover:bg-accent/70 text-accent-foreground/70"
+          >
+            {collapsed ? (
+              <ChevronRight className="h-4 w-4" />
+            ) : (
+              <ChevronDown className="h-4 w-4" />
+            )}
+          </button>
+        )}
+      </div>
+      {hasChildren && !collapsed && (
+        <div className="ml-4 mt-0.5 space-y-0.5 border-l border-border pl-3">
+          {item.children!.map((child) => {
+            const childActive =
+              child.to === "/" ? pathname === "/" : pathname.startsWith(child.to);
+            const ChildIcon = child.icon;
+            return (
+              <Link
+                key={child.to}
+                to={child.to}
+                onClick={onNavigate}
+                aria-current={childActive ? "page" : undefined}
+                className={cn(
+                  "flex items-center gap-3 px-3 py-2 rounded-md text-sm transition-colors",
+                  childActive
+                    ? "bg-accent text-accent-foreground"
+                    : "text-foreground/85 hover:bg-accent/70"
+                )}
+              >
+                <ChildIcon className="h-4 w-4 shrink-0" />
+                {child.label}
+              </Link>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+}
 
 export function MobileNav() {
   const [open, setOpen] = useState(false);
@@ -48,6 +152,31 @@ export function MobileNav() {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const navigate = useNavigate();
   const { logout } = useAuth();
+
+  const [expanded, setExpanded] = useState<Set<string>>(() => {
+    const initial = new Set<string>();
+    for (const group of GROUPS) {
+      for (const item of group.items) {
+        if (
+          item.children?.some((c) =>
+            c.to === "/" ? pathname === "/" : pathname.startsWith(c.to)
+          )
+        ) {
+          initial.add(item.to);
+        }
+      }
+    }
+    return initial;
+  });
+
+  const toggle = (to: string) => {
+    setExpanded((prev) => {
+      const next = new Set(prev);
+      if (next.has(to)) next.delete(to);
+      else next.add(to);
+      return next;
+    });
+  };
 
   return (
     <Sheet open={open} onOpenChange={setOpen}>
@@ -62,7 +191,11 @@ export function MobileNav() {
         </SheetHeader>
 
         <div className="px-5 pb-4">
-          <div role="group" aria-label="Select program" className="inline-flex rounded-lg bg-muted p-1 w-full">
+          <div
+            role="group"
+            aria-label="Select program"
+            className="inline-flex rounded-lg bg-muted p-1 w-full"
+          >
             {(["kkb", "dkb"] as const).map((id) => (
               <button
                 key={id}
@@ -89,32 +222,15 @@ export function MobileNav() {
                 {group.title}
               </div>
               <div className="space-y-0.5">
-                {group.items.map((item) => {
-                  const active = item.to === "/" ? pathname === "/" : pathname.startsWith(item.to);
-                  const Icon = item.icon;
-                  return (
-                    <Link
-                      key={item.to}
-                      to={item.to}
-                      aria-current={active ? "page" : undefined}
-                      onClick={() => setOpen(false)}
-                      className={cn(
-                        "flex items-center gap-3 px-3 py-2 rounded-md text-sm transition-colors",
-                        active
-                          ? "bg-accent text-accent-foreground"
-                          : "text-foreground/85 hover:bg-accent/70"
-                      )}
-                    >
-                      <Icon className="h-4 w-4 shrink-0" />
-                      <div className="flex flex-col">
-                        <span>{item.label}</span>
-                        {item.sub && (
-                          <span className="text-[11px] leading-tight opacity-70">{item.sub}</span>
-                        )}
-                      </div>
-                    </Link>
-                  );
-                })}
+                {group.items.map((item) => (
+                  <NavLink
+                    key={item.to}
+                    item={item}
+                    collapsed={!expanded.has(item.to)}
+                    onToggle={() => toggle(item.to)}
+                    onNavigate={() => setOpen(false)}
+                  />
+                ))}
               </div>
             </div>
           ))}
@@ -146,7 +262,11 @@ export function MobileNav() {
 
         <div className="mt-auto border-t px-5 py-4">
           <button
-            onClick={() => { setOpen(false); logout(); navigate({ to: "/login" }); }}
+            onClick={() => {
+              setOpen(false);
+              logout();
+              navigate({ to: "/login" });
+            }}
             className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors"
           >
             <LogOut className="h-4 w-4" />
