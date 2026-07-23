@@ -867,7 +867,12 @@ function UserLevelAnalysis() {
                 </TableHead>
                 <TableHead colSpan={4} className="text-center border-l">Applied</TableHead>
                 <TableHead colSpan={4} className="text-center border-l">Pre-shortlisted</TableHead>
-                <TableHead rowSpan={2} className="align-middle border-l">User Status</TableHead>
+                <TableHead rowSpan={2} className="align-middle border-l">
+                  <div>User Status</div>
+                  <div className="text-[10px] font-normal normal-case text-muted-foreground mt-0.5">
+                    Profile age · Last applied · Apps
+                  </div>
+                </TableHead>
                 <TableHead rowSpan={2} className="align-middle">Recommended Action</TableHead>
               </TableRow>
               <TableRow className="bg-muted/40 hover:bg-muted/40">
@@ -923,6 +928,17 @@ function UserLevelAnalysis() {
                       <Badge variant="outline" className={`rounded-full ${STATUS_STYLES[p.status]}`}>
                         {p.status}
                       </Badge>
+                      <div className="mt-1 text-[11px] text-muted-foreground tabular-nums">
+                        <span title="Profile age (days since created)">
+                          Age: {p.profileAge ?? "—"}{p.profileAge != null ? "d" : ""}
+                        </span>
+                        {" · "}
+                        <span title="Days since last application">
+                          Applied: {p.lastAppliedAge ?? "—"}{p.lastAppliedAge != null ? "d" : ""}
+                        </span>
+                        {" · "}
+                        <span title="Total applications">Apps: {p.applications}</span>
+                      </div>
                     </TableCell>
                     <TableCell>
                       <span
