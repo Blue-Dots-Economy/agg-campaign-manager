@@ -14,6 +14,7 @@ import { Route as SettingsRouteImport } from './routes/settings'
 import { Route as ReviewRouteImport } from './routes/review'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as LaunchRouteImport } from './routes/launch'
+import { Route as EcosystemViewRouteImport } from './routes/ecosystem-view'
 import { Route as CampaignsRouteImport } from './routes/campaigns'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as ReviewCallIdRouteImport } from './routes/review_.$callId'
@@ -43,6 +44,11 @@ const LoginRoute = LoginRouteImport.update({
 const LaunchRoute = LaunchRouteImport.update({
   id: '/launch',
   path: '/launch',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const EcosystemViewRoute = EcosystemViewRouteImport.update({
+  id: '/ecosystem-view',
+  path: '/ecosystem-view',
   getParentRoute: () => rootRouteImport,
 } as any)
 const CampaignsRoute = CampaignsRouteImport.update({
@@ -75,6 +81,7 @@ const ApiPublicHooksSyncSnapshotsRoute =
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/campaigns': typeof CampaignsRoute
+  '/ecosystem-view': typeof EcosystemViewRoute
   '/launch': typeof LaunchRoute
   '/login': typeof LoginRoute
   '/review': typeof ReviewRoute
@@ -87,6 +94,7 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/campaigns': typeof CampaignsRoute
+  '/ecosystem-view': typeof EcosystemViewRoute
   '/launch': typeof LaunchRoute
   '/login': typeof LoginRoute
   '/review': typeof ReviewRoute
@@ -100,6 +108,7 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/campaigns': typeof CampaignsRoute
+  '/ecosystem-view': typeof EcosystemViewRoute
   '/launch': typeof LaunchRoute
   '/login': typeof LoginRoute
   '/review': typeof ReviewRoute
@@ -114,6 +123,7 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/campaigns'
+    | '/ecosystem-view'
     | '/launch'
     | '/login'
     | '/review'
@@ -126,6 +136,7 @@ export interface FileRouteTypes {
   to:
     | '/'
     | '/campaigns'
+    | '/ecosystem-view'
     | '/launch'
     | '/login'
     | '/review'
@@ -138,6 +149,7 @@ export interface FileRouteTypes {
     | '__root__'
     | '/'
     | '/campaigns'
+    | '/ecosystem-view'
     | '/launch'
     | '/login'
     | '/review'
@@ -151,6 +163,7 @@ export interface FileRouteTypes {
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   CampaignsRoute: typeof CampaignsRoute
+  EcosystemViewRoute: typeof EcosystemViewRoute
   LaunchRoute: typeof LaunchRoute
   LoginRoute: typeof LoginRoute
   ReviewRoute: typeof ReviewRoute
@@ -198,6 +211,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof LaunchRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/ecosystem-view': {
+      id: '/ecosystem-view'
+      path: '/ecosystem-view'
+      fullPath: '/ecosystem-view'
+      preLoaderRoute: typeof EcosystemViewRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/campaigns': {
       id: '/campaigns'
       path: '/campaigns'
@@ -239,6 +259,7 @@ declare module '@tanstack/react-router' {
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   CampaignsRoute: CampaignsRoute,
+  EcosystemViewRoute: EcosystemViewRoute,
   LaunchRoute: LaunchRoute,
   LoginRoute: LoginRoute,
   ReviewRoute: ReviewRoute,
