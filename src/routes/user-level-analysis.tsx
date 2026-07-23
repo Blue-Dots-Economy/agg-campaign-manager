@@ -928,6 +928,17 @@ function UserLevelAnalysis() {
                       <Badge variant="outline" className={`rounded-full ${STATUS_STYLES[p.status]}`}>
                         {p.status}
                       </Badge>
+                      <div className="mt-1 text-[11px] text-muted-foreground tabular-nums">
+                        <span title="Profile age (days since created)">
+                          Age: {p.profileAge ?? "—"}{p.profileAge != null ? "d" : ""}
+                        </span>
+                        {" · "}
+                        <span title="Days since last application">
+                          Applied: {p.lastAppliedAge ?? "—"}{p.lastAppliedAge != null ? "d" : ""}
+                        </span>
+                        {" · "}
+                        <span title="Total applications">Apps: {p.applications}</span>
+                      </div>
                     </TableCell>
                     <TableCell>
                       <span
