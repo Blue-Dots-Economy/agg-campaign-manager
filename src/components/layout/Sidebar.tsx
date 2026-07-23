@@ -1,4 +1,6 @@
+import { useState } from "react";
 import { Link, useRouterState } from "@tanstack/react-router";
+import type { LucideIcon } from "lucide-react";
 import {
   LayoutDashboard,
   Megaphone,
@@ -7,6 +9,8 @@ import {
   Briefcase,
   Headphones,
   Users,
+  ChevronDown,
+  ChevronRight,
 } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
@@ -14,28 +18,122 @@ import { useProgram } from "@/programs/context";
 import { listConnections } from "@/lib/connections.functions";
 import { cn } from "@/lib/utils";
 
+type NavItem = {
+  to: string;
+  label: string;
+  sub?: string;
+  icon: LucideIcon;
+  children?: Omit<NavItem, "sub" | "children">[];
+};
 
-
-
-const GROUPS = [
+const GROUPS: { title: string; items: NavItem[] }[] = [
   {
     title: "Program, Ops & Biz",
     items: [
-      { to: "/user-level-analysis", label: "User Overview", sub: undefined, icon: Users },
-      { to: "/review", label: "Transcript & Call Review", sub: undefined, icon: Headphones },
-      { to: "/launch", label: "Launch A Campaign", sub: undefined, icon: Rocket },
+      { to: "/user-level-analysis", label: "My Bluedots", icon: Users },
+      { to: "/launch", label: "Launch A Campaign", icon: Rocket },
     ],
   },
   {
     title: "Product & Tech",
     items: [
-      { to: "/", label: "Campaign Analysis", sub: "Make it Bot & Campaign Overview", icon: LayoutDashboard },
-      { to: "/campaigns", label: "Campaign Level Analysis", sub: undefined, icon: Megaphone },
+      {
+        to: "/",
+        label: "Campaign Overview",
+        icon: LayoutDashboard,
+        children: [
+          { to: "/campaigns", label: "Campaign Level Analysis", icon: Megaphone },
+          { to: "/review", label: "Transcripts & Call Review", icon: Headphones },
+        ],
+      },
     ],
   },
-] as const;
+];
 
 const SETTINGS = { to: "/settings", label: "Settings", icon: Settings } as const;
+
+function NavLink({
+  item,
+  collapsed,
+  onToggle,
+}: {
+  item: NavItem;
+  collapsed?: boolean;
+  onToggle?: () => void;
+}) {
+  const pathname = useRouterState({ select: (s) => s.location.pathname });
+  const active = item.to === "/" ? pathname === "/" : pathname.startsWith(item.to);
+  const hasChildren = (item.children?.length ?? 0) > 0;
+  const groupActive =
+    hasChildren &&
+    item.children!.some((c) => (c.to === "/" ? pathname === "/" : pathname.startsWith(c.to)));
+
+  return (
+    <div>
+      <div
+        className={cn(
+          "flex items-center gap-3 px-3 py-2 rounded-md text-sm transition-colors",
+          active || groupActive
+            ? "bg-sidebar-accent text-sidebar-foreground"
+            : "text-sidebar-foreground/85 hover:bg-sidebar-accent/70 hover:text-sidebar-foreground"
+        )}
+      >
+        <Link
+          to={item.to}
+          className="flex items-center gap-3 flex-1"
+          aria-current={active ? "page" : undefined}
+        >
+          <item.icon className="h-4 w-4 shrink-0" />
+          <div className="flex flex-col">
+            <span>{item.label}</span>
+            {item.sub && (
+              <span className="text-[11px] leading-tight opacity-70">{item.sub}</span>
+            )}
+          </div>
+        </Link>
+        {hasChildren && (
+          <button
+            type="button"
+            onClick={onToggle}
+            aria-label={collapsed ? "Expand section" : "Collapse section"}
+            className="p-1 rounded-md hover:bg-sidebar-accent/70 text-sidebar-foreground/70"
+          >
+            {collapsed ? (
+              <ChevronRight className="h-4 w-4" />
+            ) : (
+              <ChevronDown className="h-4 w-4" />
+            )}
+          </button>
+        )}
+      </div>
+      {hasChildren && !collapsed && (
+        <div className="ml-4 mt-0.5 space-y-0.5 border-l border-sidebar-border pl-3">
+          {item.children!.map((child) => {
+            const childActive =
+              child.to === "/" ? pathname === "/" : pathname.startsWith(child.to);
+            const ChildIcon = child.icon;
+            return (
+              <Link
+                key={child.to}
+                to={child.to}
+                aria-current={childActive ? "page" : undefined}
+                className={cn(
+                  "flex items-center gap-3 px-3 py-2 rounded-md text-sm transition-colors",
+                  childActive
+                    ? "bg-sidebar-accent text-sidebar-foreground"
+                    : "text-sidebar-foreground/85 hover:bg-sidebar-accent/70 hover:text-sidebar-foreground"
+                )}
+              >
+                <ChildIcon className="h-4 w-4 shrink-0" />
+                {child.label}
+              </Link>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+}
 
 export function Sidebar() {
   const { config, programId, setProgramId } = useProgram();
@@ -48,7 +146,30 @@ export function Sidebar() {
   const enabled = (conns ?? []).filter((c) => c.enabled);
   const allConnected = enabled.length > 0 && enabled.every((c) => c.status === "connected");
 
+  const [expanded, setExpanded] = useState<Set<string>>(() => {
+    const initial = new Set<string>();
+    for (const group of GROUPS) {
+      for (const item of group.items) {
+        if (
+          item.children?.some((c) =>
+            c.to === "/" ? pathname === "/" : pathname.startsWith(c.to)
+          )
+        ) {
+          initial.add(item.to);
+        }
+      }
+    }
+    return initial;
+  });
 
+  const toggle = (to: string) => {
+    setExpanded((prev) => {
+      const next = new Set(prev);
+      if (next.has(to)) next.delete(to);
+      else next.add(to);
+      return next;
+    });
+  };
 
   return (
     <aside className="hidden min-h-screen w-64 shrink-0 overflow-hidden rounded-r-2xl bg-sidebar text-sidebar-foreground md:sticky md:top-0 md:flex md:h-screen md:flex-col">
@@ -62,7 +183,11 @@ export function Sidebar() {
           </div>
         </div>
 
-        <div role="group" aria-label="Select program" className="mt-5 inline-flex rounded-lg bg-sidebar-accent p-1 w-full">
+        <div
+          role="group"
+          aria-label="Select program"
+          className="mt-5 inline-flex rounded-lg bg-sidebar-accent p-1 w-full"
+        >
           {(["kkb", "dkb"] as const).map((id) => (
             <button
               key={id}
@@ -89,31 +214,14 @@ export function Sidebar() {
               {group.title}
             </div>
             <div className="space-y-0.5">
-              {group.items.map((item) => {
-                const active = item.to === "/" ? pathname === "/" : pathname.startsWith(item.to);
-                const Icon = item.icon;
-                return (
-                  <Link
-                    key={item.to}
-                    to={item.to}
-                    aria-current={active ? "page" : undefined}
-                    className={cn(
-                      "flex items-center gap-3 px-3 py-2 rounded-md text-sm transition-colors",
-                      active
-                        ? "bg-sidebar-accent text-sidebar-foreground"
-                        : "text-sidebar-foreground/85 hover:bg-sidebar-accent/70 hover:text-sidebar-foreground"
-                    )}
-                  >
-                    <Icon className="h-4 w-4 shrink-0" />
-                    <div className="flex flex-col">
-                      <span>{item.label}</span>
-                      {item.sub && (
-                        <span className="text-[11px] leading-tight opacity-70">{item.sub}</span>
-                      )}
-                    </div>
-                  </Link>
-                );
-              })}
+              {group.items.map((item) => (
+                <NavLink
+                  key={item.to}
+                  item={item}
+                  collapsed={!expanded.has(item.to)}
+                  onToggle={() => toggle(item.to)}
+                />
+              ))}
             </div>
           </div>
         ))}
@@ -145,12 +253,19 @@ export function Sidebar() {
       <div className="mt-auto px-5 py-4 border-t border-sidebar-border text-[11px] opacity-85">
         <div>
           {enabled.length === 0 ? (
-            <>No sheets connected · <Link to="/settings" className="underline">add one</Link></>
+            <>
+              No sheets connected · <Link to="/settings" className="underline">add one</Link>
+            </>
           ) : (
             <>
               {enabled.length} sheet{enabled.length === 1 ? "" : "s"} ·{" "}
               <span className="inline-flex items-center gap-1">
-                <span className={cn("h-1.5 w-1.5 rounded-full", allConnected ? "bg-emerald-300" : "bg-amber-300")} />
+                <span
+                  className={cn(
+                    "h-1.5 w-1.5 rounded-full",
+                    allConnected ? "bg-emerald-300" : "bg-amber-300"
+                  )}
+                />
                 {allConnected ? "connected" : "check status"}
               </span>
             </>
@@ -159,5 +274,4 @@ export function Sidebar() {
       </div>
     </aside>
   );
-
 }
