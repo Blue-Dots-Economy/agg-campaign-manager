@@ -11,6 +11,8 @@ export const PROFILE_FIELD_LABELS = [
   "Expected Salary",
 ] as const;
 
+export type ProfileSignal = "Strong" | "Offline" | "Poor";
+
 export type Seeker = {
   id: string;
   userId: string;
@@ -30,8 +32,10 @@ export type Seeker = {
   followUpFor: string;
   status: "New" | "Active" | "At Risk" | "Inactive";
   profileStatus: "Complete" | "Incomplete";
+  profileSignal: ProfileSignal;
   recommendedAction: string;
 };
+
 
 
 const DB_NAME = "up-seekers-db";
