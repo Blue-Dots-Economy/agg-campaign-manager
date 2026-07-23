@@ -679,29 +679,34 @@ function UserLevelAnalysis() {
                 }
                 onSelect={(e) => e.preventDefault()}
               >
-                <div className="flex flex-col">
+                <div className="flex flex-col flex-1">
                   <span>Complete</span>
                   <span className="text-[11px] text-muted-foreground">strong search & match</span>
                 </div>
+                <span className="ml-auto text-muted-foreground">({stats.complete.toLocaleString()})</span>
               </DropdownMenuCheckboxItem>
               <DropdownMenuSeparator />
               <DropdownMenuLabel className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
                 Incomplete — missing field
               </DropdownMenuLabel>
-              {PROFILE_FIELD_LABELS.map((label) => (
-                <DropdownMenuCheckboxItem
-                  key={label}
-                  checked={profileFilter.includes(label)}
-                  onCheckedChange={(checked) =>
-                    setProfileFilter((prev) =>
-                      checked ? [...prev, label] : prev.filter((v) => v !== label),
-                    )
-                  }
-                  onSelect={(e) => e.preventDefault()}
-                >
-                  {label}
-                </DropdownMenuCheckboxItem>
-              ))}
+              {PROFILE_FIELD_LABELS.map((label) => {
+                const fieldCount = stats.fieldCompletion.find((f) => f.label === label)?.count ?? 0;
+                return (
+                  <DropdownMenuCheckboxItem
+                    key={label}
+                    checked={profileFilter.includes(label)}
+                    onCheckedChange={(checked) =>
+                      setProfileFilter((prev) =>
+                        checked ? [...prev, label] : prev.filter((v) => v !== label),
+                      )
+                    }
+                    onSelect={(e) => e.preventDefault()}
+                  >
+                    <span className="flex-1">{label}</span>
+                    <span className="ml-auto text-muted-foreground">({fieldCount.toLocaleString()})</span>
+                  </DropdownMenuCheckboxItem>
+                );
+              })}
             </DropdownMenuContent>
           </DropdownMenu>
           <DropdownMenu>
