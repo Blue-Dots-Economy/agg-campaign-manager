@@ -1,6 +1,6 @@
 import bundledCsv from "@/data/up-seekers.csv?raw";
 
-export type ProfileFieldCheck = { label: string; passed: boolean };
+export type ProfileFieldCheck = { label: string; passed: boolean; value: string };
 
 export const PROFILE_FIELD_LABELS = [
   "Name",
