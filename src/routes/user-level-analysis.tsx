@@ -236,10 +236,12 @@ function UserLevelAnalysis() {
     const fieldPassCounts = new Array(PROFILE_FIELD_LABELS.length).fill(0) as number[];
     let emailCount = 0;
     let phoneCount = 0;
+    const signalCounts = { Strong: 0, Offline: 0, Poor: 0 } as Record<"Strong" | "Offline" | "Poor", number>;
 
     for (const s of dateScopedSeekers) {
       byStatus[s.status]++;
       if (s.profileStatus === "Complete") complete++;
+      signalCounts[s.profileSignal]++;
       if (s.applications > 0) withApps++;
       totalApps += s.applications;
       totalCompletion += s.profileCompletion;
@@ -269,6 +271,7 @@ function UserLevelAnalysis() {
       byStatus,
       complete,
       completePct: total ? Math.round((complete / total) * 100) : 0,
+      signalCounts,
       withApps,
       pctProfilesWithApps: total ? Math.round((withApps / total) * 100) : 0,
       uniqueUsers,
@@ -302,6 +305,7 @@ function UserLevelAnalysis() {
       },
     };
   }, [dateScopedSeekers]);
+
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
