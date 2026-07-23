@@ -1,6 +1,6 @@
 import bundledCsv from "@/data/up-seekers.csv?raw";
 
-export type ProfileFieldCheck = { label: string; passed: boolean };
+export type ProfileFieldCheck = { label: string; passed: boolean; value: string };
 
 export const PROFILE_FIELD_LABELS = [
   "Name",
@@ -288,6 +288,7 @@ function computeProfileChecks(r: {
   role: string;
   salary: string;
 }): { passed: number; total: number; fields: ProfileFieldCheck[] } {
+  const emailPhone = [r.email.trim(), r.phone.trim()].filter(Boolean).join(" · ");
   const results = [
     isNameValid(r.name),
     isLocationMeaningful(r.location, r.district, r.state),
@@ -296,9 +297,18 @@ function computeProfileChecks(r: {
     r.role.trim().length > 0 && norm(r.role) !== "any",
     r.salary.trim().length > 0,
   ];
+  const values = [
+    r.name.trim(),
+    r.location.trim(),
+    emailPhone,
+    r.age.trim(),
+    r.role.trim(),
+    r.salary.trim(),
+  ];
   const fields: ProfileFieldCheck[] = PROFILE_FIELD_LABELS.map((label, i) => ({
     label,
     passed: results[i],
+    value: values[i],
   }));
   return { passed: results.filter(Boolean).length, total: results.length, fields };
 }

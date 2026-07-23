@@ -992,10 +992,15 @@ function UserLevelAnalysis() {
                     .map((f) => (
                       <li
                         key={f.label}
-                        className="text-sm flex items-center gap-2 rounded border border-amber-500/30 bg-amber-500/15 text-amber-800 dark:text-amber-300 px-3 py-1.5"
+                        className="text-sm flex items-start gap-2 rounded border border-amber-500/30 bg-amber-500/15 text-amber-800 dark:text-amber-300 px-3 py-1.5"
                       >
-                        <span className="h-1.5 w-1.5 rounded-full bg-amber-500" />
-                        {f.label}
+                        <span className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-amber-500" />
+                        <div className="min-w-0 flex-1">
+                          <div className="font-medium">{f.label}</div>
+                          <div className="font-mono text-xs break-words opacity-80">
+                            {f.value ? `"${f.value}"` : <span className="italic">empty</span>}
+                          </div>
+                        </div>
                       </li>
                     ))}
                 </ul>
