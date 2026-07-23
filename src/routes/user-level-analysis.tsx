@@ -236,10 +236,12 @@ function UserLevelAnalysis() {
     const fieldPassCounts = new Array(PROFILE_FIELD_LABELS.length).fill(0) as number[];
     let emailCount = 0;
     let phoneCount = 0;
+    const signalCounts = { Strong: 0, Offline: 0, Poor: 0 } as Record<"Strong" | "Offline" | "Poor", number>;
 
     for (const s of dateScopedSeekers) {
       byStatus[s.status]++;
       if (s.profileStatus === "Complete") complete++;
+      signalCounts[s.profileSignal]++;
       if (s.applications > 0) withApps++;
       totalApps += s.applications;
       totalCompletion += s.profileCompletion;
@@ -269,6 +271,7 @@ function UserLevelAnalysis() {
       byStatus,
       complete,
       completePct: total ? Math.round((complete / total) * 100) : 0,
+      signalCounts,
       withApps,
       pctProfilesWithApps: total ? Math.round((withApps / total) * 100) : 0,
       uniqueUsers,
@@ -303,33 +306,27 @@ function UserLevelAnalysis() {
     };
   }, [dateScopedSeekers]);
 
+
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
+    const signalTokens = new Set(["strong", "offline", "poor"]);
+    const selectedSignals = new Set(
+      profileFilter.filter((f) => signalTokens.has(f)),
+    );
+    const wantedFields = profileFilter.filter((f) => !signalTokens.has(f));
     return dateScopedSeekers.filter((s) => {
       if (statusFilter !== "all" && s.status.toLowerCase().replace(" ", "-") !== statusFilter) return false;
-      if (profileFilter.length > 0) {
-        const wantComplete = profileFilter.includes("complete");
-        const wantedFields = profileFilter.filter((f) => f !== "complete");
-        if (wantComplete && wantedFields.length === 0) {
-          if (s.profileStatus !== "Complete") return false;
-        } else if (!wantComplete && wantedFields.length > 0) {
-          // must be incomplete AND missing any of the selected fields
-          if (s.profileStatus === "Complete") return false;
+      if (selectedSignals.size > 0 || wantedFields.length > 0) {
+        const sigMatch =
+          selectedSignals.size > 0 && selectedSignals.has(s.profileSignal.toLowerCase());
+        let fieldMatch = false;
+        if (wantedFields.length > 0) {
           const missing = new Set(
             s.profileFieldChecks.filter((f) => !f.passed).map((f) => f.label),
           );
-          if (!wantedFields.some((f) => missing.has(f))) return false;
-        } else if (wantComplete && wantedFields.length > 0) {
-          // complete OR incomplete-with-selected-missing-field
-          if (s.profileStatus === "Complete") {
-            // pass
-          } else {
-            const missing = new Set(
-              s.profileFieldChecks.filter((f) => !f.passed).map((f) => f.label),
-            );
-            if (!wantedFields.some((f) => missing.has(f))) return false;
-          }
+          fieldMatch = wantedFields.some((f) => missing.has(f));
         }
+        if (!sigMatch && !fieldMatch) return false;
       }
       if (appliedFilters.length > 0) {
         const pending = Math.max(0, s.applications - s.shortlisted - s.rejected);
@@ -348,6 +345,7 @@ function UserLevelAnalysis() {
       return true;
     });
   }, [dateScopedSeekers, search, statusFilter, profileFilter, appliedFilters]);
+
 
   const lifecycle = [
     {
@@ -659,38 +657,89 @@ function UserLevelAnalysis() {
                   {profileFilter.length === 0
                     ? "Profile: All"
                     : profileFilter.length === 1
-                      ? `Profile: ${profileFilter[0] === "complete" ? "Complete" : `Missing ${profileFilter[0]}`}`
+                      ? `Profile: ${
+                          profileFilter[0] === "strong"
+                            ? "Strong Signal"
+                            : profileFilter[0] === "offline"
+                              ? "Offline"
+                              : profileFilter[0] === "poor"
+                                ? "Poor Signal"
+                                : `Missing ${profileFilter[0]}`
+                        }`
                       : `Profile: ${profileFilter.length} selected`}
                 </span>
                 <ChevronDown className="h-4 w-4 opacity-60" />
               </Button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="start" className="w-[260px]">
+            <DropdownMenuContent align="start" className="w-[280px]">
               <DropdownMenuItem onSelect={(e) => { e.preventDefault(); setProfileFilter([]); }}>
                 Clear (show all)
               </DropdownMenuItem>
               <DropdownMenuSeparator />
               <DropdownMenuCheckboxItem
-                checked={profileFilter.includes("complete")}
+                checked={profileFilter.includes("strong")}
                 onCheckedChange={(checked) =>
                   setProfileFilter((prev) =>
-                    checked ? [...prev, "complete"] : prev.filter((v) => v !== "complete"),
+                    checked ? [...prev, "strong"] : prev.filter((v) => v !== "strong"),
                   )
                 }
                 onSelect={(e) => e.preventDefault()}
               >
                 <div className="flex flex-col flex-1">
-                  <span>Complete</span>
-                  <span className="text-[11px] text-muted-foreground">strong search & match</span>
+                  <span>Strong Signal</span>
+                  <span className="text-[11px] text-muted-foreground">
+                    Name, Location, Email/Phone, Age, Role, Salary
+                  </span>
                 </div>
-                <span className="ml-auto text-muted-foreground">({stats.complete.toLocaleString()})</span>
+                <span className="ml-auto text-muted-foreground">
+                  ({stats.signalCounts.Strong.toLocaleString()})
+                </span>
+              </DropdownMenuCheckboxItem>
+              <DropdownMenuCheckboxItem
+                checked={profileFilter.includes("offline")}
+                onCheckedChange={(checked) =>
+                  setProfileFilter((prev) =>
+                    checked ? [...prev, "offline"] : prev.filter((v) => v !== "offline"),
+                  )
+                }
+                onSelect={(e) => e.preventDefault()}
+              >
+                <div className="flex flex-col flex-1">
+                  <span>Offline</span>
+                  <span className="text-[11px] text-muted-foreground">
+                    Name + Email/Phone + Age only
+                  </span>
+                </div>
+                <span className="ml-auto text-muted-foreground">
+                  ({stats.signalCounts.Offline.toLocaleString()})
+                </span>
+              </DropdownMenuCheckboxItem>
+              <DropdownMenuCheckboxItem
+                checked={profileFilter.includes("poor")}
+                onCheckedChange={(checked) =>
+                  setProfileFilter((prev) =>
+                    checked ? [...prev, "poor"] : prev.filter((v) => v !== "poor"),
+                  )
+                }
+                onSelect={(e) => e.preventDefault()}
+              >
+                <div className="flex flex-col flex-1">
+                  <span>Poor Signal</span>
+                  <span className="text-[11px] text-muted-foreground">
+                    Missing basics — refine below
+                  </span>
+                </div>
+                <span className="ml-auto text-muted-foreground">
+                  ({stats.signalCounts.Poor.toLocaleString()})
+                </span>
               </DropdownMenuCheckboxItem>
               <DropdownMenuSeparator />
               <DropdownMenuLabel className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
-                Incomplete — missing field
+                Poor Signal — missing field
               </DropdownMenuLabel>
               {PROFILE_FIELD_LABELS.map((label) => {
-                const fieldCount = stats.fieldCompletion.find((f) => f.label === label)?.count ?? 0;
+                const passCount = stats.fieldCompletion.find((f) => f.label === label)?.count ?? 0;
+                const missingCount = Math.max(0, stats.total - passCount);
                 return (
                   <DropdownMenuCheckboxItem
                     key={label}
@@ -703,12 +752,13 @@ function UserLevelAnalysis() {
                     onSelect={(e) => e.preventDefault()}
                   >
                     <span className="flex-1">{label}</span>
-                    <span className="ml-auto text-muted-foreground">({fieldCount.toLocaleString()})</span>
+                    <span className="ml-auto text-muted-foreground">({missingCount.toLocaleString()})</span>
                   </DropdownMenuCheckboxItem>
                 );
               })}
             </DropdownMenuContent>
           </DropdownMenu>
+
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button variant="outline" className="w-[210px] justify-between font-normal">
@@ -913,14 +963,24 @@ function UserLevelAnalysis() {
                       <Badge
                         variant="outline"
                         className={`rounded-full ${
-                          p.profileStatus === "Complete"
+                          p.profileSignal === "Strong"
                             ? "bg-emerald-500/15 text-emerald-700 dark:text-emerald-400 border-emerald-500/30"
-                            : "bg-amber-500/15 text-amber-700 dark:text-amber-400 border-amber-500/30"
+                            : p.profileSignal === "Offline"
+                              ? "bg-blue-500/15 text-blue-700 dark:text-blue-400 border-blue-500/30"
+                              : "bg-amber-500/15 text-amber-700 dark:text-amber-400 border-amber-500/30"
                         }`}
                       >
-                        {p.profileStatus} ({p.profileCompletion}%)
+                        {p.profileSignal === "Strong"
+                          ? "Strong Signal"
+                          : p.profileSignal === "Offline"
+                            ? "Offline"
+                            : "Poor Signal"}
                       </Badge>
+                      <div className="mt-1 text-[11px] text-muted-foreground tabular-nums">
+                        {p.profileCompletion}% complete
+                      </div>
                     </TableCell>
+
                     <TableCell className="border-l">{p.applications}</TableCell>
                     <TableCell>{p.shortlisted}</TableCell>
                     <TableCell>{p.rejected}</TableCell>

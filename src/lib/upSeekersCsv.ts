@@ -11,6 +11,8 @@ export const PROFILE_FIELD_LABELS = [
   "Expected Salary",
 ] as const;
 
+export type ProfileSignal = "Strong" | "Offline" | "Poor";
+
 export type Seeker = {
   id: string;
   userId: string;
@@ -30,8 +32,10 @@ export type Seeker = {
   followUpFor: string;
   status: "New" | "Active" | "At Risk" | "Inactive";
   profileStatus: "Complete" | "Incomplete";
+  profileSignal: ProfileSignal;
   recommendedAction: string;
 };
+
 
 
 const DB_NAME = "up-seekers-db";
@@ -358,6 +362,14 @@ export function parseSeekersCsv(text: string): Seeker[] {
     });
     const completion = Math.round((checks.passed / checks.total) * 100);
     const profileStatus: Seeker["profileStatus"] = checks.passed === checks.total ? "Complete" : "Incomplete";
+    // Signal: Strong = all 6 pass; Offline = Name + (Email or Phone) + Age all pass (but not Strong); Poor = otherwise.
+    const passedByLabel = new Map(checks.fields.map((f) => [f.label, f.passed] as const));
+    const hasContactBasics =
+      (passedByLabel.get("Name") ?? false) &&
+      (passedByLabel.get("Email or Phone") ?? false) &&
+      (passedByLabel.get("Age") ?? false);
+    const profileSignal: ProfileSignal =
+      profileStatus === "Complete" ? "Strong" : hasContactBasics ? "Offline" : "Poor";
     const profileAge = toIntOrNull(r[cPAge]);
     const lastAppliedAge = toIntOrNull(r[cLApp]);
     const status = computeStatus(profileAge, lastAppliedAge);
@@ -381,9 +393,11 @@ export function parseSeekersCsv(text: string): Seeker[] {
 
       status,
       profileStatus,
+      profileSignal,
       recommendedAction: computeAction(status, profileStatus, lastAppliedAge, r[cAction] ?? ""),
     });
   }
+
   return out;
 }
 
