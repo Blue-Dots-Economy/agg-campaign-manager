@@ -6,6 +6,7 @@ import {
   Megaphone,
   Rocket,
   Settings,
+  Briefcase,
   Headphones,
   Users,
   Menu,
@@ -35,15 +36,9 @@ type NavItem = {
 
 const GROUPS: { title: string; items: NavItem[] }[] = [
   {
-    title: "Program, Ops & Biz",
+    title: "",
     items: [
       { to: "/user-level-analysis", label: "My Bluedots", icon: Users },
-      { to: "/launch", label: "Launch A Campaign", icon: Rocket },
-    ],
-  },
-  {
-    title: "Product & Tech",
-    items: [
       {
         to: "/",
         label: "Campaign Overview",
@@ -53,6 +48,8 @@ const GROUPS: { title: string; items: NavItem[] }[] = [
           { to: "/review", label: "Transcripts & Call Review", icon: Headphones },
         ],
       },
+      { to: "/launch", label: "Launch A Campaign", icon: Rocket },
+      { to: "/ecosystem-view", label: "Ecosystem View", icon: Briefcase, sub: "Coming soon" },
     ],
   },
 ];
