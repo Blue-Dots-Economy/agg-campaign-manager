@@ -309,31 +309,24 @@ function UserLevelAnalysis() {
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
+    const signalTokens = new Set(["strong", "offline", "poor"]);
+    const selectedSignals = new Set(
+      profileFilter.filter((f) => signalTokens.has(f)),
+    );
+    const wantedFields = profileFilter.filter((f) => !signalTokens.has(f));
     return dateScopedSeekers.filter((s) => {
       if (statusFilter !== "all" && s.status.toLowerCase().replace(" ", "-") !== statusFilter) return false;
-      if (profileFilter.length > 0) {
-        const wantComplete = profileFilter.includes("complete");
-        const wantedFields = profileFilter.filter((f) => f !== "complete");
-        if (wantComplete && wantedFields.length === 0) {
-          if (s.profileStatus !== "Complete") return false;
-        } else if (!wantComplete && wantedFields.length > 0) {
-          // must be incomplete AND missing any of the selected fields
-          if (s.profileStatus === "Complete") return false;
+      if (selectedSignals.size > 0 || wantedFields.length > 0) {
+        const sigMatch =
+          selectedSignals.size > 0 && selectedSignals.has(s.profileSignal.toLowerCase());
+        let fieldMatch = false;
+        if (wantedFields.length > 0) {
           const missing = new Set(
             s.profileFieldChecks.filter((f) => !f.passed).map((f) => f.label),
           );
-          if (!wantedFields.some((f) => missing.has(f))) return false;
-        } else if (wantComplete && wantedFields.length > 0) {
-          // complete OR incomplete-with-selected-missing-field
-          if (s.profileStatus === "Complete") {
-            // pass
-          } else {
-            const missing = new Set(
-              s.profileFieldChecks.filter((f) => !f.passed).map((f) => f.label),
-            );
-            if (!wantedFields.some((f) => missing.has(f))) return false;
-          }
+          fieldMatch = wantedFields.some((f) => missing.has(f));
         }
+        if (!sigMatch && !fieldMatch) return false;
       }
       if (appliedFilters.length > 0) {
         const pending = Math.max(0, s.applications - s.shortlisted - s.rejected);
@@ -352,6 +345,7 @@ function UserLevelAnalysis() {
       return true;
     });
   }, [dateScopedSeekers, search, statusFilter, profileFilter, appliedFilters]);
+
 
   const lifecycle = [
     {
