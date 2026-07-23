@@ -657,38 +657,89 @@ function UserLevelAnalysis() {
                   {profileFilter.length === 0
                     ? "Profile: All"
                     : profileFilter.length === 1
-                      ? `Profile: ${profileFilter[0] === "complete" ? "Complete" : `Missing ${profileFilter[0]}`}`
+                      ? `Profile: ${
+                          profileFilter[0] === "strong"
+                            ? "Strong Signal"
+                            : profileFilter[0] === "offline"
+                              ? "Offline"
+                              : profileFilter[0] === "poor"
+                                ? "Poor Signal"
+                                : `Missing ${profileFilter[0]}`
+                        }`
                       : `Profile: ${profileFilter.length} selected`}
                 </span>
                 <ChevronDown className="h-4 w-4 opacity-60" />
               </Button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="start" className="w-[260px]">
+            <DropdownMenuContent align="start" className="w-[280px]">
               <DropdownMenuItem onSelect={(e) => { e.preventDefault(); setProfileFilter([]); }}>
                 Clear (show all)
               </DropdownMenuItem>
               <DropdownMenuSeparator />
               <DropdownMenuCheckboxItem
-                checked={profileFilter.includes("complete")}
+                checked={profileFilter.includes("strong")}
                 onCheckedChange={(checked) =>
                   setProfileFilter((prev) =>
-                    checked ? [...prev, "complete"] : prev.filter((v) => v !== "complete"),
+                    checked ? [...prev, "strong"] : prev.filter((v) => v !== "strong"),
                   )
                 }
                 onSelect={(e) => e.preventDefault()}
               >
                 <div className="flex flex-col flex-1">
-                  <span>Complete</span>
-                  <span className="text-[11px] text-muted-foreground">strong search & match</span>
+                  <span>Strong Signal</span>
+                  <span className="text-[11px] text-muted-foreground">
+                    Name, Location, Email/Phone, Age, Role, Salary
+                  </span>
                 </div>
-                <span className="ml-auto text-muted-foreground">({stats.complete.toLocaleString()})</span>
+                <span className="ml-auto text-muted-foreground">
+                  ({stats.signalCounts.Strong.toLocaleString()})
+                </span>
+              </DropdownMenuCheckboxItem>
+              <DropdownMenuCheckboxItem
+                checked={profileFilter.includes("offline")}
+                onCheckedChange={(checked) =>
+                  setProfileFilter((prev) =>
+                    checked ? [...prev, "offline"] : prev.filter((v) => v !== "offline"),
+                  )
+                }
+                onSelect={(e) => e.preventDefault()}
+              >
+                <div className="flex flex-col flex-1">
+                  <span>Offline</span>
+                  <span className="text-[11px] text-muted-foreground">
+                    Name + Email/Phone + Age only
+                  </span>
+                </div>
+                <span className="ml-auto text-muted-foreground">
+                  ({stats.signalCounts.Offline.toLocaleString()})
+                </span>
+              </DropdownMenuCheckboxItem>
+              <DropdownMenuCheckboxItem
+                checked={profileFilter.includes("poor")}
+                onCheckedChange={(checked) =>
+                  setProfileFilter((prev) =>
+                    checked ? [...prev, "poor"] : prev.filter((v) => v !== "poor"),
+                  )
+                }
+                onSelect={(e) => e.preventDefault()}
+              >
+                <div className="flex flex-col flex-1">
+                  <span>Poor Signal</span>
+                  <span className="text-[11px] text-muted-foreground">
+                    Missing basics — refine below
+                  </span>
+                </div>
+                <span className="ml-auto text-muted-foreground">
+                  ({stats.signalCounts.Poor.toLocaleString()})
+                </span>
               </DropdownMenuCheckboxItem>
               <DropdownMenuSeparator />
               <DropdownMenuLabel className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
-                Incomplete — missing field
+                Poor Signal — missing field
               </DropdownMenuLabel>
               {PROFILE_FIELD_LABELS.map((label) => {
-                const fieldCount = stats.fieldCompletion.find((f) => f.label === label)?.count ?? 0;
+                const passCount = stats.fieldCompletion.find((f) => f.label === label)?.count ?? 0;
+                const missingCount = Math.max(0, stats.total - passCount);
                 return (
                   <DropdownMenuCheckboxItem
                     key={label}
@@ -701,12 +752,13 @@ function UserLevelAnalysis() {
                     onSelect={(e) => e.preventDefault()}
                   >
                     <span className="flex-1">{label}</span>
-                    <span className="ml-auto text-muted-foreground">({fieldCount.toLocaleString()})</span>
+                    <span className="ml-auto text-muted-foreground">({missingCount.toLocaleString()})</span>
                   </DropdownMenuCheckboxItem>
                 );
               })}
             </DropdownMenuContent>
           </DropdownMenu>
+
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button variant="outline" className="w-[210px] justify-between font-normal">
