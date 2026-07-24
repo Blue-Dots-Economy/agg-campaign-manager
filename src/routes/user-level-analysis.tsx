@@ -59,7 +59,6 @@ import {
   DialogTitle,
   DialogDescription,
 } from "@/components/ui/dialog";
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import {
   loadSeekers,
   loadSeekersAsync,
@@ -926,7 +925,7 @@ function UserLevelAnalysis() {
                 <TableHead rowSpan={2} className="align-middle border-l">
                   <div>User Status</div>
                   <div className="text-[10px] font-normal normal-case text-muted-foreground mt-0.5">
-                    Hover for details
+                    Profile age · Last applied · Apps
                   </div>
                 </TableHead>
                 <TableHead rowSpan={2} className="align-middle">Recommended Action</TableHead>
