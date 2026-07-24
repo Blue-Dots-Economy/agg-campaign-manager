@@ -926,7 +926,7 @@ function UserLevelAnalysis() {
                 <TableHead rowSpan={2} className="align-middle border-l">
                   <div>User Status</div>
                   <div className="text-[10px] font-normal normal-case text-muted-foreground mt-0.5">
-                    Profile age · Last applied · Apps
+                    Hover for details
                   </div>
                 </TableHead>
                 <TableHead rowSpan={2} className="align-middle">Recommended Action</TableHead>
