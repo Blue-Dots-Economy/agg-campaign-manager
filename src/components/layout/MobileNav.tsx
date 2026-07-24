@@ -154,9 +154,9 @@ export function MobileNav() {
     ? [{
         title: "",
         items: [
+          GROUPS[0].items[3],
           GROUPS[0].items[0],
           { to: "/", label: "Campaign Overview", icon: LayoutDashboard },
-          GROUPS[0].items[3],
         ] as NavItem[],
       }]
     : GROUPS;

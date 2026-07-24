@@ -140,9 +140,9 @@ export function Sidebar() {
     ? [{
         title: "",
         items: [
+          GROUPS[0].items[3], // Ecosystem View
           GROUPS[0].items[0], // My Bluedots
           { to: "/", label: "Campaign Overview", icon: LayoutDashboard },
-          GROUPS[0].items[3], // Ecosystem View
         ] as NavItem[],
       }]
     : GROUPS;
