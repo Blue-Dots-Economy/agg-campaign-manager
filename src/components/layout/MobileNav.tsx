@@ -148,7 +148,18 @@ export function MobileNav() {
   const { programId, setProgramId } = useProgram();
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const navigate = useNavigate();
-  const { logout } = useAuth();
+  const { logout, session } = useAuth();
+  const isEcosystem = session?.role === "ecosystem";
+  const groups = isEcosystem
+    ? [{
+        title: "",
+        items: [
+          GROUPS[0].items[0],
+          { to: "/", label: "Campaign Overview", icon: LayoutDashboard },
+          GROUPS[0].items[3],
+        ] as NavItem[],
+      }]
+    : GROUPS;
 
   const [expanded, setExpanded] = useState<Set<string>>(() => {
     const initial = new Set<string>();
@@ -213,7 +224,7 @@ export function MobileNav() {
         </div>
 
         <nav className="flex-1 px-3 py-1 space-y-5 overflow-y-auto">
-          {GROUPS.map((group) => (
+          {groups.map((group) => (
             <div key={group.title}>
               <div className="px-3 py-1.5 text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
                 {group.title}
@@ -233,29 +244,31 @@ export function MobileNav() {
           ))}
         </nav>
 
-        <div className="border-t px-3 py-2">
-          {(() => {
-            const item = SETTINGS;
-            const active = pathname.startsWith(item.to);
-            const Icon = item.icon;
-            return (
-              <Link
-                to={item.to}
-                aria-current={active ? "page" : undefined}
-                onClick={() => setOpen(false)}
-                className={cn(
-                  "flex items-center gap-3 px-3 py-2 rounded-md text-sm transition-colors",
-                  active
-                    ? "bg-accent text-accent-foreground"
-                    : "text-foreground/85 hover:bg-accent/70"
-                )}
-              >
-                <Icon className="h-4 w-4 shrink-0" />
-                {item.label}
-              </Link>
-            );
-          })()}
-        </div>
+        {!isEcosystem && (
+          <div className="border-t px-3 py-2">
+            {(() => {
+              const item = SETTINGS;
+              const active = pathname.startsWith(item.to);
+              const Icon = item.icon;
+              return (
+                <Link
+                  to={item.to}
+                  aria-current={active ? "page" : undefined}
+                  onClick={() => setOpen(false)}
+                  className={cn(
+                    "flex items-center gap-3 px-3 py-2 rounded-md text-sm transition-colors",
+                    active
+                      ? "bg-accent text-accent-foreground"
+                      : "text-foreground/85 hover:bg-accent/70"
+                  )}
+                >
+                  <Icon className="h-4 w-4 shrink-0" />
+                  {item.label}
+                </Link>
+              );
+            })()}
+          </div>
+        )}
 
         <div className="mt-auto border-t px-5 py-4">
           <button

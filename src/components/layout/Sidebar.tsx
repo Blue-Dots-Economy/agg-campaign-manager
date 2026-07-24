@@ -15,6 +15,7 @@ import {
 import { useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { useProgram } from "@/programs/context";
+import { useAuth } from "@/auth/context";
 import { listConnections } from "@/lib/connections.functions";
 import { cn } from "@/lib/utils";
 
@@ -133,6 +134,18 @@ function NavLink({
 
 export function Sidebar() {
   const { config, programId, setProgramId } = useProgram();
+  const { session } = useAuth();
+  const isEcosystem = session?.role === "ecosystem";
+  const groups = isEcosystem
+    ? [{
+        title: "",
+        items: [
+          GROUPS[0].items[0], // My Bluedots
+          { to: "/", label: "Campaign Overview", icon: LayoutDashboard },
+          GROUPS[0].items[3], // Ecosystem View
+        ] as NavItem[],
+      }]
+    : GROUPS;
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const listFn = useServerFn(listConnections);
   const { data: conns } = useQuery({
@@ -204,7 +217,7 @@ export function Sidebar() {
       </div>
 
       <nav className="flex-1 px-3 py-2 space-y-5 overflow-y-auto">
-        {GROUPS.map((group) => (
+        {groups.map((group) => (
           <div key={group.title}>
             <div className="px-3 py-1.5 text-[11px] font-medium uppercase tracking-wider text-sidebar-foreground/60">
               {group.title}
@@ -223,28 +236,30 @@ export function Sidebar() {
         ))}
       </nav>
 
-      <div className="border-t border-sidebar-border px-3 py-2">
-        {(() => {
-          const item = SETTINGS;
-          const active = pathname.startsWith(item.to);
-          const Icon = item.icon;
-          return (
-            <Link
-              to={item.to}
-              aria-current={active ? "page" : undefined}
-              className={cn(
-                "flex items-center gap-3 px-3 py-2 rounded-md text-sm transition-colors",
-                active
-                  ? "bg-sidebar-accent text-sidebar-foreground"
-                  : "text-sidebar-foreground/85 hover:bg-sidebar-accent/70 hover:text-sidebar-foreground"
-              )}
-            >
-              <Icon className="h-4 w-4 shrink-0" />
-              {item.label}
-            </Link>
-          );
-        })()}
-      </div>
+      {!isEcosystem && (
+        <div className="border-t border-sidebar-border px-3 py-2">
+          {(() => {
+            const item = SETTINGS;
+            const active = pathname.startsWith(item.to);
+            const Icon = item.icon;
+            return (
+              <Link
+                to={item.to}
+                aria-current={active ? "page" : undefined}
+                className={cn(
+                  "flex items-center gap-3 px-3 py-2 rounded-md text-sm transition-colors",
+                  active
+                    ? "bg-sidebar-accent text-sidebar-foreground"
+                    : "text-sidebar-foreground/85 hover:bg-sidebar-accent/70 hover:text-sidebar-foreground"
+                )}
+              >
+                <Icon className="h-4 w-4 shrink-0" />
+                {item.label}
+              </Link>
+            );
+          })()}
+        </div>
+      )}
 
       <div className="mt-auto px-5 py-4 border-t border-sidebar-border text-[11px] opacity-85">
         <div>

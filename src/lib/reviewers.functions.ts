@@ -10,19 +10,24 @@ const ADMIN_CREDENTIALS: Record<string, string> = {
   "admin@bluedots.com": "456789",
   "sanketika@bluedots.com": "456789",
 };
+const ECOSYSTEM_CREDENTIALS: Record<string, string> = {
+  "ecosystem@bluedots.com": "456789",
+};
 
 export const resolveLogin = createServerFn({ method: "POST" })
   .inputValidator((d: { email: string; password?: string }) => d)
-  .handler(async ({ data }): Promise<{ role: "admin" | "user" | null }> => {
+  .handler(async ({ data }): Promise<{ role: "admin" | "user" | "ecosystem" | null }> => {
     const email = (data.email || "").trim().toLowerCase();
     const password = data.password || "";
     if (ADMIN_CREDENTIALS[email] && ADMIN_CREDENTIALS[email] === password) return { role: "admin" };
+    if (ECOSYSTEM_CREDENTIALS[email] && ECOSYSTEM_CREDENTIALS[email] === password) return { role: "ecosystem" };
     try {
       const { data: row } = await sb().from("reviewers").select("email").eq("email", email).maybeSingle();
       if (row) return { role: "user" };
     } catch { /* ignore */ }
     return { role: null };
   });
+
 
 export const listReviewers = createServerFn({ method: "GET" })
   .handler(async (): Promise<string[]> => {
