@@ -217,7 +217,7 @@ export function Sidebar() {
       </div>
 
       <nav className="flex-1 px-3 py-2 space-y-5 overflow-y-auto">
-        {GROUPS.map((group) => (
+        {groups.map((group) => (
           <div key={group.title}>
             <div className="px-3 py-1.5 text-[11px] font-medium uppercase tracking-wider text-sidebar-foreground/60">
               {group.title}
