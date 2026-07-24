@@ -148,7 +148,18 @@ export function MobileNav() {
   const { programId, setProgramId } = useProgram();
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const navigate = useNavigate();
-  const { logout } = useAuth();
+  const { logout, session } = useAuth();
+  const isEcosystem = session?.role === "ecosystem";
+  const groups = isEcosystem
+    ? [{
+        title: "",
+        items: [
+          GROUPS[0].items[0],
+          { to: "/", label: "Campaign Overview", icon: LayoutDashboard },
+          GROUPS[0].items[3],
+        ] as NavItem[],
+      }]
+    : GROUPS;
 
   const [expanded, setExpanded] = useState<Set<string>>(() => {
     const initial = new Set<string>();
