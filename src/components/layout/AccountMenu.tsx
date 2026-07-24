@@ -32,7 +32,7 @@ export function AccountMenu() {
       <DropdownMenuContent align="end" className="w-56">
         <DropdownMenuLabel className="flex flex-col gap-0.5">
           <span className="truncate text-sm font-medium text-foreground">{session.email}</span>
-          <span className="text-xs font-normal text-muted-foreground">{session.role === "admin" ? "Admin" : "Reviewer"}</span>
+          <span className="text-xs font-normal text-muted-foreground">{session.role === "admin" ? "Admin" : session.role === "ecosystem" ? "Ecosystem" : "Reviewer"}</span>
         </DropdownMenuLabel>
         <DropdownMenuSeparator />
         <DropdownMenuItem
