@@ -244,29 +244,31 @@ export function MobileNav() {
           ))}
         </nav>
 
-        <div className="border-t px-3 py-2">
-          {(() => {
-            const item = SETTINGS;
-            const active = pathname.startsWith(item.to);
-            const Icon = item.icon;
-            return (
-              <Link
-                to={item.to}
-                aria-current={active ? "page" : undefined}
-                onClick={() => setOpen(false)}
-                className={cn(
-                  "flex items-center gap-3 px-3 py-2 rounded-md text-sm transition-colors",
-                  active
-                    ? "bg-accent text-accent-foreground"
-                    : "text-foreground/85 hover:bg-accent/70"
-                )}
-              >
-                <Icon className="h-4 w-4 shrink-0" />
-                {item.label}
-              </Link>
-            );
-          })()}
-        </div>
+        {!isEcosystem && (
+          <div className="border-t px-3 py-2">
+            {(() => {
+              const item = SETTINGS;
+              const active = pathname.startsWith(item.to);
+              const Icon = item.icon;
+              return (
+                <Link
+                  to={item.to}
+                  aria-current={active ? "page" : undefined}
+                  onClick={() => setOpen(false)}
+                  className={cn(
+                    "flex items-center gap-3 px-3 py-2 rounded-md text-sm transition-colors",
+                    active
+                      ? "bg-accent text-accent-foreground"
+                      : "text-foreground/85 hover:bg-accent/70"
+                  )}
+                >
+                  <Icon className="h-4 w-4 shrink-0" />
+                  {item.label}
+                </Link>
+              );
+            })()}
+          </div>
+        )}
 
         <div className="mt-auto border-t px-5 py-4">
           <button
