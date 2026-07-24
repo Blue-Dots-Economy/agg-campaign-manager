@@ -60,6 +60,12 @@ import {
   DialogDescription,
 } from "@/components/ui/dialog";
 import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
+import {
   loadSeekers,
   loadSeekersAsync,
   saveUploadedCsv,
@@ -923,10 +929,7 @@ function UserLevelAnalysis() {
                 <TableHead colSpan={4} className="text-center border-l">Applied</TableHead>
                 <TableHead colSpan={4} className="text-center border-l">Pre-shortlisted</TableHead>
                 <TableHead rowSpan={2} className="align-middle border-l">
-                  <div>User Status</div>
-                  <div className="text-[10px] font-normal normal-case text-muted-foreground mt-0.5">
-                    Profile age · Last applied · Apps
-                  </div>
+                  User Status
                 </TableHead>
                 <TableHead rowSpan={2} className="align-middle">Recommended Action</TableHead>
               </TableRow>
@@ -990,20 +993,25 @@ function UserLevelAnalysis() {
                     <TableCell>0</TableCell>
                     <TableCell>0</TableCell>
                     <TableCell className="border-l">
-                      <Badge variant="outline" className={`rounded-full ${STATUS_STYLES[p.status]}`}>
-                        {p.status}
-                      </Badge>
-                      <div className="mt-1 text-[11px] text-muted-foreground tabular-nums">
-                        <span title="Profile age (days since created)">
-                          Age: {p.profileAge ?? "—"}{p.profileAge != null ? "d" : ""}
-                        </span>
-                        {" · "}
-                        <span title="Days since last application">
-                          Applied: {p.lastAppliedAge ?? "—"}{p.lastAppliedAge != null ? "d" : ""}
-                        </span>
-                        {" · "}
-                        <span title="Total applications">Apps: {p.applications}</span>
-                      </div>
+                      <TooltipProvider>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <Badge variant="outline" className={`rounded-full cursor-help ${STATUS_STYLES[p.status]}`}>
+                              {p.status}
+                            </Badge>
+                          </TooltipTrigger>
+                          <TooltipContent side="top" className="max-w-xs space-y-1 bg-slate-900 text-slate-50 border-slate-800">
+                            <div className="font-medium">{p.status}</div>
+                            <div className="text-[11px] tabular-nums text-slate-300">
+                              Age: {p.profileAge ?? "—"}{p.profileAge != null ? "d" : ""}
+                              {" · "}
+                              Applied: {p.lastAppliedAge ?? "—"}{p.lastAppliedAge != null ? "d" : ""}
+                              {" · "}
+                              Apps: {p.applications}
+                            </div>
+                          </TooltipContent>
+                        </Tooltip>
+                      </TooltipProvider>
                     </TableCell>
                     <TableCell>
                       <span
