@@ -54,6 +54,22 @@ export const GAP_LEVEL_CLASSES: Record<GapLevel, string> = {
   Excellent: "bg-emerald-500/20 text-emerald-800 dark:text-emerald-300 border-emerald-500/40",
 };
 
+export const GAP_LEVEL_BAR_CLASSES: Record<GapLevel, string> = {
+  "Supply gap": "bg-rose-500",
+  Borderline: "bg-amber-500",
+  Balanced: "bg-muted-foreground/50",
+  "Good supply": "bg-emerald-500",
+  Excellent: "bg-emerald-600",
+};
+
+export const GAP_LEVEL_TEXT_CLASSES: Record<GapLevel, string> = {
+  "Supply gap": "text-rose-700 dark:text-rose-400",
+  Borderline: "text-amber-700 dark:text-amber-400",
+  Balanced: "text-muted-foreground",
+  "Good supply": "text-emerald-700 dark:text-emerald-400",
+  Excellent: "text-emerald-800 dark:text-emerald-300",
+};
+
 export type InstitutionType = "ITI" | "Non-ITI" | "Unknown";
 export function classifyInstitutionType(name: string): InstitutionType {
   if (!name) return "Unknown";
