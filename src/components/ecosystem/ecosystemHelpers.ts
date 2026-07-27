@@ -135,3 +135,30 @@ export function relativeAge(iso: string): string {
   if (months === 1) return "1 month ago";
   return `${months} months ago`;
 }
+
+// TODO(ecosystem): mock previous/trend — replace with real period-over-period data in Phase 3
+export function mockPrevious(value: number, ratio: number): number {
+  return Math.max(0, Math.round(value * ratio));
+}
+
+// TODO(ecosystem): mock previous/trend — replace with real period-over-period data in Phase 3
+export function mockTrend(value: number, previous: number, points = 7): number[] {
+  if (value <= 0 && previous <= 0) return [];
+  const start = previous;
+  const end = value;
+  const series: number[] = [];
+  // deterministic pseudo-noise from value+previous
+  let seed = (Math.abs(value * 9301 + previous * 49297) % 233280) + 1;
+  const rand = () => {
+    seed = (seed * 9301 + 49297) % 233280;
+    return seed / 233280;
+  };
+  for (let i = 0; i < points; i++) {
+    const t = i / (points - 1);
+    const base = start + (end - start) * t;
+    const jitter = base * (rand() * 0.16 - 0.08);
+    series.push(Math.max(0, Math.round(base + jitter)));
+  }
+  series[points - 1] = end;
+  return series;
+}
