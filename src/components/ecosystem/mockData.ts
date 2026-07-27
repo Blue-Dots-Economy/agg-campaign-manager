@@ -185,8 +185,9 @@ function buildRegion(
     const gap = pick(gapPattern, i + seedOffset);
     const applications = Math.max(0, openings - gap);
     const area = pick(areas, i + seedOffset);
-    const partial = ((i * 3 + seedOffset) % 12) + 2;
-    const right = ((i * 2 + seedOffset) % 8) + 1;
+    const fit = ROLE_FIT[role] ?? { partial: [6, 8, 10], right: [3, 4, 5] };
+    const partial = fit.partial[(i + seedOffset) % fit.partial.length];
+    const right = fit.right[(i + seedOffset) % fit.right.length];
     const postedAgo = (i * 5 + seedOffset) % 45;
     const id = `${state}-JOB-${i + 1}`;
     jobs.push({
