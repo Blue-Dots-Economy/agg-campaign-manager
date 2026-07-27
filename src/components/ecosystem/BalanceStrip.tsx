@@ -39,7 +39,13 @@ export function BalanceStrip({
           <span>balanced</span>
           <span>surplus →</span>
         </div>
-        <div className="w-[130px] shrink-0" />
+        <div className="flex items-center gap-3 shrink-0">
+          <div className="w-[130px] text-right text-[11px] text-muted-foreground">Openings</div>
+          <div className="w-[68px] text-right text-[11px] text-muted-foreground">Partial Fit</div>
+          <div className="w-[68px] text-right text-[11px] text-emerald-700 dark:text-emerald-400">
+            Right Fit
+          </div>
+        </div>
       </div>
 
       <div className="max-h-[440px] overflow-y-auto pr-2">
@@ -74,10 +80,18 @@ export function BalanceStrip({
                   style={{ left: `${left}%`, width: `${width}%` }}
                 />
               </div>
-              <div className="w-[130px] shrink-0 text-right">
-                <div className="text-sm tabular-nums">{fmtInt(r.openings)} open</div>
-                <div className={`text-xs tabular-nums ${GAP_LEVEL_TEXT_CLASSES[r.level]}`}>
-                  {rightText}
+              <div className="flex items-center gap-3 shrink-0">
+                <div className="w-[130px] text-right">
+                  <div className="text-sm tabular-nums">{fmtInt(r.openings)} open</div>
+                  <div className={`text-xs tabular-nums ${GAP_LEVEL_TEXT_CLASSES[r.level]}`}>
+                    {rightText}
+                  </div>
+                </div>
+                <div className="w-[68px] text-right text-sm tabular-nums text-amber-700 dark:text-amber-400">
+                  {fmtInt(r.partial)}
+                </div>
+                <div className="w-[68px] text-right text-sm tabular-nums font-medium text-emerald-700 dark:text-emerald-400">
+                  {fmtInt(r.right)}
                 </div>
               </div>
             </button>
