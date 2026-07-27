@@ -5,7 +5,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { REGION_TREE } from "./mockData";
+import { REGION_TREE } from "@/lib/ecosystem-config";
 
 export interface RegionValue {
   state: string;
