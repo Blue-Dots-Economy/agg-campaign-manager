@@ -121,9 +121,9 @@ export function GapTable({ jobs }: { jobs: JobPost[] }) {
       {view === "balance" ? (
         <BalanceStrip rows={filtered} onRowClick={(r) => setDrill(r)} />
       ) : (
-        <div className="overflow-x-auto">
+        <div className="max-h-[440px] overflow-y-auto overflow-x-auto">
           <Table>
-            <TableHeader>
+            <TableHeader className="sticky top-0 bg-card z-10">
               <TableRow>
                 <TableHead>{mode === "role" ? "Role" : "Area"}</TableHead>
                 <TableHead className="text-right">Openings</TableHead>
