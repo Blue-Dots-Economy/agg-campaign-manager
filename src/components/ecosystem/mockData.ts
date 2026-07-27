@@ -31,6 +31,7 @@ export interface Application {
   seeker_role: string;
   location: string;
   job_id: string;
+  applied_date: string; // ISO
 }
 
 export interface Seeker {
@@ -247,11 +248,14 @@ function buildRegion(
   let ac = 0;
   for (const j of jobs) {
     for (let k = 0; k < j.applications; k++) {
+      // Spread applications across recent dates: some <7d, some 7-30d, some >30d.
+      const ageDays = (k * 3 + ac * 7 + seedOffset) % 55;
       applications.push({
         id: `${state}-APP-${ac++}`,
         seeker_role: j.title,
         location: j.area,
         job_id: j.id,
+        applied_date: daysAgo(ageDays),
       });
     }
   }
