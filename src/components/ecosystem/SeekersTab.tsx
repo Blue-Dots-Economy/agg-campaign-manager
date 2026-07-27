@@ -1,10 +1,9 @@
 import { useMemo } from "react";
 import { MetricCard } from "@/components/metrics/MetricCard";
-import type { Seeker } from "./mockData";
-import { InstitutionBreakdown } from "./InstitutionBreakdown";
-import { SeekerDataTable } from "./SeekerDataTable";
+import type { JobPost, Seeker } from "./mockData";
+import { GapTable } from "./GapTable";
 
-export function SeekersTab({ seekers }: { seekers: Seeker[] }) {
+export function SeekersTab({ jobs, seekers }: { jobs: JobPost[]; seekers: Seeker[] }) {
   const totals = useMemo(() => {
     const ids = new Set(seekers.map((s) => s.id));
     const users = new Set(seekers.map((s) => s.user_id));
@@ -19,8 +18,7 @@ export function SeekersTab({ seekers }: { seekers: Seeker[] }) {
         <MetricCard label="Total Accounts" value={totals.users} />
         <MetricCard label="Total Orgs" value={totals.orgs} />
       </div>
-      <InstitutionBreakdown seekers={seekers} />
-      <SeekerDataTable seekers={seekers} />
+      <GapTable jobs={jobs} />
     </div>
   );
 }
