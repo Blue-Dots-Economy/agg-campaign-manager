@@ -13,38 +13,30 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import type { JobPost } from "./mockData";
 import { GAP_LEVEL_CLASSES, fmtInt, gapLevel, type GapLevel } from "./ecosystemHelpers";
 import { GapDrilldownDialog } from "./GapDrilldownDialog";
+import { BalanceStrip, type BalanceRow } from "./BalanceStrip";
 
 type Mode = "role" | "location";
-
-interface Row {
-  key: string;
-  openings: number;
-  applications: number;
-  gap: number;
-  partial: number;
-  right: number;
-  level: GapLevel;
-  jobs: JobPost[];
-}
+type View = "balance" | "table";
 
 const GAP_LEVELS: GapLevel[] = ["Supply gap", "Borderline", "Balanced", "Good supply", "Excellent"];
 
 export function GapTable({ jobs }: { jobs: JobPost[] }) {
   const [mode, setMode] = useState<Mode>("role");
+  const [view, setView] = useState<View>("balance");
   const [keyFilter, setKeyFilter] = useState<string>("all");
   const [levelFilter, setLevelFilter] = useState<string>("all");
-  const [drill, setDrill] = useState<Row | null>(null);
+  const [drill, setDrill] = useState<BalanceRow | null>(null);
 
   const openJobs = useMemo(() => jobs.filter((j) => j.status === "open"), [jobs]);
 
-  const rows: Row[] = useMemo(() => {
+  const rows: BalanceRow[] = useMemo(() => {
     const groups = new Map<string, JobPost[]>();
     for (const j of openJobs) {
       const k = mode === "role" ? j.title : j.area;
       if (!groups.has(k)) groups.set(k, []);
       groups.get(k)!.push(j);
     }
-    const out: Row[] = [];
+    const out: BalanceRow[] = [];
     for (const [k, arr] of groups) {
       const openings = arr.reduce((s, j) => s + j.current_openings, 0);
       const applications = arr.reduce((s, j) => s + j.applications, 0);
@@ -79,11 +71,19 @@ export function GapTable({ jobs }: { jobs: JobPost[] }) {
 
   return (
     <Panel
-      title="Supply–Demand Gap"
+      title="Supply–Demand Balance"
       description="Where role/area demand outpaces available supply."
       action={
-        <div className="text-xs text-muted-foreground tabular-nums">
-          {filtered.length.toLocaleString("en-IN")} of {rows.length.toLocaleString("en-IN")}
+        <div className="flex items-center gap-3">
+          <Tabs value={view} onValueChange={(v) => setView(v as View)}>
+            <TabsList>
+              <TabsTrigger value="balance">Balance</TabsTrigger>
+              <TabsTrigger value="table">Table</TabsTrigger>
+            </TabsList>
+          </Tabs>
+          <div className="text-xs text-muted-foreground tabular-nums">
+            {filtered.length.toLocaleString("en-IN")} of {rows.length.toLocaleString("en-IN")}
+          </div>
         </div>
       }
     >
@@ -118,56 +118,63 @@ export function GapTable({ jobs }: { jobs: JobPost[] }) {
         </Select>
       </div>
 
-      <div className="overflow-x-auto">
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>{mode === "role" ? "Role" : "Area"}</TableHead>
-              <TableHead className="text-right">Openings</TableHead>
-              <TableHead className="text-right">Applications</TableHead>
-              <TableHead className="text-right">Gap</TableHead>
-              <TableHead>Gap Level</TableHead>
-              <TableHead className="text-right">Partial Fit</TableHead>
-              <TableHead className="text-right">Right Fit</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {filtered.map((r) => (
-              <TableRow
-                key={r.key}
-                className="cursor-pointer hover:bg-muted/40"
-                onClick={() => setDrill(r)}
-              >
-                <TableCell className="font-medium">{r.key}</TableCell>
-                <TableCell className="text-right tabular-nums">{fmtInt(r.openings)}</TableCell>
-                <TableCell className="text-right tabular-nums">{fmtInt(r.applications)}</TableCell>
-                <TableCell className="text-right tabular-nums">{r.gap}</TableCell>
-                <TableCell>
-                  <Badge variant="outline" className={GAP_LEVEL_CLASSES[r.level]}>
-                    {r.level}
-                  </Badge>
-                </TableCell>
-                <TableCell className="text-right tabular-nums">{fmtInt(r.partial)}</TableCell>
-                <TableCell className="text-right tabular-nums">{fmtInt(r.right)}</TableCell>
-              </TableRow>
-            ))}
-            {filtered.length === 0 && (
+      {view === "balance" ? (
+        <BalanceStrip rows={filtered} onRowClick={(r) => setDrill(r)} />
+      ) : (
+        <div className="overflow-x-auto">
+          <Table>
+            <TableHeader>
               <TableRow>
-                <TableCell colSpan={7} className="text-center text-muted-foreground py-8">
-                  No open jobs for this district.
-                </TableCell>
+                <TableHead>{mode === "role" ? "Role" : "Area"}</TableHead>
+                <TableHead className="text-right">Openings</TableHead>
+                <TableHead className="text-right">Applications</TableHead>
+                <TableHead className="text-right">Gap</TableHead>
+                <TableHead>Gap Level</TableHead>
+                <TableHead className="text-right">Partial Fit</TableHead>
+                <TableHead className="text-right">Right Fit</TableHead>
               </TableRow>
-            )}
-          </TableBody>
-        </Table>
-      </div>
+            </TableHeader>
+            <TableBody>
+              {filtered.map((r) => (
+                <TableRow
+                  key={r.key}
+                  className="cursor-pointer hover:bg-muted/40"
+                  onClick={() => setDrill(r)}
+                >
+                  <TableCell className="font-medium">{r.key}</TableCell>
+                  <TableCell className="text-right tabular-nums">{fmtInt(r.openings)}</TableCell>
+                  <TableCell className="text-right tabular-nums">{fmtInt(r.applications)}</TableCell>
+                  <TableCell className="text-right tabular-nums">{r.gap}</TableCell>
+                  <TableCell>
+                    <Badge variant="outline" className={GAP_LEVEL_CLASSES[r.level]}>
+                      {r.level}
+                    </Badge>
+                  </TableCell>
+                  <TableCell className="text-right tabular-nums">{fmtInt(r.partial)}</TableCell>
+                  <TableCell className="text-right tabular-nums">{fmtInt(r.right)}</TableCell>
+                </TableRow>
+              ))}
+              {filtered.length === 0 && (
+                <TableRow>
+                  <TableCell colSpan={7} className="text-center text-muted-foreground py-8">
+                    No open jobs for this district.
+                  </TableCell>
+                </TableRow>
+              )}
+            </TableBody>
+          </Table>
+        </div>
+      )}
 
       <GapDrilldownDialog
         open={!!drill}
         onOpenChange={(o) => !o && setDrill(null)}
         title={drill ? `${mode === "role" ? "Role" : "Area"}: ${drill.key}` : ""}
         jobs={drill?.jobs ?? []}
+        partial={drill?.partial ?? 0}
+        right={drill?.right ?? 0}
       />
     </Panel>
   );
 }
+
