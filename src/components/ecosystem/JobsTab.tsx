@@ -4,7 +4,7 @@ import { HoverCard, HoverCardContent, HoverCardTrigger } from "@/components/ui/h
 import type { Application, JobPost } from "./mockData";
 import { GapTable } from "./GapTable";
 import { ApplicationsDrilldown } from "./ApplicationsDrilldown";
-import { APP_AGE_LABEL, appAgeBucket } from "./ecosystemHelpers";
+import { APP_AGE_LABEL, appAgeBucket, mockPrevious, mockTrend } from "./ecosystemHelpers";
 
 export function JobsTab({
   jobs,
@@ -27,11 +27,29 @@ export function JobsTab({
 
   const [drillOpen, setDrillOpen] = useState(false);
 
+  // TODO(ecosystem): mock previous/trend — replace with real period-over-period data in Phase 3
+  const providersPrev = mockPrevious(providers, 0.88);
+  const openingsPrev = mockPrevious(openings, 0.82);
+  const applicationsPrev = mockPrevious(applications.length, 0.91);
+  const seekersPrev = mockPrevious(totalSeekers, 0.85);
+
   return (
     <div className="space-y-6">
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        <MetricCard label="Total Job Providers" value={providers} />
-        <MetricCard label="Job Openings" value={openings} />
+        <MetricCard
+          label="Total Job Providers"
+          value={providers}
+          sub="unique companies posting"
+          previous={providersPrev}
+          trend={mockTrend(providers, providersPrev)}
+        />
+        <MetricCard
+          label="Job Openings"
+          value={openings}
+          sub="open positions across roles"
+          previous={openingsPrev}
+          trend={mockTrend(openings, openingsPrev)}
+        />
 
         <HoverCard openDelay={150} closeDelay={100}>
           <HoverCardTrigger asChild>
@@ -41,7 +59,13 @@ export function JobsTab({
               className="text-left rounded-xl cursor-pointer transition-shadow hover:shadow-md focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
               aria-label="Open applications breakdown"
             >
-              <MetricCard label="Total Applications" value={applications.length} />
+              <MetricCard
+                label="Total Applications"
+                value={applications.length}
+                sub="applications received"
+                previous={applicationsPrev}
+                trend={mockTrend(applications.length, applicationsPrev)}
+              />
             </button>
           </HoverCardTrigger>
           <HoverCardContent className="w-64" align="start">
@@ -58,7 +82,13 @@ export function JobsTab({
           </HoverCardContent>
         </HoverCard>
 
-        <MetricCard label="Job Seekers" value={totalSeekers} />
+        <MetricCard
+          label="Job Seekers"
+          value={totalSeekers}
+          sub="registered seekers in region"
+          previous={seekersPrev}
+          trend={mockTrend(totalSeekers, seekersPrev)}
+        />
       </div>
       <GapTable jobs={jobs} />
 
