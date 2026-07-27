@@ -46,37 +46,33 @@ function EcosystemView() {
   );
 
   return (
-    <div className="space-y-6 px-4 sm:px-6 py-6 max-w-[1400px] mx-auto">
-      <header className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
-        <div>
-          <h1 className="text-2xl font-semibold tracking-tight">Ecosystem View</h1>
-          <p className="mt-1 text-sm text-muted-foreground">
-            Job providers, seekers and institutions — scoped to a district.
-          </p>
-        </div>
-        <div className="flex flex-wrap items-center gap-3">
+    <Tabs defaultValue="jobs" className="space-y-6">
+      <div className="flex items-center justify-between gap-3 flex-wrap">
+        <div className="flex flex-wrap items-center gap-2">
           <RegionSelector value={region} onChange={setRegion} />
-          <Badge variant="outline" className="text-xs">Synced 2h ago</Badge>
+          <TabsList>
+            <TabsTrigger value="jobs">Jobs</TabsTrigger>
+            <TabsTrigger value="seekers">Seekers</TabsTrigger>
+          </TabsList>
+        </div>
+        <div className="flex items-center gap-2">
+          <Badge variant="outline" className="text-xs font-normal text-muted-foreground">
+            Synced 2h ago
+          </Badge>
           {/* TODO(ecosystem): Phase 3 — wire Sync Now to real Supabase trigger */}
-          <Button size="sm" variant="outline">
-            <RefreshCw className="h-3.5 w-3.5 mr-1.5" />
+          <Button size="sm" variant="outline" className="h-8 gap-1.5 text-xs">
+            <RefreshCw className="h-3.5 w-3.5" />
             Sync Now
           </Button>
         </div>
-      </header>
+      </div>
 
-      <Tabs defaultValue="jobs" className="space-y-6">
-        <TabsList>
-          <TabsTrigger value="jobs">Jobs</TabsTrigger>
-          <TabsTrigger value="seekers">Seekers</TabsTrigger>
-        </TabsList>
-        <TabsContent value="jobs" className="space-y-6">
-          <JobsTab jobs={jobs} applications={applications} totalSeekers={seekers.length} />
-        </TabsContent>
-        <TabsContent value="seekers" className="space-y-6">
-          <SeekersTab jobs={jobs} seekers={seekers} />
-        </TabsContent>
-      </Tabs>
-    </div>
+      <TabsContent value="jobs" className="space-y-6 mt-0">
+        <JobsTab jobs={jobs} applications={applications} totalSeekers={seekers.length} />
+      </TabsContent>
+      <TabsContent value="seekers" className="space-y-6 mt-0">
+        <SeekersTab jobs={jobs} seekers={seekers} />
+      </TabsContent>
+    </Tabs>
   );
 }

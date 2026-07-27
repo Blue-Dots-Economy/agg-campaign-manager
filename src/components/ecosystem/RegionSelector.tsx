@@ -29,7 +29,7 @@ export function RegionSelector({
           onChange({ state: s, district: entry?.districts[0] ?? "" });
         }}
       >
-        <SelectTrigger className="w-[120px]">
+        <SelectTrigger className="h-8 w-[120px] text-xs">
           <SelectValue placeholder="State" />
         </SelectTrigger>
         <SelectContent>
@@ -41,7 +41,7 @@ export function RegionSelector({
         </SelectContent>
       </Select>
       <Select value={value.district} onValueChange={(d) => onChange({ ...value, district: d })}>
-        <SelectTrigger className="w-[180px]">
+        <SelectTrigger className="h-8 w-[180px] text-xs">
           <SelectValue placeholder="District" />
         </SelectTrigger>
         <SelectContent>
