@@ -31,6 +31,7 @@ export interface Application {
   seeker_role: string;
   location: string;
   job_id: string;
+  applied_date: string; // ISO
 }
 
 export interface Seeker {
