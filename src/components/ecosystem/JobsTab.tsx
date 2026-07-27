@@ -2,7 +2,6 @@ import { useMemo } from "react";
 import { MetricCard } from "@/components/metrics/MetricCard";
 import type { Application, JobPost } from "./mockData";
 import { GapTable } from "./GapTable";
-import { ApplicationStatusTable } from "./ApplicationStatusTable";
 
 export function JobsTab({
   jobs,
@@ -26,7 +25,6 @@ export function JobsTab({
         <MetricCard label="Job Seekers" value={totalSeekers} />
       </div>
       <GapTable jobs={jobs} />
-      <ApplicationStatusTable jobs={jobs} />
     </div>
   );
 }

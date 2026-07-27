@@ -79,6 +79,19 @@ const ROLES = [
   "Warehouse Associate",
 ];
 
+const ROLE_FIT: Record<string, { partial: number[]; right: number[] }> = {
+  Welder:              { partial: [14, 11, 17, 9],   right: [6, 4, 8, 5] },
+  Electrician:         { partial: [22, 18, 25, 20],  right: [11, 9, 13, 10] },
+  "Data Entry Operator": { partial: [31, 28, 35, 26], right: [15, 12, 18, 14] },
+  "Delivery Associate": { partial: [42, 38, 47, 35], right: [21, 19, 24, 17] },
+  "Sales Executive":   { partial: [27, 23, 30, 25],  right: [12, 10, 14, 11] },
+  "Machine Operator":  { partial: [9, 7, 12, 8],    right: [3, 5, 4, 6] },
+  Tailor:              { partial: [16, 13, 19, 15],  right: [7, 5, 9, 6] },
+  "Security Guard":    { partial: [38, 33, 44, 30],  right: [19, 16, 22, 14] },
+  Fitter:              { partial: [12, 10, 15, 8],   right: [5, 4, 7, 3] },
+  "Warehouse Associate": { partial: [24, 20, 28, 22], right: [10, 8, 12, 9] },
+};
+
 const CATEGORIES = [
   "Manufacturing",
   "Logistics",
@@ -185,8 +198,9 @@ function buildRegion(
     const gap = pick(gapPattern, i + seedOffset);
     const applications = Math.max(0, openings - gap);
     const area = pick(areas, i + seedOffset);
-    const partial = ((i * 3 + seedOffset) % 12) + 2;
-    const right = ((i * 2 + seedOffset) % 8) + 1;
+    const fit = ROLE_FIT[role] ?? { partial: [6, 8, 10], right: [3, 4, 5] };
+    const partial = fit.partial[(i + seedOffset) % fit.partial.length];
+    const right = fit.right[(i + seedOffset) % fit.right.length];
     const postedAgo = (i * 5 + seedOffset) % 45;
     const id = `${state}-JOB-${i + 1}`;
     jobs.push({
