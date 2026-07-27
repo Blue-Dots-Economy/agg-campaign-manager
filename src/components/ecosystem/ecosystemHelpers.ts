@@ -107,3 +107,31 @@ export function applicationBucket(n: number): "0" | "1-5" | "6-20" | "20+" {
   if (n <= 20) return "6-20";
   return "20+";
 }
+
+export type AppAgeBucket = "week" | "month" | "older";
+
+export function appAgeBucket(iso: string): AppAgeBucket {
+  const d = new Date(iso).getTime();
+  const days = (Date.now() - d) / (1000 * 60 * 60 * 24);
+  if (days < 7) return "week";
+  if (days <= 30) return "month";
+  return "older";
+}
+
+export const APP_AGE_LABEL: Record<AppAgeBucket, string> = {
+  week: "This week",
+  month: "This month",
+  older: "Older",
+};
+
+export function relativeAge(iso: string): string {
+  const d = new Date(iso).getTime();
+  if (!Number.isFinite(d)) return "—";
+  const days = Math.floor((Date.now() - d) / (1000 * 60 * 60 * 24));
+  if (days <= 0) return "Today";
+  if (days === 1) return "1 day ago";
+  if (days < 30) return `${days} days ago`;
+  const months = Math.floor(days / 30);
+  if (months === 1) return "1 month ago";
+  return `${months} months ago`;
+}
