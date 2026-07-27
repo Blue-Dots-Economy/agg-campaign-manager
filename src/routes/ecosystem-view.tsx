@@ -74,7 +74,7 @@ function EcosystemView() {
           <JobsTab jobs={jobs} applications={applications} totalSeekers={seekers.length} />
         </TabsContent>
         <TabsContent value="seekers" className="space-y-6">
-          <SeekersTab seekers={seekers} />
+          <SeekersTab jobs={jobs} seekers={seekers} />
         </TabsContent>
       </Tabs>
     </div>
