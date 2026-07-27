@@ -77,8 +77,8 @@ export function GapTable({ jobs }: { jobs: JobPost[] }) {
         <div className="flex items-center gap-3">
           <Tabs value={view} onValueChange={(v) => setView(v as View)}>
             <TabsList>
-              <TabsTrigger value="balance">Balance</TabsTrigger>
-              <TabsTrigger value="table">Table</TabsTrigger>
+              <TabsTrigger value="balance" className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">Balance</TabsTrigger>
+              <TabsTrigger value="table" className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">Table</TabsTrigger>
             </TabsList>
           </Tabs>
           <div className="text-xs text-muted-foreground tabular-nums">
@@ -90,8 +90,8 @@ export function GapTable({ jobs }: { jobs: JobPost[] }) {
       <div className="flex flex-wrap items-center gap-3 mb-4">
         <Tabs value={mode} onValueChange={(v) => { setMode(v as Mode); setKeyFilter("all"); }}>
           <TabsList>
-            <TabsTrigger value="role">By Role</TabsTrigger>
-            <TabsTrigger value="location">By Location</TabsTrigger>
+            <TabsTrigger value="role" className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">By Role</TabsTrigger>
+            <TabsTrigger value="location" className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">By Location</TabsTrigger>
           </TabsList>
         </Tabs>
         <Select value={keyFilter} onValueChange={setKeyFilter}>
