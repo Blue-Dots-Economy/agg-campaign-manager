@@ -17,11 +17,15 @@ export function GapDrilldownDialog({
   onOpenChange,
   title,
   jobs,
+  partial,
+  right,
 }: {
   open: boolean;
   onOpenChange: (o: boolean) => void;
   title: string;
   jobs: JobPost[];
+  partial?: number;
+  right?: number;
 }) {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -30,8 +34,16 @@ export function GapDrilldownDialog({
           <DialogTitle>{title}</DialogTitle>
           <DialogDescription>
             {jobs.length} open job {jobs.length === 1 ? "post" : "posts"} in this group.
+            {(partial !== undefined || right !== undefined) && (
+              <span className="ml-2 text-xs">
+                · Partial Fit pool: <span className="font-medium text-foreground">{partial ?? 0}</span>
+                {" · "}
+                Right Fit pool: <span className="font-medium text-foreground">{right ?? 0}</span>
+              </span>
+            )}
           </DialogDescription>
         </DialogHeader>
+
         <div className="max-h-[65vh] overflow-auto">
           <Table>
             <TableHeader>
