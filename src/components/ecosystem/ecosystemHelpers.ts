@@ -1,0 +1,93 @@
+import { format } from "date-fns";
+
+export const fmtInt = (n: number | null | undefined): string =>
+  typeof n === "number" && Number.isFinite(n) ? n.toLocaleString("en-IN") : "—";
+
+export const fmtSalary = (n: number | null | undefined): string =>
+  typeof n === "number" && n > 0 ? `₹${n.toLocaleString("en-IN")}/month` : "—";
+
+export const fmtDate = (iso: string | null | undefined): string => {
+  if (!iso) return "—";
+  const d = new Date(iso);
+  return Number.isNaN(d.getTime()) ? "—" : format(d, "dd MMM yyyy");
+};
+
+export const nz = (s: string | null | undefined): string => (s && s.trim() ? s : "—");
+
+export function maskName(name: string): string {
+  if (!name) return "—";
+  const parts = name.trim().split(/\s+/);
+  return parts
+    .map((p) => (p.length <= 2 ? p[0] + "*" : p[0] + "*".repeat(Math.max(1, p.length - 2)) + p[p.length - 1]))
+    .join(" ");
+}
+
+export function maskPhone(p: string): string {
+  if (!p) return "—";
+  const digits = p.replace(/\D/g, "");
+  if (digits.length < 4) return "•".repeat(digits.length);
+  return "•".repeat(digits.length - 4) + digits.slice(-4);
+}
+
+export function maskEmail(e: string): string {
+  if (!e || !e.includes("@")) return "—";
+  const [u, d] = e.split("@");
+  const uMask = u.length <= 2 ? u[0] + "*" : u.slice(0, 2) + "*".repeat(Math.max(1, u.length - 2));
+  return `${uMask}@${d}`;
+}
+
+export type GapLevel = "Excellent" | "Good supply" | "Balanced" | "Borderline" | "Supply gap";
+
+export function gapLevel(gap: number): GapLevel {
+  if (gap > 4) return "Supply gap";
+  if (gap >= 2) return "Borderline";
+  if (gap === 1) return "Balanced";
+  if (gap === 0) return "Good supply";
+  return "Excellent";
+}
+
+export const GAP_LEVEL_CLASSES: Record<GapLevel, string> = {
+  "Supply gap": "bg-rose-500/15 text-rose-700 dark:text-rose-400 border-rose-500/30",
+  Borderline: "bg-amber-500/15 text-amber-700 dark:text-amber-400 border-amber-500/30",
+  Balanced: "bg-muted text-foreground border-border",
+  "Good supply": "bg-emerald-500/15 text-emerald-700 dark:text-emerald-400 border-emerald-500/30",
+  Excellent: "bg-emerald-500/20 text-emerald-800 dark:text-emerald-300 border-emerald-500/40",
+};
+
+export type InstitutionType = "ITI" | "Non-ITI" | "Unknown";
+export function classifyInstitutionType(name: string): InstitutionType {
+  if (!name) return "Unknown";
+  const s = name.toLowerCase();
+  if (s.includes("iti") || s.includes("industrial training")) return "ITI";
+  return "Non-ITI";
+}
+
+export type Association = "Govt" | "Pvt" | "Unknown";
+export function classifyAssociation(name: string): Association {
+  if (!name) return "Unknown";
+  const s = name.toLowerCase();
+  if (s.includes("govt") || s.includes("government")) return "Govt";
+  if (s.includes("pvt") || s.includes("private")) return "Pvt";
+  return "Unknown";
+}
+
+export function jobFreshness(postedIso: string): "latest" | "recent" | "old" {
+  const d = new Date(postedIso).getTime();
+  const days = (Date.now() - d) / (1000 * 60 * 60 * 24);
+  if (days < 14) return "latest";
+  if (days <= 28) return "recent";
+  return "old";
+}
+
+export const FRESHNESS_LABEL: Record<"latest" | "recent" | "old", string> = {
+  latest: "Latest (<14d)",
+  recent: "Recent (14–28d)",
+  old: "Old (>28d)",
+};
+
+export function applicationBucket(n: number): "0" | "1-5" | "6-20" | "20+" {
+  if (n === 0) return "0";
+  if (n <= 5) return "1-5";
+  if (n <= 20) return "6-20";
+  return "20+";
+}
