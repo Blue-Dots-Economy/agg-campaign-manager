@@ -10,11 +10,14 @@ export function JobsTab({
   jobs,
   applications,
   totalSeekers,
+  totalApplications,
 }: {
   jobs: JobPost[];
   applications: Application[];
   totalSeekers: number;
+  totalApplications?: number;
 }) {
+  const applicationsCount = totalApplications ?? applications.length;
   const open = useMemo(() => jobs.filter((j) => j.status === "open"), [jobs]);
   const providers = useMemo(() => new Set(open.map((j) => j.posted_by)).size, [open]);
   const openings = useMemo(() => open.reduce((s, j) => s + j.current_openings, 0), [open]);
@@ -30,7 +33,7 @@ export function JobsTab({
   // TODO(ecosystem): mock previous/trend — replace with real period-over-period data in Phase 3
   const providersPrev = mockPrevious(providers, 0.88);
   const openingsPrev = mockPrevious(openings, 0.82);
-  const applicationsPrev = mockPrevious(applications.length, 0.91);
+  const applicationsPrev = mockPrevious(applicationsCount, 0.91);
   const seekersPrev = mockPrevious(totalSeekers, 0.85);
 
   return (
@@ -61,10 +64,10 @@ export function JobsTab({
             >
               <MetricCard
                 label="Total Applications"
-                value={applications.length}
+                value={applicationsCount}
                 sub="applications received"
                 previous={applicationsPrev}
-                trend={mockTrend(applications.length, applicationsPrev)}
+                trend={mockTrend(applicationsCount, applicationsPrev)}
               />
             </button>
           </HoverCardTrigger>
