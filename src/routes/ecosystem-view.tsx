@@ -1,8 +1,8 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
 import { RefreshCw, Loader2, AlertCircle } from "lucide-react";
-import { useQuery, useQueryClient, useServerFn } from "@tanstack/react-query";
-import { useServerFn as useSFn } from "@tanstack/react-start";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useServerFn } from "@tanstack/react-start";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
@@ -33,7 +33,7 @@ function EcosystemView() {
     district: REGION_TREE[0].districts[0],
   });
 
-  const fetchFn = useSFn(fetchEcosystemData);
+  const fetchFn = useServerFn(fetchEcosystemData);
   const qc = useQueryClient();
   const queryKey = ["ecosystem", region.state, region.district] as const;
   const query = useQuery({
