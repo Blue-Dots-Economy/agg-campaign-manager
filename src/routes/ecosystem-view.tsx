@@ -1,18 +1,17 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
-import { RefreshCw } from "lucide-react";
+import { RefreshCw, Loader2, AlertCircle } from "lucide-react";
+import { useQuery, useQueryClient, useServerFn } from "@tanstack/react-query";
+import { useServerFn as useSFn } from "@tanstack/react-start";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { RegionSelector, type RegionValue } from "@/components/ecosystem/RegionSelector";
 import { JobsTab } from "@/components/ecosystem/JobsTab";
 import { SeekersTab } from "@/components/ecosystem/SeekersTab";
-import {
-  MOCK_APPLICATIONS,
-  MOCK_JOBS,
-  MOCK_SEEKERS,
-  REGION_TREE,
-} from "@/components/ecosystem/mockData";
+import { REGION_TREE } from "@/lib/ecosystem-config";
+import { fetchEcosystemData } from "@/lib/ecosystem.functions";
+import { relativeAge } from "@/components/ecosystem/ecosystemHelpers";
 
 export const Route = createFileRoute("/ecosystem-view")({
   component: EcosystemView,
@@ -34,16 +33,21 @@ function EcosystemView() {
     district: REGION_TREE[0].districts[0],
   });
 
-  const jobs = useMemo(
-    () => MOCK_JOBS.filter((j) => j.location_state === region.state && j.location_district === region.district),
-    [region]
-  );
-  const jobIds = useMemo(() => new Set(jobs.map((j) => j.id)), [jobs]);
-  const applications = useMemo(() => MOCK_APPLICATIONS.filter((a) => jobIds.has(a.job_id)), [jobIds]);
-  const seekers = useMemo(
-    () => MOCK_SEEKERS.filter((s) => s.location_state === region.state && s.location_district === region.district),
-    [region]
-  );
+  const fetchFn = useSFn(fetchEcosystemData);
+  const qc = useQueryClient();
+  const queryKey = ["ecosystem", region.state, region.district] as const;
+  const query = useQuery({
+    queryKey,
+    queryFn: () => fetchFn({ data: region }),
+    staleTime: 5 * 60 * 1000,
+  });
+
+  const data = query.data;
+
+  const jobs = data?.jobs ?? [];
+  const applications = useMemo(() => data?.applications.sample ?? [], [data]);
+  const seekerCounts = data?.seekerCounts ?? { profiles: 0, accounts: 0, orgs: 0 };
+  const totalApplications = data?.applications.total ?? applications.length;
 
   return (
     <Tabs defaultValue="jobs" className="space-y-6">
@@ -57,22 +61,58 @@ function EcosystemView() {
         </div>
         <div className="flex items-center gap-2">
           <Badge variant="outline" className="text-xs font-normal text-muted-foreground">
-            Synced 2h ago
+            {query.isFetching
+              ? "Syncing…"
+              : data?.lastSyncedAt
+                ? `Synced ${relativeAge(data.lastSyncedAt)}`
+                : "Not synced"}
           </Badge>
-          {/* TODO(ecosystem): Phase 3 — wire Sync Now to real Supabase trigger */}
-          <Button size="sm" variant="outline" className="h-8 gap-1.5 text-xs">
-            <RefreshCw className="h-3.5 w-3.5" />
+          <Button
+            size="sm"
+            variant="outline"
+            className="h-8 gap-1.5 text-xs"
+            disabled={query.isFetching}
+            onClick={() => qc.invalidateQueries({ queryKey })}
+          >
+            {query.isFetching ? (
+              <Loader2 className="h-3.5 w-3.5 animate-spin" />
+            ) : (
+              <RefreshCw className="h-3.5 w-3.5" />
+            )}
             Sync Now
           </Button>
         </div>
       </div>
 
-      <TabsContent value="jobs" className="space-y-6 mt-0">
-        <JobsTab jobs={jobs} applications={applications} totalSeekers={seekers.length} />
-      </TabsContent>
-      <TabsContent value="seekers" className="space-y-6 mt-0">
-        <SeekersTab jobs={jobs} seekers={seekers} />
-      </TabsContent>
+      {query.isError ? (
+        <div className="rounded-xl border bg-card p-6 flex flex-col items-center gap-3">
+          <AlertCircle className="h-6 w-6 text-destructive" />
+          <p className="text-sm text-muted-foreground text-center">
+            {(query.error as Error)?.message ?? "Failed to load ecosystem data."}
+          </p>
+          <Button size="sm" variant="outline" onClick={() => query.refetch()}>
+            Retry
+          </Button>
+        </div>
+      ) : query.isLoading || !data ? (
+        <div className="rounded-xl border bg-card p-10 flex items-center justify-center gap-2 text-sm text-muted-foreground">
+          <Loader2 className="h-4 w-4 animate-spin" /> Loading ecosystem data…
+        </div>
+      ) : (
+        <>
+          <TabsContent value="jobs" className="space-y-6 mt-0">
+            <JobsTab
+              jobs={jobs}
+              applications={applications}
+              totalSeekers={seekerCounts.profiles}
+              totalApplications={totalApplications}
+            />
+          </TabsContent>
+          <TabsContent value="seekers" className="space-y-6 mt-0">
+            <SeekersTab jobs={jobs} counts={seekerCounts} />
+          </TabsContent>
+        </>
+      )}
     </Tabs>
   );
 }
