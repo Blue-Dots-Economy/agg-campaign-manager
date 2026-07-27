@@ -51,8 +51,8 @@ function EcosystemView() {
         <div className="flex flex-wrap items-center gap-2">
           <RegionSelector value={region} onChange={setRegion} />
           <TabsList>
-            <TabsTrigger value="jobs">Jobs</TabsTrigger>
-            <TabsTrigger value="seekers">Seekers</TabsTrigger>
+            <TabsTrigger value="jobs" className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">Jobs</TabsTrigger>
+            <TabsTrigger value="seekers" className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">Seekers</TabsTrigger>
           </TabsList>
         </div>
         <div className="flex items-center gap-2">
