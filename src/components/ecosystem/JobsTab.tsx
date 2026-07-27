@@ -10,11 +10,14 @@ export function JobsTab({
   jobs,
   applications,
   totalSeekers,
+  totalApplications,
 }: {
   jobs: JobPost[];
   applications: Application[];
   totalSeekers: number;
+  totalApplications?: number;
 }) {
+  const applicationsCount = totalApplications ?? applications.length;
   const open = useMemo(() => jobs.filter((j) => j.status === "open"), [jobs]);
   const providers = useMemo(() => new Set(open.map((j) => j.posted_by)).size, [open]);
   const openings = useMemo(() => open.reduce((s, j) => s + j.current_openings, 0), [open]);
