@@ -11,9 +11,9 @@ import {
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import type { JobPost } from "./mockData";
-import { GAP_LEVEL_CLASSES, fmtInt, gapLevel, type GapLevel } from "./ecosystemHelpers";
+import { GAP_LEVEL_CLASSES, ROLE_CATEGORIES, fmtInt, gapLevel, roleCategory, type GapLevel } from "./ecosystemHelpers";
 import { GapDrilldownDialog } from "./GapDrilldownDialog";
-import { BalanceStrip, type BalanceRow } from "./BalanceStrip";
+import { BalanceStrip, type BalanceRow, type BalanceGroup } from "./BalanceStrip";
 
 type Mode = "role" | "location";
 type View = "balance" | "table";
