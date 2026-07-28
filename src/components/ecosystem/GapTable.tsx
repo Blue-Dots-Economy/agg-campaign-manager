@@ -146,7 +146,7 @@ export function GapTable({ jobs }: { jobs: JobPost[] }) {
       </div>
 
       {view === "balance" ? (
-        <BalanceStrip rows={filtered} onRowClick={(r) => setDrill(r)} />
+        <BalanceStrip rows={filtered} groups={groups} onRowClick={(r) => setDrill(r)} />
       ) : (
         <div className="max-h-[440px] overflow-y-auto overflow-x-auto">
           <Table>
