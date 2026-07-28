@@ -64,6 +64,33 @@ export function GapTable({ jobs }: { jobs: JobPost[] }) {
     return true;
   });
 
+  const groups: BalanceGroup[] | undefined = (() => {
+    if (mode !== "role") return undefined;
+    const byCat = new Map<string, BalanceRow[]>();
+    for (const r of filtered) {
+      const cat = roleCategory(r.key);
+      if (!byCat.has(cat)) byCat.set(cat, []);
+      byCat.get(cat)!.push(r);
+    }
+    const out: BalanceGroup[] = [];
+    for (const cat of ROLE_CATEGORIES) {
+      const rs = byCat.get(cat);
+      if (!rs || rs.length === 0) continue;
+      rs.sort((a, b) => b.gap - a.gap);
+      const openings = rs.reduce((s, r) => s + r.openings, 0);
+      const applications = rs.reduce((s, r) => s + r.applications, 0);
+      const gap = openings - applications;
+      const partial = rs.reduce((m, r) => Math.max(m, r.partial), 0);
+      const right = rs.reduce((m, r) => Math.max(m, r.right), 0);
+      out.push({
+        key: cat,
+        rows: rs,
+        rollup: { key: cat, openings, applications, gap, partial, right, level: gapLevel(gap), jobs: rs.flatMap((r) => r.jobs) },
+      });
+    }
+    return out;
+  })();
+
   const keyOptions = useMemo(() => {
     const s = Array.from(new Set(rows.map((r) => r.key))).sort();
     return s;
