@@ -216,6 +216,7 @@ function LaunchWizard() {
     if (step === 0) return !!program;
     if (step === 1) return !!agentId;
     if (step === 2) {
+      if (source === "cohort") return cohortContacts.length > 0;
       if (!report) return false;
       if (report.missingCols.length > 0) return false;
       if (report.invalid === 0) return true;
