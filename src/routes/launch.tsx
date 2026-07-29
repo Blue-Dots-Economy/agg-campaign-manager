@@ -112,6 +112,13 @@ function LaunchWizard() {
   const [validating, setValidating] = useState(false);
   const [proceedInvalid, setProceedInvalid] = useState(false);
 
+  const [source, setSource] = useState<"upload" | "cohort">("upload");
+  const [cohortIntent, setCohortIntent] = useState<CohortIntent>("drive");
+  const [profileStatuses, setProfileStatuses] = useState<string[]>(["Active", "At Risk"]);
+  const [confidenceBand, setConfidenceBand] = useState<ConfidenceBand>("low");
+  const [seekers, setSeekers] = useState<Seeker[] | null>(null);
+  const [seekersLoading, setSeekersLoading] = useState(false);
+
   const [schedule, setSchedule] = useState<ScheduleState>(() => makeDefaultSchedule());
   const [concurrency, setConcurrency] = useState(5);
   const [maxRetries, setMaxRetries] = useState(2);
