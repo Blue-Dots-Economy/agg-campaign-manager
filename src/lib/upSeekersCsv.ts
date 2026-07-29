@@ -29,6 +29,7 @@ export type Seeker = {
   profileFieldChecks: ProfileFieldCheck[];
   emailPresent: boolean;
   phonePresent: boolean;
+  phone: string;
   followUpFor: string;
   status: "New" | "Active" | "At Risk" | "Inactive";
   profileStatus: "Complete" | "Incomplete";
