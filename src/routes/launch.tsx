@@ -443,18 +443,54 @@ function LaunchWizard() {
       )}
 
       {step === 2 && (
-        <UploadStep
-          file={file}
-          parsed={parsed}
-          report={report}
-          validating={validating}
-          region={region}
-          setRegion={setRegion}
-          proceedInvalid={proceedInvalid}
-          setProceedInvalid={setProceedInvalid}
-          onFile={onFile}
-          onReset={() => { setFile(null); setParsed(null); setReport(null); setProceedInvalid(false); }}
-        />
+        <div className="space-y-4">
+          <div className="grid gap-3 sm:grid-cols-2 max-w-xl">
+            {([
+              { id: "upload", icon: Upload, title: "Bulk upload", desc: "Dial a CSV of contacts you provide." },
+              { id: "cohort", icon: Gauge, title: "Create cohort", desc: "Build an audience from My Blue Dots." },
+            ] as const).map((o) => (
+              <button
+                key={o.id}
+                onClick={() => setSource(o.id)}
+                className={cn(
+                  "rounded-xl border-2 p-4 text-left transition-colors flex items-start gap-3",
+                  source === o.id ? "border-brand bg-brand-soft" : "border-border bg-card hover:bg-muted/40",
+                )}
+              >
+                <span className="mt-0.5 text-brand"><o.icon className="h-5 w-5" /></span>
+                <span>
+                  <span className="block text-sm font-semibold">{o.title}</span>
+                  <span className="block text-xs text-muted-foreground mt-0.5">{o.desc}</span>
+                </span>
+              </button>
+            ))}
+          </div>
+          {source === "upload" ? (
+            <UploadStep
+              file={file}
+              parsed={parsed}
+              report={report}
+              validating={validating}
+              region={region}
+              setRegion={setRegion}
+              proceedInvalid={proceedInvalid}
+              setProceedInvalid={setProceedInvalid}
+              onFile={onFile}
+              onReset={() => { setFile(null); setParsed(null); setReport(null); setProceedInvalid(false); }}
+            />
+          ) : (
+            <CohortStep
+              intent={cohortIntent}
+              setIntent={setCohortIntent}
+              profileStatuses={profileStatuses}
+              setProfileStatuses={setProfileStatuses}
+              confidenceBand={confidenceBand}
+              setConfidenceBand={setConfidenceBand}
+              loading={seekersLoading}
+              count={cohortContacts.length}
+            />
+          )}
+        </div>
       )}
 
       {step === 3 && (
