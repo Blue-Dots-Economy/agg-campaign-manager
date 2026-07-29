@@ -595,7 +595,7 @@ function LaunchWizard() {
             <Field label="Campaign day" value={campaignDay} />
             <Field label="Campaign date" value={campaignDate} />
             <Field label="Campaign type" value={campaignType} />
-            <Field label="Valid contacts" value={`${report?.valid ?? 0} of ${report?.total ?? 0}`} />
+            <Field label="Contacts" value={source === "cohort" ? String(cohortContacts.length) : `${report?.valid ?? 0} of ${report?.total ?? 0}`} />
             <Field label="Will skip" value={String(report?.invalid ?? 0)} />
             <Field label="Days" value={dayLabels(schedule.days)} />
             <Field label="Time window" value={`${schedule.startTime}–${schedule.endTime}`} />
