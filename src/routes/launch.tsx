@@ -294,7 +294,6 @@ function LaunchWizard() {
   };
 
   const launch = async () => {
-    if (!report) return;
     if (Number.isFinite(available) && concurrency > (available as number)) {
       const msg = `Only ${available} concurrency available — reduce concurrency or stop a running batch.`;
       setLaunchError(msg);
@@ -303,13 +302,21 @@ function LaunchWizard() {
     }
     setLaunching(true); setLaunchError(null); setStartPending(false); setStartStatus(null);
     try {
-      const contacts = report.validRows.map((r) => ({
-        contact_name: r.name,
-        contact_phone: r.phone,
-        country_code: r.cc,
-        ...r.extras,
-        _region: region,
-      }));
+      const contacts =
+        source === "cohort"
+          ? cohortContacts.map((c) => ({ ...c, _region: region }))
+          : (report?.validRows ?? []).map((r) => ({
+              contact_name: r.name,
+              contact_phone: r.phone,
+              country_code: r.cc,
+              ...r.extras,
+              _region: region,
+            }));
+      if (contacts.length === 0) {
+        toast.error("No contacts to launch.");
+        setLaunching(false);
+        return;
+      }
       const created = await createBatchFn({ data: { agentId, batchName, contacts } }) as
         | { ok: true; batchId: string; contactsInserted?: number; totalRows?: number; message?: string }
         | { ok: false; batchId: null; validation: { message: string; totalRows?: number; validRows?: number; invalidRows?: number; errors: Array<{ row?: number; field?: string; message?: string; value?: any }> } };
@@ -346,7 +353,6 @@ function LaunchWizard() {
           },
         });
       } catch (e) {
-        // non-fatal: log and continue
         console.error("recordLaunchedBatch failed", e);
       }
       await startCreatedBatch(id, contacts.length);
@@ -354,19 +360,18 @@ function LaunchWizard() {
       const msg = e instanceof Error ? e.message : "Launch failed";
       setLaunchError(msg);
       toast.error(msg.split("\n")[0]);
-      if (file) {
-        appendLaunchLog({
-          date: new Date().toISOString(),
-          program,
-          file: file.name,
-          rows: report.valid,
-          status: "failed",
-        });
-      }
+      appendLaunchLog({
+        date: new Date().toISOString(),
+        program,
+        file: file?.name ?? batchName,
+        rows: source === "cohort" ? cohortContacts.length : (report?.valid ?? 0),
+        status: "failed",
+      });
     } finally {
       setLaunching(false);
     }
   };
+
 
   return (
     <div className="space-y-6">
