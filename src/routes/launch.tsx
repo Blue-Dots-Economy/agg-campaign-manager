@@ -580,7 +580,15 @@ function LaunchWizard() {
             <Field label="Agent" value={agentName || agentId} mono />
             <Field label="Agent id" value={agentId} mono />
             <Field label="Batch name" value={batchName} />
-            <Field label="File" value={file?.name ?? "—"} />
+            <Field label="Audience" value={source === "cohort" ? "Cohort · My Blue Dots" : "Bulk upload"} />
+            {source === "cohort" ? (
+              <>
+                <Field label="Cohort intent" value={cohortIntent === "drive" ? "Drive Applications" : "Fill Missing Information"} />
+                <Field label="Cohort filter" value={cohortIntent === "drive" ? profileStatuses.join(", ") : `Confidence ${confidenceBand}`} />
+              </>
+            ) : (
+              <Field label="File" value={file?.name ?? "—"} />
+            )}
             <Field label="Region" value={region} />
             <Field label="Language" value={regionInfo.language || "—"} />
             <Field label="City campaign" value={regionInfo.city || "—"} />
