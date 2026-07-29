@@ -50,6 +50,8 @@ import { toast } from "sonner";
 import { ScheduleEditor, type ScheduleState, makeDefaultSchedule } from "@/components/ScheduleEditor";
 import { appendLaunchLog } from "@/lib/launch-log";
 import { cn } from "@/lib/utils";
+import { loadSeekersAsync, type Seeker } from "@/lib/upSeekersCsv";
+import { buildCohort, type CohortIntent, type ConfidenceBand } from "@/lib/cohort";
 
 export const Route = createFileRoute("/launch")({
   component: LaunchWizard,
@@ -58,7 +60,7 @@ export const Route = createFileRoute("/launch")({
 const STEPS = [
   "Program",
   "Agent",
-  "Upload & validate",
+  "Audience",
   "Schedule",
   "Concurrency",
   "Review",
@@ -110,6 +112,13 @@ function LaunchWizard() {
   const [validating, setValidating] = useState(false);
   const [proceedInvalid, setProceedInvalid] = useState(false);
 
+  const [source, setSource] = useState<"upload" | "cohort">("upload");
+  const [cohortIntent, setCohortIntent] = useState<CohortIntent>("drive");
+  const [profileStatuses, setProfileStatuses] = useState<string[]>(["Active", "At Risk"]);
+  const [confidenceBand, setConfidenceBand] = useState<ConfidenceBand>("low");
+  const [seekers, setSeekers] = useState<Seeker[] | null>(null);
+  const [seekersLoading, setSeekersLoading] = useState(false);
+
   const [schedule, setSchedule] = useState<ScheduleState>(() => makeDefaultSchedule());
   const [concurrency, setConcurrency] = useState(5);
   const [maxRetries, setMaxRetries] = useState(2);
@@ -145,8 +154,28 @@ function LaunchWizard() {
   const campaignType = useMemo(() => {
     const lang = regionInfo.language || region || "";
     const dayNum = (campaignDay.match(/\d+/) || ["1"])[0];
-    return `${program.toUpperCase()}_${lang}_Day${dayNum}`;
-  }, [program, regionInfo.language, region, campaignDay]);
+    const intentTag = source === "cohort" ? (cohortIntent === "drive" ? "DriveApplications" : "FillInfo") : "";
+    return `${program.toUpperCase()}_${lang}_${intentTag ? intentTag + "_" : ""}Day${dayNum}`;
+  }, [program, regionInfo.language, region, campaignDay, source, cohortIntent]);
+
+  useEffect(() => {
+    if (source === "cohort" && !seekers && !seekersLoading) {
+      setSeekersLoading(true);
+      loadSeekersAsync()
+        .then((r) => setSeekers(r.seekers))
+        .catch(() => setSeekers([]))
+        .finally(() => setSeekersLoading(false));
+    }
+  }, [source, seekers, seekersLoading]);
+
+  useEffect(() => {
+    if (source === "cohort" && region !== "GZB") setRegion("GZB");
+  }, [source, region]);
+
+  const cohortContacts = useMemo(
+    () => (seekers ? buildCohort(seekers, { intent: cohortIntent, profileStatuses, confidenceBand }) : []),
+    [seekers, cohortIntent, profileStatuses, confidenceBand],
+  );
 
   // Fetch next campaign day suggestion when program changes.
   useEffect(() => {
@@ -187,6 +216,7 @@ function LaunchWizard() {
     if (step === 0) return !!program;
     if (step === 1) return !!agentId;
     if (step === 2) {
+      if (source === "cohort") return cohortContacts.length > 0;
       if (!report) return false;
       if (report.missingCols.length > 0) return false;
       if (report.invalid === 0) return true;
@@ -199,7 +229,7 @@ function LaunchWizard() {
       return true;
     }
     return true;
-  }, [step, program, agentId, report, proceedInvalid, schedule, concurrency, maxRetries, retryAfterHrs, available]);
+  }, [step, program, agentId, report, proceedInvalid, schedule, concurrency, maxRetries, retryAfterHrs, available, source, cohortContacts.length]);
 
   const onFile = useCallback(async (f: File) => {
     setFile(f);
@@ -264,7 +294,6 @@ function LaunchWizard() {
   };
 
   const launch = async () => {
-    if (!report) return;
     if (Number.isFinite(available) && concurrency > (available as number)) {
       const msg = `Only ${available} concurrency available — reduce concurrency or stop a running batch.`;
       setLaunchError(msg);
@@ -273,13 +302,21 @@ function LaunchWizard() {
     }
     setLaunching(true); setLaunchError(null); setStartPending(false); setStartStatus(null);
     try {
-      const contacts = report.validRows.map((r) => ({
-        contact_name: r.name,
-        contact_phone: r.phone,
-        country_code: r.cc,
-        ...r.extras,
-        _region: region,
-      }));
+      const contacts =
+        source === "cohort"
+          ? cohortContacts.map((c) => ({ ...c, _region: region }))
+          : (report?.validRows ?? []).map((r) => ({
+              contact_name: r.name,
+              contact_phone: r.phone,
+              country_code: r.cc,
+              ...r.extras,
+              _region: region,
+            }));
+      if (contacts.length === 0) {
+        toast.error("No contacts to launch.");
+        setLaunching(false);
+        return;
+      }
       const created = await createBatchFn({ data: { agentId, batchName, contacts } }) as
         | { ok: true; batchId: string; contactsInserted?: number; totalRows?: number; message?: string }
         | { ok: false; batchId: null; validation: { message: string; totalRows?: number; validRows?: number; invalidRows?: number; errors: Array<{ row?: number; field?: string; message?: string; value?: any }> } };
@@ -316,7 +353,6 @@ function LaunchWizard() {
           },
         });
       } catch (e) {
-        // non-fatal: log and continue
         console.error("recordLaunchedBatch failed", e);
       }
       await startCreatedBatch(id, contacts.length);
@@ -324,19 +360,18 @@ function LaunchWizard() {
       const msg = e instanceof Error ? e.message : "Launch failed";
       setLaunchError(msg);
       toast.error(msg.split("\n")[0]);
-      if (file) {
-        appendLaunchLog({
-          date: new Date().toISOString(),
-          program,
-          file: file.name,
-          rows: report.valid,
-          status: "failed",
-        });
-      }
+      appendLaunchLog({
+        date: new Date().toISOString(),
+        program,
+        file: file?.name ?? batchName,
+        rows: source === "cohort" ? cohortContacts.length : (report?.valid ?? 0),
+        status: "failed",
+      });
     } finally {
       setLaunching(false);
     }
   };
+
 
   return (
     <div className="space-y-6">
@@ -408,18 +443,54 @@ function LaunchWizard() {
       )}
 
       {step === 2 && (
-        <UploadStep
-          file={file}
-          parsed={parsed}
-          report={report}
-          validating={validating}
-          region={region}
-          setRegion={setRegion}
-          proceedInvalid={proceedInvalid}
-          setProceedInvalid={setProceedInvalid}
-          onFile={onFile}
-          onReset={() => { setFile(null); setParsed(null); setReport(null); setProceedInvalid(false); }}
-        />
+        <div className="space-y-4">
+          <div className="grid gap-3 sm:grid-cols-2 max-w-xl">
+            {([
+              { id: "upload", icon: Upload, title: "Bulk upload", desc: "Dial a CSV of contacts you provide." },
+              { id: "cohort", icon: Gauge, title: "Create cohort", desc: "Build an audience from My Blue Dots." },
+            ] as const).map((o) => (
+              <button
+                key={o.id}
+                onClick={() => setSource(o.id)}
+                className={cn(
+                  "rounded-xl border-2 p-4 text-left transition-colors flex items-start gap-3",
+                  source === o.id ? "border-brand bg-brand-soft" : "border-border bg-card hover:bg-muted/40",
+                )}
+              >
+                <span className="mt-0.5 text-brand"><o.icon className="h-5 w-5" /></span>
+                <span>
+                  <span className="block text-sm font-semibold">{o.title}</span>
+                  <span className="block text-xs text-muted-foreground mt-0.5">{o.desc}</span>
+                </span>
+              </button>
+            ))}
+          </div>
+          {source === "upload" ? (
+            <UploadStep
+              file={file}
+              parsed={parsed}
+              report={report}
+              validating={validating}
+              region={region}
+              setRegion={setRegion}
+              proceedInvalid={proceedInvalid}
+              setProceedInvalid={setProceedInvalid}
+              onFile={onFile}
+              onReset={() => { setFile(null); setParsed(null); setReport(null); setProceedInvalid(false); }}
+            />
+          ) : (
+            <CohortStep
+              intent={cohortIntent}
+              setIntent={setCohortIntent}
+              profileStatuses={profileStatuses}
+              setProfileStatuses={setProfileStatuses}
+              confidenceBand={confidenceBand}
+              setConfidenceBand={setConfidenceBand}
+              loading={seekersLoading}
+              count={cohortContacts.length}
+            />
+          )}
+        </div>
       )}
 
       {step === 3 && (
@@ -509,14 +580,22 @@ function LaunchWizard() {
             <Field label="Agent" value={agentName || agentId} mono />
             <Field label="Agent id" value={agentId} mono />
             <Field label="Batch name" value={batchName} />
-            <Field label="File" value={file?.name ?? "—"} />
+            <Field label="Audience" value={source === "cohort" ? "Cohort · My Blue Dots" : "Bulk upload"} />
+            {source === "cohort" ? (
+              <>
+                <Field label="Cohort intent" value={cohortIntent === "drive" ? "Drive Applications" : "Fill Missing Information"} />
+                <Field label="Cohort filter" value={cohortIntent === "drive" ? profileStatuses.join(", ") : `Confidence ${confidenceBand}`} />
+              </>
+            ) : (
+              <Field label="File" value={file?.name ?? "—"} />
+            )}
             <Field label="Region" value={region} />
             <Field label="Language" value={regionInfo.language || "—"} />
             <Field label="City campaign" value={regionInfo.city || "—"} />
             <Field label="Campaign day" value={campaignDay} />
             <Field label="Campaign date" value={campaignDate} />
             <Field label="Campaign type" value={campaignType} />
-            <Field label="Valid contacts" value={`${report?.valid ?? 0} of ${report?.total ?? 0}`} />
+            <Field label="Contacts" value={source === "cohort" ? String(cohortContacts.length) : `${report?.valid ?? 0} of ${report?.total ?? 0}`} />
             <Field label="Will skip" value={String(report?.invalid ?? 0)} />
             <Field label="Days" value={dayLabels(schedule.days)} />
             <Field label="Time window" value={`${schedule.startTime}–${schedule.endTime}`} />
@@ -799,4 +878,115 @@ function InfoTile({ icon, label, value, hint }: { icon?: React.ReactNode; label:
 const DAY_NAMES = ["", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 function dayLabels(days: number[]) {
   return days.slice().sort().map((d) => DAY_NAMES[d]).join(", ") || "—";
+}
+
+function CohortStep({
+  intent, setIntent, profileStatuses, setProfileStatuses, confidenceBand, setConfidenceBand, loading, count,
+}: {
+  intent: CohortIntent;
+  setIntent: (v: CohortIntent) => void;
+  profileStatuses: string[];
+  setProfileStatuses: (v: string[]) => void;
+  confidenceBand: ConfidenceBand;
+  setConfidenceBand: (v: ConfidenceBand) => void;
+  loading: boolean;
+  count: number;
+}) {
+  const STATUSES = ["New", "Active", "At Risk", "Inactive"];
+  const BANDS: { id: ConfidenceBand; label: string }[] = [
+    { id: "low", label: "Low (< 40)" },
+    { id: "medium", label: "Medium (40–70)" },
+    { id: "high", label: "High (> 70)" },
+  ];
+  const toggleStatus = (s: string) =>
+    setProfileStatuses(profileStatuses.includes(s) ? profileStatuses.filter((x) => x !== s) : [...profileStatuses, s]);
+
+  return (
+    <Panel title="Step 3 · Create cohort" description="Build an audience from My Blue Dots">
+      <div className="grid gap-3 sm:grid-cols-2 max-w-xl mb-5">
+        {([
+          { id: "drive", icon: Rocket, title: "Drive Applications", desc: "Call seekers to push them to apply." },
+          { id: "fill", icon: FileText, title: "Fill Missing Information", desc: "Call seekers to complete their profile." },
+        ] as const).map((o) => (
+          <button
+            key={o.id}
+            onClick={() => setIntent(o.id)}
+            className={cn(
+              "rounded-xl border-2 p-4 text-left transition-colors flex items-start gap-3",
+              intent === o.id ? "border-brand bg-brand-soft" : "border-border bg-card hover:bg-muted/40",
+            )}
+          >
+            <span className="mt-0.5 text-brand"><o.icon className="h-5 w-5" /></span>
+            <span>
+              <span className="flex items-center gap-2 text-sm font-semibold">
+                {o.title}
+                {o.id === "fill" && <span className="rounded-full bg-amber-500/20 px-2 py-0.5 text-[10px] font-medium text-amber-800 dark:text-amber-300">Mock</span>}
+              </span>
+              <span className="block text-xs text-muted-foreground mt-0.5">{o.desc}</span>
+            </span>
+          </button>
+        ))}
+      </div>
+
+      {intent === "drive" ? (
+        <div className="max-w-xl">
+          <Label className="text-xs">Profile status · select one or more</Label>
+          <div className="mt-2 flex flex-wrap gap-2">
+            {STATUSES.map((s) => {
+              const on = profileStatuses.includes(s);
+              return (
+                <button
+                  key={s}
+                  type="button"
+                  onClick={() => toggleStatus(s)}
+                  className={cn(
+                    "rounded-full border px-3 py-1 text-xs font-medium transition-colors flex items-center gap-1.5",
+                    on ? "border-brand bg-brand text-brand-foreground hover:bg-brand/90" : "border-border bg-card text-muted-foreground hover:bg-muted/40",
+                  )}
+                >
+                  {on && <Check className="h-3 w-3" />}{s}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      ) : (
+        <div className="max-w-xl">
+          <div className="mb-3 rounded-md border border-amber-500/30 bg-amber-500/15 px-3 py-2 text-xs text-amber-800 dark:text-amber-300">
+            Confidence score isn't in the data yet — this is a mock using profile completeness as a stand-in until the field lands.
+          </div>
+          <Label className="text-xs">Confidence score · target a band</Label>
+          <div className="mt-2 flex flex-wrap gap-2">
+            {BANDS.map((b) => {
+              const on = confidenceBand === b.id;
+              return (
+                <button
+                  key={b.id}
+                  type="button"
+                  onClick={() => setConfidenceBand(b.id)}
+                  className={cn(
+                    "rounded-full border px-3 py-1 text-xs font-medium transition-colors flex items-center gap-1.5",
+                    on ? "border-brand bg-brand text-brand-foreground hover:bg-brand/90" : "border-border bg-card text-muted-foreground hover:bg-muted/40",
+                  )}
+                >
+                  {on && <Check className="h-3 w-3" />}{b.label}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      <div className="mt-5 flex items-baseline gap-2 border-t border-border pt-4">
+        {loading ? (
+          <span className="flex items-center gap-2 text-sm text-muted-foreground"><Loader2 className="h-4 w-4 animate-spin" /> Loading My Blue Dots…</span>
+        ) : (
+          <>
+            <span className="text-2xl font-semibold tabular-nums">{count.toLocaleString("en-IN")}</span>
+            <span className="text-sm text-muted-foreground">blue dots match — they'll be called</span>
+          </>
+        )}
+      </div>
+    </Panel>
+  );
 }

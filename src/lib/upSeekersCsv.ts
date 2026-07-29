@@ -29,6 +29,7 @@ export type Seeker = {
   profileFieldChecks: ProfileFieldCheck[];
   emailPresent: boolean;
   phonePresent: boolean;
+  phone: string;
   followUpFor: string;
   status: "New" | "Active" | "At Risk" | "Inactive";
   profileStatus: "Complete" | "Incomplete";
@@ -389,6 +390,7 @@ export function parseSeekersCsv(text: string): Seeker[] {
       profileFieldChecks: checks.fields,
       emailPresent: (cEmail !== -1 ? (r[cEmail] ?? "") : "").trim().length > 0,
       phonePresent: (cPhone !== -1 ? (r[cPhone] ?? "") : "").trim().length > 0,
+      phone: (cPhone !== -1 ? (r[cPhone] ?? "") : "").replace(/[^\d]/g, ""),
       followUpFor: (r[cFollow] ?? "").trim(),
 
       status,
