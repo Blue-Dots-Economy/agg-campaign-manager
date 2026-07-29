@@ -390,6 +390,7 @@ export function parseSeekersCsv(text: string): Seeker[] {
       profileFieldChecks: checks.fields,
       emailPresent: (cEmail !== -1 ? (r[cEmail] ?? "") : "").trim().length > 0,
       phonePresent: (cPhone !== -1 ? (r[cPhone] ?? "") : "").trim().length > 0,
+      phone: (cPhone !== -1 ? (r[cPhone] ?? "") : "").replace(/[^\d]/g, ""),
       followUpFor: (r[cFollow] ?? "").trim(),
 
       status,
