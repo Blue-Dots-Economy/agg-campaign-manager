@@ -229,7 +229,7 @@ function LaunchWizard() {
       return true;
     }
     return true;
-  }, [step, program, agentId, report, proceedInvalid, schedule, concurrency, maxRetries, retryAfterHrs, available]);
+  }, [step, program, agentId, report, proceedInvalid, schedule, concurrency, maxRetries, retryAfterHrs, available, source, cohortContacts.length]);
 
   const onFile = useCallback(async (f: File) => {
     setFile(f);
