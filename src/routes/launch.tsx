@@ -154,8 +154,28 @@ function LaunchWizard() {
   const campaignType = useMemo(() => {
     const lang = regionInfo.language || region || "";
     const dayNum = (campaignDay.match(/\d+/) || ["1"])[0];
-    return `${program.toUpperCase()}_${lang}_Day${dayNum}`;
-  }, [program, regionInfo.language, region, campaignDay]);
+    const intentTag = source === "cohort" ? (cohortIntent === "drive" ? "DriveApplications" : "FillInfo") : "";
+    return `${program.toUpperCase()}_${lang}_${intentTag ? intentTag + "_" : ""}Day${dayNum}`;
+  }, [program, regionInfo.language, region, campaignDay, source, cohortIntent]);
+
+  useEffect(() => {
+    if (source === "cohort" && !seekers && !seekersLoading) {
+      setSeekersLoading(true);
+      loadSeekersAsync()
+        .then((r) => setSeekers(r.seekers))
+        .catch(() => setSeekers([]))
+        .finally(() => setSeekersLoading(false));
+    }
+  }, [source, seekers, seekersLoading]);
+
+  useEffect(() => {
+    if (source === "cohort" && region !== "GZB") setRegion("GZB");
+  }, [source, region]);
+
+  const cohortContacts = useMemo(
+    () => (seekers ? buildCohort(seekers, { intent: cohortIntent, profileStatuses, confidenceBand }) : []),
+    [seekers, cohortIntent, profileStatuses, confidenceBand],
+  );
 
   // Fetch next campaign day suggestion when program changes.
   useEffect(() => {
