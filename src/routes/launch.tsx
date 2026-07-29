@@ -50,6 +50,8 @@ import { toast } from "sonner";
 import { ScheduleEditor, type ScheduleState, makeDefaultSchedule } from "@/components/ScheduleEditor";
 import { appendLaunchLog } from "@/lib/launch-log";
 import { cn } from "@/lib/utils";
+import { loadSeekersAsync, type Seeker } from "@/lib/upSeekersCsv";
+import { buildCohort, type CohortIntent, type ConfidenceBand } from "@/lib/cohort";
 
 export const Route = createFileRoute("/launch")({
   component: LaunchWizard,
