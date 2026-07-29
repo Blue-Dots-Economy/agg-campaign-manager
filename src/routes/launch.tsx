@@ -60,7 +60,7 @@ export const Route = createFileRoute("/launch")({
 const STEPS = [
   "Program",
   "Agent",
-  "Upload & validate",
+  "Audience",
   "Schedule",
   "Concurrency",
   "Review",
