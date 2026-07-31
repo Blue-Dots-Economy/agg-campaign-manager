@@ -312,6 +312,10 @@ export function ProgramAnalytics({
         </div>
       )}
 
+      {!isDkb && <NorthStarTrend program={config.id} perDay={perDayRollup} />}
+
+
+
       {isDkb ? (
         <>
           <div className="grid gap-4 lg:grid-cols-3">
