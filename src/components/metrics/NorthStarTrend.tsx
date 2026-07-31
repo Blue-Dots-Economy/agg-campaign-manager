@@ -163,14 +163,26 @@ export function NorthStarTrend({
                   {t == null ? "" : ` · target ${t}%`}
                 </span>
               </div>
+              <div className="mt-1.5 flex flex-wrap gap-x-3 text-[11px] text-muted-foreground">
+                {WINDOWS.map((w) => (
+                  <span key={w.label}>
+                    {w.label}:{" "}
+                    <span className="font-medium text-foreground">
+                      {rolling[s.key][w.label].toFixed(1)}%
+                    </span>
+                    <span className="text-[10px]"> ({Math.min(data.length, w.days)}d)</span>
+                  </span>
+                ))}
+              </div>
             </div>
           );
         })}
       </div>
       <p className="mt-2 text-[11px] text-muted-foreground">
         Averages cover the {data.length} campaign {data.length === 1 ? "day" : "days"} in range; days
-        without data count as 0%. Dashed lines show the shared target for each metric (set them in
-        North Star Metrics).
+        without data count as 0%. 1W/2W/4W rolling averages use the most recent 7/14/28 campaign
+        days (or fewer if the range is shorter). Dashed lines show the shared target for each metric
+        (set them in North Star Metrics).
       </p>
     </Panel>
   );
