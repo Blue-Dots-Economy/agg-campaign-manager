@@ -25,7 +25,11 @@ const tooltipStyle = {
 } as const;
 
 export interface NorthStarTrendPoint {
-  label: string;
+  label?: string;
+  day?: string;
+  date?: string;
+  type?: string;
+  language?: string;
   answered: number;
   high_intent: number;
   converted: number;
@@ -38,19 +42,20 @@ const SERIES = [
 ] as const;
 
 const WINDOWS = [
-  { days: 7, label: "1W" },
-  { days: 14, label: "2W" },
-  { days: 28, label: "4W" },
+  { count: 1, label: "Last 1" },
+  { count: 3, label: "Last 3" },
+  { count: 5, label: "Last 5" },
+  { count: 10, label: "Last 10" },
 ] as const;
 
 const pct = (n: number, d: number) => (d > 0 ? Number(((n / d) * 100).toFixed(1)) : 0);
 
 export function NorthStarTrend({
   program,
-  perDay,
+  campaigns,
 }: {
   program: string;
-  perDay: NorthStarTrendPoint[];
+  campaigns: NorthStarTrendPoint[];
 }) {
   const fetchFn = useServerFn(fetchNorthStar);
   const { data: config } = useQuery({
@@ -59,16 +64,33 @@ export function NorthStarTrend({
     staleTime: 5 * 60_000,
   });
 
-  const data = useMemo(
-    () =>
-      (perDay ?? []).map((p) => ({
-        label: p.label,
-        pickup_to_app: pct(p.converted, p.answered),
-        highintent_to_app: pct(p.converted, p.high_intent),
-        pickup_to_highintent: pct(p.high_intent, p.answered),
-      })),
-    [perDay],
-  );
+  // One point per campaign run: a campaign is a distinct (date x type x language) run.
+  const data = useMemo(() => {
+    const m = new Map<
+      string,
+      { date: string; label: string; answered: number; high_intent: number; converted: number }
+    >();
+    for (const p of campaigns ?? []) {
+      const date = p.date || p.day || "";
+      const bits = [p.type, p.language].filter(Boolean).join(" · ");
+      const key = `${date}|${bits}`;
+      const cur =
+        m.get(key) ??
+        { date, label: bits ? `${date} ${bits}` : date || p.label || "—", answered: 0, high_intent: 0, converted: 0 };
+      cur.answered += p.answered ?? 0;
+      cur.high_intent += p.high_intent ?? 0;
+      cur.converted += p.converted ?? 0;
+      m.set(key, cur);
+    }
+    return [...m.values()]
+      .sort((a, b) => a.date.localeCompare(b.date))
+      .map((c) => ({
+        label: c.label,
+        pickup_to_app: pct(c.converted, c.answered),
+        highintent_to_app: pct(c.converted, c.high_intent),
+        pickup_to_highintent: pct(c.high_intent, c.answered),
+      }));
+  }, [campaigns]);
 
   const targets = new Map((config ?? []).map((r) => [r.key, r.threshold]));
 
@@ -90,7 +112,7 @@ export function NorthStarTrend({
     for (const s of SERIES) {
       out[s.key] = {};
       for (const w of WINDOWS) {
-        const slice = data.slice(-w.days);
+        const slice = data.slice(-w.count);
         if (slice.length === 0) {
           out[s.key][w.label] = 0;
           continue;
@@ -107,7 +129,7 @@ export function NorthStarTrend({
   return (
     <Panel
       title="North Star performance over time"
-      description="Daily conversion rates against shared targets"
+      description="Per-campaign conversion rates against shared targets"
     >
       <div className="h-72">
         <ResponsiveContainer>
@@ -159,7 +181,7 @@ export function NorthStarTrend({
               <div className="mt-0.5 flex items-baseline gap-2">
                 <span className="text-lg font-semibold tabular-nums">{averages[s.key].toFixed(1)}%</span>
                 <span className="text-[11px] text-muted-foreground">
-                  avg · {data.length} {data.length === 1 ? "day" : "days"}
+                  avg · {data.length} {data.length === 1 ? "campaign" : "campaigns"}
                   {t == null ? "" : ` · target ${t}%`}
                 </span>
               </div>
@@ -170,7 +192,7 @@ export function NorthStarTrend({
                     <span className="font-medium text-foreground">
                       {rolling[s.key][w.label].toFixed(1)}%
                     </span>
-                    <span className="text-[10px]"> ({Math.min(data.length, w.days)}d)</span>
+                    <span className="text-[10px]"> ({Math.min(data.length, w.count)})</span>
                   </span>
                 ))}
               </div>
@@ -179,10 +201,10 @@ export function NorthStarTrend({
         })}
       </div>
       <p className="mt-2 text-[11px] text-muted-foreground">
-        Averages cover the {data.length} campaign {data.length === 1 ? "day" : "days"} in range; days
-        without data count as 0%. 1W/2W/4W rolling averages use the most recent 7/14/28 campaign
-        days (or fewer if the range is shorter). Dashed lines show the shared target for each metric
-        (set them in North Star Metrics).
+        Averages cover the {data.length} {data.length === 1 ? "campaign" : "campaigns"} in range;
+        campaigns without data count as 0%. Last 1/3/5/10 use the most recent campaign runs (or
+        fewer if the range is shorter). A campaign is one date × type × language run. Dashed lines
+        show the shared target for each metric (set them in North Star Metrics).
       </p>
     </Panel>
   );
