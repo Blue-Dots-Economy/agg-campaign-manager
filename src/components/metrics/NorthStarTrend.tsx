@@ -13,8 +13,16 @@ import {
   ReferenceLine,
 } from "recharts";
 import { Panel } from "@/components/Panel";
-import { tooltipStyle } from "@/components/metrics/primitives";
 import { fetchNorthStar } from "@/lib/north-star.functions";
+
+const tooltipStyle = {
+  contentStyle: {
+    background: "var(--color-card)",
+    border: "1px solid var(--color-border)",
+    borderRadius: 8,
+    fontSize: 12,
+  },
+} as const;
 
 export interface NorthStarTrendPoint {
   label: string;
