@@ -313,7 +313,7 @@ export function ProgramAnalytics({
         </div>
       )}
 
-      {!isDkb && <NorthStarTrend program={config.id} perDay={perDayRollup} />}
+      {!isDkb && <NorthStarTrend program={config.id} campaigns={perDay} />}
 
 
 

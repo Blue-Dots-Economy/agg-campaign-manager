@@ -1,6 +1,5 @@
 import { createServerFn } from "@tanstack/react-start";
 import { createClient } from "@supabase/supabase-js";
-import { createHash } from "crypto";
 import type { CallRow } from "@/programs/data";
 import type { ProgramId } from "@/programs/registry";
 
@@ -216,7 +215,18 @@ export async function performSync(program: ProgramId, opts?: { force?: boolean }
     };
 
     function computeRowHash(r: Omit<UpsertRow, "row_hash" | "synced_at">): string {
-      return createHash("sha1").update(JSON.stringify(r)).digest("hex");
+      // Pure-JS FNV-1a 64-bit-ish hash (two 32-bit lanes) so this module stays
+      // safe to include in the client graph (no node:crypto import).
+      const str = JSON.stringify(r);
+      let h1 = 0x811c9dc5;
+      let h2 = 0x01000193;
+      for (let i = 0; i < str.length; i++) {
+        const c = str.charCodeAt(i);
+        h1 ^= c;
+        h1 = Math.imul(h1, 0x01000193) >>> 0;
+        h2 = Math.imul(h2 ^ c, 0x85ebca6b) >>> 0;
+      }
+      return h1.toString(16).padStart(8, "0") + h2.toString(16).padStart(8, "0");
     }
 
     const BATCH = 500;
