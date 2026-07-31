@@ -66,6 +66,19 @@ export function NorthStarTrend({
 
   const targets = new Map((config ?? []).map((r) => [r.key, r.threshold]));
 
+  const averages = useMemo(() => {
+    const out: Record<string, number> = {};
+    for (const s of SERIES) {
+      if (data.length === 0) {
+        out[s.key] = 0;
+        continue;
+      }
+      const sum = data.reduce((acc, d) => acc + (Number(d[s.key as keyof typeof d]) || 0), 0);
+      out[s.key] = Number((sum / data.length).toFixed(1));
+    }
+    return out;
+  }, [data]);
+
   if (data.length === 0) return null;
 
   return (
