@@ -30,6 +30,7 @@ import { Panel } from "@/components/Panel";
 import { NoDataState, LoadingState } from "@/components/EmptyState";
 import { DropAnalysisHeatmap } from "@/components/metrics/DropAnalysisHeatmap";
 import { NorthStarMetrics } from "@/components/metrics/NorthStarMetrics";
+import { NorthStarTrend } from "@/components/metrics/NorthStarTrend";
 import { fetchFunnelCallIds } from "@/lib/snapshot.functions";
 import { fetchAllReviewedCallIds } from "@/lib/review.functions";
 import { useAuth } from "@/auth/context";
