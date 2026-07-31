@@ -124,8 +124,30 @@ export function NorthStarTrend({
           </LineChart>
         </ResponsiveContainer>
       </div>
+      <div className="mt-3 grid gap-2 sm:grid-cols-3">
+        {SERIES.map((s) => {
+          const t = targets.get(s.key);
+          return (
+            <div key={`avg-${s.key}`} className="rounded-md border border-border px-3 py-2">
+              <div className="flex items-center gap-1.5 text-[11px] text-muted-foreground">
+                <span className="h-2 w-2 rounded-full" style={{ background: s.color }} />
+                <span className="truncate">{s.name}</span>
+              </div>
+              <div className="mt-0.5 flex items-baseline gap-2">
+                <span className="text-lg font-semibold tabular-nums">{averages[s.key].toFixed(1)}%</span>
+                <span className="text-[11px] text-muted-foreground">
+                  avg · {data.length} {data.length === 1 ? "day" : "days"}
+                  {t == null ? "" : ` · target ${t}%`}
+                </span>
+              </div>
+            </div>
+          );
+        })}
+      </div>
       <p className="mt-2 text-[11px] text-muted-foreground">
-        Dashed lines show the shared target for each metric (set them in North Star Metrics).
+        Averages cover the {data.length} campaign {data.length === 1 ? "day" : "days"} in range; days
+        without data count as 0%. Dashed lines show the shared target for each metric (set them in
+        North Star Metrics).
       </p>
     </Panel>
   );
