@@ -37,6 +37,12 @@ const SERIES = [
   { key: "pickup_to_highintent", name: "Pickup → High-Intent", color: "var(--color-chart-3)" },
 ] as const;
 
+const WINDOWS = [
+  { days: 7, label: "1W" },
+  { days: 14, label: "2W" },
+  { days: 28, label: "4W" },
+] as const;
+
 const pct = (n: number, d: number) => (d > 0 ? Number(((n / d) * 100).toFixed(1)) : 0);
 
 export function NorthStarTrend({
@@ -75,6 +81,23 @@ export function NorthStarTrend({
       }
       const sum = data.reduce((acc, d) => acc + (Number(d[s.key as keyof typeof d]) || 0), 0);
       out[s.key] = Number((sum / data.length).toFixed(1));
+    }
+    return out;
+  }, [data]);
+
+  const rolling = useMemo(() => {
+    const out: Record<string, Record<string, number>> = {};
+    for (const s of SERIES) {
+      out[s.key] = {};
+      for (const w of WINDOWS) {
+        const slice = data.slice(-w.days);
+        if (slice.length === 0) {
+          out[s.key][w.label] = 0;
+          continue;
+        }
+        const sum = slice.reduce((acc, d) => acc + (Number(d[s.key as keyof typeof d]) || 0), 0);
+        out[s.key][w.label] = Number((sum / slice.length).toFixed(1));
+      }
     }
     return out;
   }, [data]);
