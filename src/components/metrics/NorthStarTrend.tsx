@@ -117,22 +117,35 @@ export function NorthStarTrend({
         den += r.answered;
       }
     }
-    return { rate: den > 0 ? Number(((num / den) * 100).toFixed(1)) : 0, runs: rows.length };
+    return {
+      rate: den > 0 ? Number(((num / den) * 100).toFixed(1)) : 0,
+      num,
+      den,
+      runs: rows.length,
+      parts: rows.map((r) => {
+        const n =
+          key === "pickup_to_highintent" ? r.high_intent : r.converted;
+        const d =
+          key === "highintent_to_app" ? r.high_intent : r.answered;
+        return `${r.label}: ${n}/${d}`;
+      }),
+    };
   };
 
   const averages = useMemo(() => {
-    const out: Record<string, number> = {};
-    for (const s of SERIES) out[s.key] = pooled(data, s.key).rate;
+    const out: Record<string, ReturnType<typeof pooled>> = {};
+    for (const s of SERIES) out[s.key] = pooled(data, s.key);
     return out;
   }, [data]);
 
   const rolling = useMemo(() => {
-    const out: Record<string, Record<string, number>> = {};
+    const out: Record<string, Record<string, ReturnType<typeof pooled>>> = {};
     for (const s of SERIES) {
       out[s.key] = {};
-      for (const w of WINDOWS) out[s.key][w.label] = pooled(data.slice(-w.count), s.key).rate;
+      for (const w of WINDOWS) out[s.key][w.label] = pooled(data.slice(-w.count), s.key);
     }
     return out;
+
   }, [data]);
 
 
@@ -191,23 +204,34 @@ export function NorthStarTrend({
                 <span className="truncate">{s.name}</span>
               </div>
               <div className="mt-0.5 flex items-baseline gap-2">
-                <span className="text-lg font-semibold tabular-nums">{averages[s.key].toFixed(1)}%</span>
+                <span
+                  className="text-lg font-semibold tabular-nums"
+                  title={`${averages[s.key].num} / ${averages[s.key].den}`}
+                >
+                  {averages[s.key].rate.toFixed(1)}%
+                </span>
                 <span className="text-[11px] text-muted-foreground">
-                  pooled · {data.length} {data.length === 1 ? "campaign" : "campaigns"}
+                  pooled {averages[s.key].num}/{averages[s.key].den} · {data.length}{" "}
+                  {data.length === 1 ? "campaign" : "campaigns"}
                   {t == null ? "" : ` · target ${t}%`}
                 </span>
               </div>
               <div className="mt-1.5 flex flex-wrap gap-x-3 text-[11px] text-muted-foreground">
-                {WINDOWS.map((w) => (
-                  <span key={w.label}>
-                    {w.label}:{" "}
-                    <span className="font-medium text-foreground">
-                      {rolling[s.key][w.label].toFixed(1)}%
+                {WINDOWS.map((w) => {
+                  const r = rolling[s.key][w.label];
+                  return (
+                    <span key={w.label} title={r.parts.join("\n") || "no runs"}>
+                      {w.label}:{" "}
+                      <span className="font-medium text-foreground">{r.rate.toFixed(1)}%</span>
+                      <span className="text-[10px]">
+                        {" "}
+                        ({r.num}/{r.den})
+                      </span>
                     </span>
-                    <span className="text-[10px]"> ({Math.min(data.length, w.count)})</span>
-                  </span>
-                ))}
+                  );
+                })}
               </div>
+
             </div>
           );
         })}
