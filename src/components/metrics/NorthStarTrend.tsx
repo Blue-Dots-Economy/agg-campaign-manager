@@ -117,22 +117,35 @@ export function NorthStarTrend({
         den += r.answered;
       }
     }
-    return { rate: den > 0 ? Number(((num / den) * 100).toFixed(1)) : 0, runs: rows.length };
+    return {
+      rate: den > 0 ? Number(((num / den) * 100).toFixed(1)) : 0,
+      num,
+      den,
+      runs: rows.length,
+      parts: rows.map((r) => {
+        const n =
+          key === "pickup_to_highintent" ? r.high_intent : r.converted;
+        const d =
+          key === "highintent_to_app" ? r.high_intent : r.answered;
+        return `${r.label}: ${n}/${d}`;
+      }),
+    };
   };
 
   const averages = useMemo(() => {
-    const out: Record<string, number> = {};
-    for (const s of SERIES) out[s.key] = pooled(data, s.key).rate;
+    const out: Record<string, ReturnType<typeof pooled>> = {};
+    for (const s of SERIES) out[s.key] = pooled(data, s.key);
     return out;
   }, [data]);
 
   const rolling = useMemo(() => {
-    const out: Record<string, Record<string, number>> = {};
+    const out: Record<string, Record<string, ReturnType<typeof pooled>>> = {};
     for (const s of SERIES) {
       out[s.key] = {};
-      for (const w of WINDOWS) out[s.key][w.label] = pooled(data.slice(-w.count), s.key).rate;
+      for (const w of WINDOWS) out[s.key][w.label] = pooled(data.slice(-w.count), s.key);
     }
     return out;
+
   }, [data]);
 
 
