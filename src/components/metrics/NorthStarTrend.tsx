@@ -204,23 +204,34 @@ export function NorthStarTrend({
                 <span className="truncate">{s.name}</span>
               </div>
               <div className="mt-0.5 flex items-baseline gap-2">
-                <span className="text-lg font-semibold tabular-nums">{averages[s.key].toFixed(1)}%</span>
+                <span
+                  className="text-lg font-semibold tabular-nums"
+                  title={`${averages[s.key].num} / ${averages[s.key].den}`}
+                >
+                  {averages[s.key].rate.toFixed(1)}%
+                </span>
                 <span className="text-[11px] text-muted-foreground">
-                  pooled · {data.length} {data.length === 1 ? "campaign" : "campaigns"}
+                  pooled {averages[s.key].num}/{averages[s.key].den} · {data.length}{" "}
+                  {data.length === 1 ? "campaign" : "campaigns"}
                   {t == null ? "" : ` · target ${t}%`}
                 </span>
               </div>
               <div className="mt-1.5 flex flex-wrap gap-x-3 text-[11px] text-muted-foreground">
-                {WINDOWS.map((w) => (
-                  <span key={w.label}>
-                    {w.label}:{" "}
-                    <span className="font-medium text-foreground">
-                      {rolling[s.key][w.label].toFixed(1)}%
+                {WINDOWS.map((w) => {
+                  const r = rolling[s.key][w.label];
+                  return (
+                    <span key={w.label} title={r.parts.join("\n") || "no runs"}>
+                      {w.label}:{" "}
+                      <span className="font-medium text-foreground">{r.rate.toFixed(1)}%</span>
+                      <span className="text-[10px]">
+                        {" "}
+                        ({r.num}/{r.den})
+                      </span>
                     </span>
-                    <span className="text-[10px]"> ({Math.min(data.length, w.count)})</span>
-                  </span>
-                ))}
+                  );
+                })}
               </div>
+
             </div>
           );
         })}
