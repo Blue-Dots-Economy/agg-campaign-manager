@@ -86,6 +86,9 @@ export function NorthStarTrend({
       .sort((a, b) => a.date.localeCompare(b.date))
       .map((c) => ({
         label: c.label,
+        answered: c.answered,
+        high_intent: c.high_intent,
+        converted: c.converted,
         pickup_to_app: pct(c.converted, c.answered),
         highintent_to_app: pct(c.converted, c.high_intent),
         pickup_to_highintent: pct(c.high_intent, c.answered),
@@ -94,16 +97,32 @@ export function NorthStarTrend({
 
   const targets = new Map((config ?? []).map((r) => [r.key, r.threshold]));
 
+  // Pooled (weighted) rate: sum(numerators) / sum(denominators) over the window.
+  // Runs with a zero denominator contribute nothing instead of entering as a hard 0%.
+  const pooled = (
+    rows: typeof data,
+    key: (typeof SERIES)[number]["key"],
+  ) => {
+    let num = 0;
+    let den = 0;
+    for (const r of rows) {
+      if (key === "pickup_to_app") {
+        num += r.converted;
+        den += r.answered;
+      } else if (key === "highintent_to_app") {
+        num += r.converted;
+        den += r.high_intent;
+      } else {
+        num += r.high_intent;
+        den += r.answered;
+      }
+    }
+    return { rate: den > 0 ? Number(((num / den) * 100).toFixed(1)) : 0, runs: rows.length };
+  };
+
   const averages = useMemo(() => {
     const out: Record<string, number> = {};
-    for (const s of SERIES) {
-      if (data.length === 0) {
-        out[s.key] = 0;
-        continue;
-      }
-      const sum = data.reduce((acc, d) => acc + (Number(d[s.key as keyof typeof d]) || 0), 0);
-      out[s.key] = Number((sum / data.length).toFixed(1));
-    }
+    for (const s of SERIES) out[s.key] = pooled(data, s.key).rate;
     return out;
   }, [data]);
 
@@ -111,18 +130,11 @@ export function NorthStarTrend({
     const out: Record<string, Record<string, number>> = {};
     for (const s of SERIES) {
       out[s.key] = {};
-      for (const w of WINDOWS) {
-        const slice = data.slice(-w.count);
-        if (slice.length === 0) {
-          out[s.key][w.label] = 0;
-          continue;
-        }
-        const sum = slice.reduce((acc, d) => acc + (Number(d[s.key as keyof typeof d]) || 0), 0);
-        out[s.key][w.label] = Number((sum / slice.length).toFixed(1));
-      }
+      for (const w of WINDOWS) out[s.key][w.label] = pooled(data.slice(-w.count), s.key).rate;
     }
     return out;
   }, [data]);
+
 
   if (data.length === 0) return null;
 
