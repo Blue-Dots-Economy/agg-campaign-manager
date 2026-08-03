@@ -193,7 +193,7 @@ export function NorthStarTrend({
               <div className="mt-0.5 flex items-baseline gap-2">
                 <span className="text-lg font-semibold tabular-nums">{averages[s.key].toFixed(1)}%</span>
                 <span className="text-[11px] text-muted-foreground">
-                  avg · {data.length} {data.length === 1 ? "campaign" : "campaigns"}
+                  pooled · {data.length} {data.length === 1 ? "campaign" : "campaigns"}
                   {t == null ? "" : ` · target ${t}%`}
                 </span>
               </div>
