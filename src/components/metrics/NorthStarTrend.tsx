@@ -213,9 +213,11 @@ export function NorthStarTrend({
         })}
       </div>
       <p className="mt-2 text-[11px] text-muted-foreground">
-        Averages cover the {data.length} {data.length === 1 ? "campaign" : "campaigns"} in range;
-        campaigns without data count as 0%. Last 1/3/5/10 use the most recent campaign runs (or
+        Rates are pooled across the {data.length} {data.length === 1 ? "campaign" : "campaigns"} in
+        range — total numerator ÷ total denominator — so runs with no calls don't drag the number to
+        0%. Last 1/3/5/10 use the most recent campaign runs (or
         fewer if the range is shorter). A campaign is one date × type × language run. Dashed lines
+
         show the shared target for each metric (set them in North Star Metrics).
       </p>
     </Panel>
