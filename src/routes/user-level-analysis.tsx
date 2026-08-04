@@ -242,7 +242,7 @@ function UserLevelAnalysis() {
     const fieldPassCounts = new Array(PROFILE_FIELD_LABELS.length).fill(0) as number[];
     let emailCount = 0;
     let phoneCount = 0;
-    const signalCounts = { Strong: 0, Offline: 0, Poor: 0 } as Record<"Strong" | "Offline" | "Poor", number>;
+    const signalCounts = { Strong: 0, Moderate: 0, Weak: 0 } as Record<"Strong" | "Moderate" | "Weak", number>;
 
     for (const s of dateScopedSeekers) {
       byStatus[s.status]++;
@@ -315,7 +315,7 @@ function UserLevelAnalysis() {
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
-    const signalTokens = new Set(["strong", "offline", "poor"]);
+    const signalTokens = new Set(["strong", "moderate", "weak"]);
     const selectedSignals = new Set(
       profileFilter.filter((f) => signalTokens.has(f)),
     );
@@ -666,10 +666,10 @@ function UserLevelAnalysis() {
                       ? `Profile: ${
                           profileFilter[0] === "strong"
                             ? "Strong Signal"
-                            : profileFilter[0] === "offline"
-                              ? "Offline"
-                              : profileFilter[0] === "poor"
-                                ? "Poor Signal"
+                            : profileFilter[0] === "moderate"
+                              ? "Moderate Signal"
+                              : profileFilter[0] === "weak"
+                                ? "Weak Signal"
                                 : `Missing ${profileFilter[0]}`
                         }`
                       : `Profile: ${profileFilter.length} selected`}
@@ -702,46 +702,46 @@ function UserLevelAnalysis() {
                 </span>
               </DropdownMenuCheckboxItem>
               <DropdownMenuCheckboxItem
-                checked={profileFilter.includes("offline")}
+                checked={profileFilter.includes("moderate")}
                 onCheckedChange={(checked) =>
                   setProfileFilter((prev) =>
-                    checked ? [...prev, "offline"] : prev.filter((v) => v !== "offline"),
+                    checked ? [...prev, "moderate"] : prev.filter((v) => v !== "moderate"),
                   )
                 }
                 onSelect={(e) => e.preventDefault()}
               >
                 <div className="flex flex-col flex-1">
-                  <span>Offline</span>
+                  <span>Moderate Signal</span>
                   <span className="text-[11px] text-muted-foreground">
-                    Name + Email/Phone + Age only
+                    Location, Role, Salary present — others may be missing
                   </span>
                 </div>
                 <span className="ml-auto text-muted-foreground">
-                  ({stats.signalCounts.Offline.toLocaleString()})
+                  ({stats.signalCounts.Moderate.toLocaleString()})
                 </span>
               </DropdownMenuCheckboxItem>
               <DropdownMenuCheckboxItem
-                checked={profileFilter.includes("poor")}
+                checked={profileFilter.includes("weak")}
                 onCheckedChange={(checked) =>
                   setProfileFilter((prev) =>
-                    checked ? [...prev, "poor"] : prev.filter((v) => v !== "poor"),
+                    checked ? [...prev, "weak"] : prev.filter((v) => v !== "weak"),
                   )
                 }
                 onSelect={(e) => e.preventDefault()}
               >
                 <div className="flex flex-col flex-1">
-                  <span>Poor Signal</span>
+                  <span>Weak Signal</span>
                   <span className="text-[11px] text-muted-foreground">
-                    Missing basics — refine below
+                    Missing Location, Role or Salary
                   </span>
                 </div>
                 <span className="ml-auto text-muted-foreground">
-                  ({stats.signalCounts.Poor.toLocaleString()})
+                  ({stats.signalCounts.Weak.toLocaleString()})
                 </span>
               </DropdownMenuCheckboxItem>
               <DropdownMenuSeparator />
               <DropdownMenuLabel className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
-                Poor Signal — missing field
+                Missing field
               </DropdownMenuLabel>
               {PROFILE_FIELD_LABELS.map((label) => {
                 const passCount = stats.fieldCompletion.find((f) => f.label === label)?.count ?? 0;
@@ -968,16 +968,16 @@ function UserLevelAnalysis() {
                         className={`rounded-full ${
                           p.profileSignal === "Strong"
                             ? "bg-emerald-500/15 text-emerald-700 dark:text-emerald-400 border-emerald-500/30"
-                            : p.profileSignal === "Offline"
+                            : p.profileSignal === "Moderate"
                               ? "bg-blue-500/15 text-blue-700 dark:text-blue-400 border-blue-500/30"
                               : "bg-amber-500/15 text-amber-700 dark:text-amber-400 border-amber-500/30"
                         }`}
                       >
                         {p.profileSignal === "Strong"
                           ? "Strong Signal"
-                          : p.profileSignal === "Offline"
-                            ? "Offline"
-                            : "Poor Signal"}
+                          : p.profileSignal === "Moderate"
+                            ? "Moderate Signal"
+                            : "Weak Signal"}
                       </Badge>
                       <div className="mt-1 text-[11px] text-muted-foreground tabular-nums">
                         {p.profileCompletion}% complete
