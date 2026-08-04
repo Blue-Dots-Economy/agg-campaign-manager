@@ -11,7 +11,7 @@ export const PROFILE_FIELD_LABELS = [
   "Expected Salary",
 ] as const;
 
-export type ProfileSignal = "Strong" | "Offline" | "Poor";
+export type ProfileSignal = "Strong" | "Moderate" | "Weak";
 
 export type Seeker = {
   id: string;
@@ -363,14 +363,14 @@ export function parseSeekersCsv(text: string): Seeker[] {
     });
     const completion = Math.round((checks.passed / checks.total) * 100);
     const profileStatus: Seeker["profileStatus"] = checks.passed === checks.total ? "Complete" : "Incomplete";
-    // Signal: Strong = all 6 pass; Offline = Name + (Email or Phone) + Age all pass (but not Strong); Poor = otherwise.
+    // Signal: Strong = all 6 pass; Moderate = Location + Role + Salary pass (but not Strong); Weak = otherwise.
     const passedByLabel = new Map(checks.fields.map((f) => [f.label, f.passed] as const));
-    const hasContactBasics =
-      (passedByLabel.get("Name") ?? false) &&
-      (passedByLabel.get("Email or Phone") ?? false) &&
-      (passedByLabel.get("Age") ?? false);
+    const hasCoreSignals =
+      (passedByLabel.get("Location") ?? false) &&
+      (passedByLabel.get("Role") ?? false) &&
+      (passedByLabel.get("Expected Salary") ?? false);
     const profileSignal: ProfileSignal =
-      profileStatus === "Complete" ? "Strong" : hasContactBasics ? "Offline" : "Poor";
+      profileStatus === "Complete" ? "Strong" : hasCoreSignals ? "Moderate" : "Weak";
     const profileAge = toIntOrNull(r[cPAge]);
     const lastAppliedAge = toIntOrNull(r[cLApp]);
     const status = computeStatus(profileAge, lastAppliedAge);
