@@ -252,6 +252,7 @@ function UserLevelAnalysis() {
 
     for (const s of dateScopedSeekers) {
       byStatus[s.status]++;
+      signalByStatus[s.status][s.profileSignal]++;
       if (s.profileStatus === "Complete") complete++;
       signalCounts[s.profileSignal]++;
       if (s.applications > 0) withApps++;
