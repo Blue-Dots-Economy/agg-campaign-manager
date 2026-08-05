@@ -782,7 +782,10 @@ function UserLevelAnalysis() {
                     onSelect={(e) => e.preventDefault()}
                   >
                     <span className="flex-1">{label}</span>
-                    <span className="ml-auto text-muted-foreground">({missingCount.toLocaleString()})</span>
+                    <span className="ml-auto text-muted-foreground whitespace-nowrap">
+                      {missingCount.toLocaleString()} ·{" "}
+                      {stats.total ? Math.round((missingCount / stats.total) * 100) : 0}%
+                    </span>
                   </DropdownMenuCheckboxItem>
                 );
               })}
