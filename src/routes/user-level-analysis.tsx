@@ -224,6 +224,12 @@ function UserLevelAnalysis() {
   const stats = useMemo(() => {
     const total = dateScopedSeekers.length;
     const byStatus = { New: 0, Active: 0, "At Risk": 0, Inactive: 0 } as Record<Seeker["status"], number>;
+    const signalByStatus = {
+      New: { Strong: 0, Moderate: 0, Weak: 0 },
+      Active: { Strong: 0, Moderate: 0, Weak: 0 },
+      "At Risk": { Strong: 0, Moderate: 0, Weak: 0 },
+      Inactive: { Strong: 0, Moderate: 0, Weak: 0 },
+    } as Record<Seeker["status"], Record<"Strong" | "Moderate" | "Weak", number>>;
     let complete = 0;
     let withApps = 0;
     let totalApps = 0;
