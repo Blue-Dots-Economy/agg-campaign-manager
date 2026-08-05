@@ -282,6 +282,7 @@ function UserLevelAnalysis() {
     return {
       total,
       byStatus,
+      signalByStatus,
       complete,
       completePct: total ? Math.round((complete / total) * 100) : 0,
       signalCounts,
