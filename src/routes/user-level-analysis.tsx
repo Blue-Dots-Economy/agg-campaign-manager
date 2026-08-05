@@ -738,8 +738,9 @@ function UserLevelAnalysis() {
                     Location, Role, Salary present — others may be missing
                   </span>
                 </div>
-                <span className="ml-auto text-muted-foreground">
-                  ({stats.signalCounts.Moderate.toLocaleString()})
+                <span className="ml-auto text-muted-foreground whitespace-nowrap">
+                  {stats.signalCounts.Moderate.toLocaleString()} ·{" "}
+                  {stats.total ? Math.round((stats.signalCounts.Moderate / stats.total) * 100) : 0}%
                 </span>
               </DropdownMenuCheckboxItem>
               <DropdownMenuCheckboxItem
