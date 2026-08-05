@@ -758,8 +758,9 @@ function UserLevelAnalysis() {
                     Missing Location, Role or Salary
                   </span>
                 </div>
-                <span className="ml-auto text-muted-foreground">
-                  ({stats.signalCounts.Weak.toLocaleString()})
+                <span className="ml-auto text-muted-foreground whitespace-nowrap">
+                  {stats.signalCounts.Weak.toLocaleString()} ·{" "}
+                  {stats.total ? Math.round((stats.signalCounts.Weak / stats.total) * 100) : 0}%
                 </span>
               </DropdownMenuCheckboxItem>
               <DropdownMenuSeparator />
