@@ -594,6 +594,8 @@ function UserLevelAnalysis() {
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         {lifecycle.map((c) => {
           const Icon = c.icon;
+          const breakdown = stats.signalByStatus[c.label as Seeker["status"]];
+          const pct = (n: number) => (c.value ? Math.round((n / c.value) * 100) : 0);
           return (
             <div key={c.label} className={`rounded-xl border p-5 bg-gradient-to-br ${c.accent}`}>
               <div className={`h-10 w-10 rounded-lg ${c.iconBg} flex items-center justify-center ${c.iconColor}`}>
@@ -602,6 +604,17 @@ function UserLevelAnalysis() {
               <div className={`mt-6 text-5xl font-bold ${c.valueColor}`}>{c.value.toLocaleString()}</div>
               <div className="mt-3 text-base font-semibold">{c.label}</div>
               <div className="mt-1 text-sm text-muted-foreground">{c.description}</div>
+              <div className="mt-2 text-xs text-muted-foreground space-y-0.5">
+                <div>
+                  Strong {breakdown.Strong.toLocaleString()} ({pct(breakdown.Strong)}%)
+                </div>
+                <div>
+                  Moderate {breakdown.Moderate.toLocaleString()} ({pct(breakdown.Moderate)}%)
+                </div>
+                <div>
+                  Weak {breakdown.Weak.toLocaleString()} ({pct(breakdown.Weak)}%)
+                </div>
+              </div>
             </div>
           );
         })}
