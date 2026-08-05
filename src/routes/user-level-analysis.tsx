@@ -224,6 +224,12 @@ function UserLevelAnalysis() {
   const stats = useMemo(() => {
     const total = dateScopedSeekers.length;
     const byStatus = { New: 0, Active: 0, "At Risk": 0, Inactive: 0 } as Record<Seeker["status"], number>;
+    const signalByStatus = {
+      New: { Strong: 0, Moderate: 0, Weak: 0 },
+      Active: { Strong: 0, Moderate: 0, Weak: 0 },
+      "At Risk": { Strong: 0, Moderate: 0, Weak: 0 },
+      Inactive: { Strong: 0, Moderate: 0, Weak: 0 },
+    } as Record<Seeker["status"], Record<"Strong" | "Moderate" | "Weak", number>>;
     let complete = 0;
     let withApps = 0;
     let totalApps = 0;
@@ -246,6 +252,7 @@ function UserLevelAnalysis() {
 
     for (const s of dateScopedSeekers) {
       byStatus[s.status]++;
+      signalByStatus[s.status][s.profileSignal]++;
       if (s.profileStatus === "Complete") complete++;
       signalCounts[s.profileSignal]++;
       if (s.applications > 0) withApps++;
@@ -275,6 +282,7 @@ function UserLevelAnalysis() {
     return {
       total,
       byStatus,
+      signalByStatus,
       complete,
       completePct: total ? Math.round((complete / total) * 100) : 0,
       signalCounts,
@@ -586,6 +594,8 @@ function UserLevelAnalysis() {
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         {lifecycle.map((c) => {
           const Icon = c.icon;
+          const breakdown = stats.signalByStatus[c.label as Seeker["status"]];
+          const pct = (n: number) => (c.value ? Math.round((n / c.value) * 100) : 0);
           return (
             <div key={c.label} className={`rounded-xl border p-5 bg-gradient-to-br ${c.accent}`}>
               <div className={`h-10 w-10 rounded-lg ${c.iconBg} flex items-center justify-center ${c.iconColor}`}>
@@ -594,6 +604,17 @@ function UserLevelAnalysis() {
               <div className={`mt-6 text-5xl font-bold ${c.valueColor}`}>{c.value.toLocaleString()}</div>
               <div className="mt-3 text-base font-semibold">{c.label}</div>
               <div className="mt-1 text-sm text-muted-foreground">{c.description}</div>
+              <div className="mt-2 text-xs text-muted-foreground space-y-0.5">
+                <div>
+                  Strong {breakdown.Strong.toLocaleString()} ({pct(breakdown.Strong)}%)
+                </div>
+                <div>
+                  Moderate {breakdown.Moderate.toLocaleString()} ({pct(breakdown.Moderate)}%)
+                </div>
+                <div>
+                  Weak {breakdown.Weak.toLocaleString()} ({pct(breakdown.Weak)}%)
+                </div>
+              </div>
             </div>
           );
         })}
@@ -608,7 +629,7 @@ function UserLevelAnalysis() {
             <MetricTile
               label="Profiles Complete"
               value={stats.complete.toLocaleString()}
-              description={`${stats.completePct}% of all profiles · strong search & match`}
+              description={`Strong Signal · ${stats.signalCounts.Strong.toLocaleString()} profiles (${stats.completePct}% of all profiles)`}
               Icon={CheckCircle2}
             />
             <MetricTile
@@ -697,8 +718,9 @@ function UserLevelAnalysis() {
                     Name, Location, Email/Phone, Age, Role, Salary
                   </span>
                 </div>
-                <span className="ml-auto text-muted-foreground">
-                  ({stats.signalCounts.Strong.toLocaleString()})
+                <span className="ml-auto text-muted-foreground whitespace-nowrap">
+                  {stats.signalCounts.Strong.toLocaleString()} ·{" "}
+                  {stats.total ? Math.round((stats.signalCounts.Strong / stats.total) * 100) : 0}%
                 </span>
               </DropdownMenuCheckboxItem>
               <DropdownMenuCheckboxItem
@@ -716,8 +738,9 @@ function UserLevelAnalysis() {
                     Location, Role, Salary present — others may be missing
                   </span>
                 </div>
-                <span className="ml-auto text-muted-foreground">
-                  ({stats.signalCounts.Moderate.toLocaleString()})
+                <span className="ml-auto text-muted-foreground whitespace-nowrap">
+                  {stats.signalCounts.Moderate.toLocaleString()} ·{" "}
+                  {stats.total ? Math.round((stats.signalCounts.Moderate / stats.total) * 100) : 0}%
                 </span>
               </DropdownMenuCheckboxItem>
               <DropdownMenuCheckboxItem
@@ -735,8 +758,9 @@ function UserLevelAnalysis() {
                     Missing Location, Role or Salary
                   </span>
                 </div>
-                <span className="ml-auto text-muted-foreground">
-                  ({stats.signalCounts.Weak.toLocaleString()})
+                <span className="ml-auto text-muted-foreground whitespace-nowrap">
+                  {stats.signalCounts.Weak.toLocaleString()} ·{" "}
+                  {stats.total ? Math.round((stats.signalCounts.Weak / stats.total) * 100) : 0}%
                 </span>
               </DropdownMenuCheckboxItem>
               <DropdownMenuSeparator />
@@ -758,7 +782,10 @@ function UserLevelAnalysis() {
                     onSelect={(e) => e.preventDefault()}
                   >
                     <span className="flex-1">{label}</span>
-                    <span className="ml-auto text-muted-foreground">({missingCount.toLocaleString()})</span>
+                    <span className="ml-auto text-muted-foreground whitespace-nowrap">
+                      {missingCount.toLocaleString()} ·{" "}
+                      {stats.total ? Math.round((missingCount / stats.total) * 100) : 0}%
+                    </span>
                   </DropdownMenuCheckboxItem>
                 );
               })}
