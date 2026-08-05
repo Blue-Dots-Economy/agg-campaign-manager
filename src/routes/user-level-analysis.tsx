@@ -629,7 +629,7 @@ function UserLevelAnalysis() {
             <MetricTile
               label="Profiles Complete"
               value={stats.complete.toLocaleString()}
-              description={`${stats.completePct}% of all profiles · strong search & match`}
+              description={`Strong Signal · ${stats.signalCounts.Strong.toLocaleString()} profiles (${stats.completePct}% of all profiles)`}
               Icon={CheckCircle2}
             />
             <MetricTile
