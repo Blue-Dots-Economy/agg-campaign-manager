@@ -142,12 +142,18 @@ export async function performSync(program: ProgramId, opts?: { force?: boolean }
         .from("program_sync_state")
         .upsert({ program }, { onConflict: "program", ignoreDuplicates: true });
 
-      const { data: claimed, error: claimErr } = await client
+      // A manual/forced refresh takes over the lock unconditionally — otherwise a
+      // crashed run leaves status='syncing' and every click silently no-ops.
+      const claim = client
         .from("program_sync_state")
         .update({ status: "syncing", updated_at: runStart })
-        .eq("program", program)
-        .or(`status.neq.syncing,updated_at.lt.${staleThresholdIso}`)
-        .select("program, last_synced_at, row_count");
+        .eq("program", program);
+      if (!opts?.force) {
+        claim.or(`status.neq.syncing,updated_at.lt.${staleThresholdIso}`);
+      }
+      const { data: claimed, error: claimErr } = await claim.select(
+        "program, last_synced_at, row_count",
+      );
 
       if (claimErr || !claimed || claimed.length === 0) {
         const { data: cur } = await client
