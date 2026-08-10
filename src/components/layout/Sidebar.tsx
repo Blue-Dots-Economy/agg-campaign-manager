@@ -147,7 +147,14 @@ export function Sidebar() {
           { to: "/", label: "Campaign Overview", icon: LayoutDashboard },
         ] as NavItem[],
       }]
-    : GROUPS;
+    : GROUPS.map((g) => ({
+        ...g,
+        items: g.items.flatMap((item) =>
+          item.to === "/launch" && isAdmin
+            ? [item, { to: "/campaign-requests", label: "Campaign Requests", icon: Inbox } as NavItem]
+            : [item],
+        ),
+      }));
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const listFn = useServerFn(listConnections);
   const { data: conns } = useQuery({
