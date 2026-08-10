@@ -693,14 +693,27 @@ function LaunchWizard() {
       {step === 6 && (
         <Panel title="Step 7 · Launch" description="Create the batch in Raya and start the schedule">
           <div className="space-y-4 max-w-xl">
-            {!batchId && !launching && (
-              <Button
-                onClick={launch}
-                className="bg-brand text-brand-foreground hover:bg-brand/90 gap-1.5"
-                size="lg"
-              >
-                <Rocket className="h-4 w-4" /> Launch campaign
-              </Button>
+            {!requested && !batchId && !launching && (
+              <div className="space-y-3">
+                <Button
+                  onClick={requestCampaign}
+                  className="bg-brand text-brand-foreground hover:bg-brand/90 gap-1.5"
+                  size="lg"
+                >
+                  <Rocket className="h-4 w-4" /> Request campaign
+                </Button>
+                <div className="space-y-1">
+                  <Button onClick={launch} variant="outline" className="gap-1.5">
+                    <Rocket className="h-4 w-4" /> Launch campaign
+                  </Button>
+                  <p className="text-xs text-muted-foreground">Launch now (skips the request queue)</p>
+                </div>
+              </div>
+            )}
+            {requested && !batchId && (
+              <div className="rounded-md bg-brand-soft text-brand px-3 py-2 text-sm flex items-center gap-2">
+                <Check className="h-4 w-4" /> Request submitted — pending review in Campaign Requests
+              </div>
             )}
             {launching && (
               <div className="flex items-center gap-2 text-sm"><Loader2 className="h-4 w-4 animate-spin" /> Creating batch and starting schedule…</div>
