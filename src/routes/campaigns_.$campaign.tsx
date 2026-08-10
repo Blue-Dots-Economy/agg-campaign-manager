@@ -1,6 +1,7 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useMemo } from "react";
 import { ArrowLeft, ChevronDown } from "lucide-react";
+import type { ChannelValue } from "@/components/metrics/OverviewFilters";
 import { format } from "date-fns";
 import { useProgram } from "@/programs/context";
 import { useCampaignList } from "@/programs/useProgramAggregates";
