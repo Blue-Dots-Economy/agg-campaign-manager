@@ -410,7 +410,7 @@ function LaunchWizard() {
           {agentsQuery.data && agentsQuery.data.length === 0 && (
             <div className="rounded-md border border-dashed px-4 py-6 text-sm text-muted-foreground">
               No agents saved for {program.toUpperCase()}.{" "}
-              <Link to="/agents" className="text-brand underline">Add one in the Agents section</Link>.
+              <Link to="/settings" className="text-brand underline">Add one in the Agents section</Link>.
             </div>
           )}
           {agentsQuery.data && agentsQuery.data.length > 0 && (
@@ -435,7 +435,7 @@ function LaunchWizard() {
                 </SelectContent>
               </Select>
               <p className="text-xs text-muted-foreground">
-                Manage agents in the <Link to="/agents" className="text-brand underline">Agents</Link> section.
+                Manage agents in the <Link to="/settings" className="text-brand underline">Agents</Link> section.
               </p>
             </div>
           )}
