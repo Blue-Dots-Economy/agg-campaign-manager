@@ -107,6 +107,102 @@ export type Database = {
         }
         Relationships: []
       }
+      campaign_requests: {
+        Row: {
+          agent_id: string
+          agent_name: string | null
+          batch_id: string | null
+          batch_name: string
+          campaign_date: string | null
+          campaign_day: string | null
+          campaign_type: string | null
+          channel: string | null
+          city_campaign: string | null
+          cohort_filters: Json | null
+          cohort_intent: string | null
+          concurrency: number | null
+          contact_count: number
+          contacts: Json
+          created_at: string
+          decline_reason: string | null
+          id: string
+          language: string | null
+          max_retries: number | null
+          program: string
+          region: string | null
+          requested_by: string | null
+          retry_after_hrs: number | null
+          reviewer_email: string | null
+          schedule: Json | null
+          selected_statuses: Json | null
+          source: string | null
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          agent_id: string
+          agent_name?: string | null
+          batch_id?: string | null
+          batch_name: string
+          campaign_date?: string | null
+          campaign_day?: string | null
+          campaign_type?: string | null
+          channel?: string | null
+          city_campaign?: string | null
+          cohort_filters?: Json | null
+          cohort_intent?: string | null
+          concurrency?: number | null
+          contact_count?: number
+          contacts?: Json
+          created_at?: string
+          decline_reason?: string | null
+          id?: string
+          language?: string | null
+          max_retries?: number | null
+          program: string
+          region?: string | null
+          requested_by?: string | null
+          retry_after_hrs?: number | null
+          reviewer_email?: string | null
+          schedule?: Json | null
+          selected_statuses?: Json | null
+          source?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          agent_id?: string
+          agent_name?: string | null
+          batch_id?: string | null
+          batch_name?: string
+          campaign_date?: string | null
+          campaign_day?: string | null
+          campaign_type?: string | null
+          channel?: string | null
+          city_campaign?: string | null
+          cohort_filters?: Json | null
+          cohort_intent?: string | null
+          concurrency?: number | null
+          contact_count?: number
+          contacts?: Json
+          created_at?: string
+          decline_reason?: string | null
+          id?: string
+          language?: string | null
+          max_retries?: number | null
+          program?: string
+          region?: string | null
+          requested_by?: string | null
+          retry_after_hrs?: number | null
+          reviewer_email?: string | null
+          schedule?: Json | null
+          selected_statuses?: Json | null
+          source?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       launched_batch_inputs: {
         Row: {
           batch_id: string
