@@ -209,14 +209,14 @@ function TranscriptReview() {
             navigate({ to: "/review/$callId", params: { callId: next }, search: { bulk: "1" } });
           } else {
             try { sessionStorage.removeItem("bulk_review_queue"); } catch { /* ignore */ }
-            navigate({ to: "/review" });
+            navigate({ to: "/review", search: {} });
           }
         }, milestone ? 420 : 170);
         return;
       }
       toast.success("Review submitted — nice work!");
       setCelebrate("normal");
-      window.setTimeout(() => navigate({ to: "/review" }), 170);
+      window.setTimeout(() => navigate({ to: "/review", search: {} }), 170);
     } catch (e) {
       toast.error(`Failed to submit: ${e instanceof Error ? e.message : "Try again."}`);
       setSubmitting(false);
@@ -226,7 +226,7 @@ function TranscriptReview() {
   if (calls === null) return <div className="flex items-center justify-center py-24"><Loader2 className="h-6 w-6 animate-spin text-muted-foreground" /></div>;
   if (!call) return (
     <div className="space-y-4">
-      <button onClick={() => navigate({ to: "/review" })} className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground"><ArrowLeft className="h-4 w-4" /> Back to review</button>
+      <button onClick={() => navigate({ to: "/review", search: {} })} className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground"><ArrowLeft className="h-4 w-4" /> Back to review</button>
       <div className="rounded-2xl border border-dashed border-border bg-muted/20 p-10 text-center text-sm text-muted-foreground">Call not found.</div>
     </div>
   );
@@ -261,13 +261,13 @@ function TranscriptReview() {
         </div>
       )}
       <div className="flex items-center gap-3">
-        <button onClick={() => navigate({ to: "/review" })} className="inline-flex items-center gap-1.5 rounded-full border border-border px-3 py-1.5 text-sm font-medium hover:bg-muted"><ArrowLeft className="h-4 w-4" /> Back</button>
+        <button onClick={() => navigate({ to: "/review", search: {} })} className="inline-flex items-center gap-1.5 rounded-full border border-border px-3 py-1.5 text-sm font-medium hover:bg-muted"><ArrowLeft className="h-4 w-4" /> Back</button>
         <div className="min-w-0">
           <h1 className="truncate text-lg font-semibold">{call.call_id || call.job_id}</h1>
           <p className="truncate text-xs text-muted-foreground">{call.campaign_day} · {call.language} · {call.city_campaign} · {call.call_datetime_ist}</p>
         </div>
         {bulkInfo && (
-          <button onClick={() => bulkInfo.next ? navigate({ to: "/review/$callId", params: { callId: bulkInfo.next }, search: { bulk: "1" } }) : navigate({ to: "/review" })} className="ml-auto inline-flex shrink-0 items-center gap-1 rounded-full border border-border bg-background px-3 py-1.5 text-xs font-medium hover:bg-muted">Skip <SkipForward className="h-3.5 w-3.5" /></button>
+          <button onClick={() => bulkInfo.next ? navigate({ to: "/review/$callId", params: { callId: bulkInfo.next }, search: { bulk: "1" } }) : navigate({ to: "/review", search: {} })} className="ml-auto inline-flex shrink-0 items-center gap-1 rounded-full border border-border bg-background px-3 py-1.5 text-xs font-medium hover:bg-muted">Skip <SkipForward className="h-3.5 w-3.5" /></button>
         )}
       </div>
       <div className="flex flex-wrap items-center gap-2">

@@ -11,6 +11,8 @@ import {
 } from "@/lib/raya.functions";
 import { listProgramAgents } from "@/lib/agents.functions";
 import { recordLaunchedBatch, getNextCampaignDay } from "@/lib/launched-batches.functions";
+import { useAuth } from "@/auth/context";
+import { submitCampaignRequest } from "@/lib/campaign-requests.functions";
 import { useConcurrencyUsage, useRefreshConcurrency } from "@/hooks/useConcurrencyUsage";
 import { Link } from "@tanstack/react-router";
 import { registry, type ProgramId } from "@/programs/registry";
@@ -133,12 +135,15 @@ function LaunchWizard() {
   const [startStatus, setStartStatus] = useState<string | null>(null);
   const [launchError, setLaunchError] = useState<string | null>(null);
   const [startPending, setStartPending] = useState(false);
+  const [requested, setRequested] = useState(false);
+  const { session } = useAuth();
 
   const listAgentsFn = useServerFn(listProgramAgents);
   const validateFn = useServerFn(validateContacts);
   const createBatchFn = useServerFn(rayaCreateBatch);
   const startBatchFn = useServerFn(rayaStartBatch);
   const recordBatchFn = useServerFn(recordLaunchedBatch);
+  const submitRequestFn = useServerFn(submitCampaignRequest);
   const nextDayFn = useServerFn(getNextCampaignDay);
   const usage = useConcurrencyUsage({ enabled: !launching });
   const refreshUsage = useRefreshConcurrency();
@@ -293,6 +298,68 @@ function LaunchWizard() {
     }
   };
 
+  const buildContacts = () =>
+    source === "cohort"
+      ? cohortContacts.map((c) => ({ ...c, _region: region }))
+      : (report?.validRows ?? []).map((r) => ({
+          contact_name: r.name,
+          contact_phone: r.phone,
+          country_code: r.cc,
+          ...r.extras,
+          _region: region,
+        }));
+
+  const requestCampaign = async () => {
+    const contacts = buildContacts();
+    if (contacts.length === 0) {
+      toast.error("No contacts to request.");
+      return;
+    }
+    try {
+      await submitRequestFn({
+        data: {
+          request: {
+            program,
+            agent_id: agentId,
+            agent_name: agentName,
+            batch_name: batchName,
+            campaign_day: campaignDay,
+            campaign_date: campaignDate,
+            campaign_type: campaignType,
+            region,
+            language: regionInfo.language,
+            city_campaign: regionInfo.city,
+            channel: "outbound",
+            source,
+            cohort_intent: source === "cohort" ? cohortIntent : null,
+            cohort_filters:
+              source === "cohort"
+                ? cohortIntent === "drive"
+                  ? { profileStatuses }
+                  : { confidenceBand }
+                : null,
+            contacts,
+            schedule: {
+              timezone: schedule.timezone,
+              start_time: schedule.startTime,
+              end_time: schedule.endTime,
+              days: schedule.days,
+            },
+            concurrency,
+            max_retries: maxRetries,
+            retry_after_hrs: retryAfterHrs,
+            selected_statuses: selectedStatuses,
+            requested_by: session?.email ?? "",
+          },
+        },
+      });
+      setRequested(true);
+      toast.success("Request submitted — it'll appear in Campaign Requests for a JFC/admin to review and launch.");
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Request failed");
+    }
+  };
+
   const launch = async () => {
     if (Number.isFinite(available) && concurrency > (available as number)) {
       const msg = `Only ${available} concurrency available — reduce concurrency or stop a running batch.`;
@@ -410,7 +477,7 @@ function LaunchWizard() {
           {agentsQuery.data && agentsQuery.data.length === 0 && (
             <div className="rounded-md border border-dashed px-4 py-6 text-sm text-muted-foreground">
               No agents saved for {program.toUpperCase()}.{" "}
-              <Link to="/agents" className="text-brand underline">Add one in the Agents section</Link>.
+              <Link to="/settings" className="text-brand underline">Add one in the Agents section</Link>.
             </div>
           )}
           {agentsQuery.data && agentsQuery.data.length > 0 && (
@@ -435,7 +502,7 @@ function LaunchWizard() {
                 </SelectContent>
               </Select>
               <p className="text-xs text-muted-foreground">
-                Manage agents in the <Link to="/agents" className="text-brand underline">Agents</Link> section.
+                Manage agents in the <Link to="/settings" className="text-brand underline">Agents</Link> section.
               </p>
             </div>
           )}
@@ -626,14 +693,27 @@ function LaunchWizard() {
       {step === 6 && (
         <Panel title="Step 7 · Launch" description="Create the batch in Raya and start the schedule">
           <div className="space-y-4 max-w-xl">
-            {!batchId && !launching && (
-              <Button
-                onClick={launch}
-                className="bg-brand text-brand-foreground hover:bg-brand/90 gap-1.5"
-                size="lg"
-              >
-                <Rocket className="h-4 w-4" /> Launch campaign
-              </Button>
+            {!requested && !batchId && !launching && (
+              <div className="space-y-3">
+                <Button
+                  onClick={requestCampaign}
+                  className="bg-brand text-brand-foreground hover:bg-brand/90 gap-1.5"
+                  size="lg"
+                >
+                  <Rocket className="h-4 w-4" /> Request campaign
+                </Button>
+                <div className="space-y-1">
+                  <Button onClick={launch} variant="outline" className="gap-1.5">
+                    <Rocket className="h-4 w-4" /> Launch campaign
+                  </Button>
+                  <p className="text-xs text-muted-foreground">Launch now (skips the request queue)</p>
+                </div>
+              </div>
+            )}
+            {requested && !batchId && (
+              <div className="rounded-md bg-brand-soft text-brand px-3 py-2 text-sm flex items-center gap-2">
+                <Check className="h-4 w-4" /> Request submitted — pending review in Campaign Requests
+              </div>
             )}
             {launching && (
               <div className="flex items-center gap-2 text-sm"><Loader2 className="h-4 w-4 animate-spin" /> Creating batch and starting schedule…</div>

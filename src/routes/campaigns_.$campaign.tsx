@@ -1,6 +1,7 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useMemo } from "react";
 import { ArrowLeft, ChevronDown } from "lucide-react";
+import type { ChannelValue } from "@/components/metrics/OverviewFilters";
 import { format } from "date-fns";
 import { useProgram } from "@/programs/context";
 import { useCampaignList } from "@/programs/useProgramAggregates";
@@ -41,7 +42,7 @@ function parseDate(s: string | null): Date | null {
 function CampaignReviewDetail() {
   const { campaign: rawCampaign } = Route.useParams();
   const { date, channel } = Route.useSearch();
-  const channelFilter = channel ?? "all";
+  const channelFilter = (channel ?? "all") as ChannelValue;
   const navigate = useNavigate();
   const { config } = useProgram();
   const { data: campaigns, isLoading } = useCampaignList(config, { channel: channelFilter });
