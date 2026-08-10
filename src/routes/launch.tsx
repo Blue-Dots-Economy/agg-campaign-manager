@@ -298,6 +298,68 @@ function LaunchWizard() {
     }
   };
 
+  const buildContacts = () =>
+    source === "cohort"
+      ? cohortContacts.map((c) => ({ ...c, _region: region }))
+      : (report?.validRows ?? []).map((r) => ({
+          contact_name: r.name,
+          contact_phone: r.phone,
+          country_code: r.cc,
+          ...r.extras,
+          _region: region,
+        }));
+
+  const requestCampaign = async () => {
+    const contacts = buildContacts();
+    if (contacts.length === 0) {
+      toast.error("No contacts to request.");
+      return;
+    }
+    try {
+      await submitRequestFn({
+        data: {
+          request: {
+            program,
+            agent_id: agentId,
+            agent_name: agentName,
+            batch_name: batchName,
+            campaign_day: campaignDay,
+            campaign_date: campaignDate,
+            campaign_type: campaignType,
+            region,
+            language: regionInfo.language,
+            city_campaign: regionInfo.city,
+            channel: "outbound",
+            source,
+            cohort_intent: source === "cohort" ? cohortIntent : null,
+            cohort_filters:
+              source === "cohort"
+                ? cohortIntent === "drive"
+                  ? { profileStatuses }
+                  : { confidenceBand }
+                : null,
+            contacts,
+            schedule: {
+              timezone: schedule.timezone,
+              start_time: schedule.startTime,
+              end_time: schedule.endTime,
+              days: schedule.days,
+            },
+            concurrency,
+            max_retries: maxRetries,
+            retry_after_hrs: retryAfterHrs,
+            selected_statuses: selectedStatuses,
+            requested_by: session?.email ?? "",
+          },
+        },
+      });
+      setRequested(true);
+      toast.success("Request submitted — it'll appear in Campaign Requests for a JFC/admin to review and launch.");
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Request failed");
+    }
+  };
+
   const launch = async () => {
     if (Number.isFinite(available) && concurrency > (available as number)) {
       const msg = `Only ${available} concurrency available — reduce concurrency or stop a running batch.`;
