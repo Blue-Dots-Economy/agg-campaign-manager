@@ -9,6 +9,7 @@ import {
   Briefcase,
   Headphones,
   Users,
+  Inbox,
   ChevronDown,
   ChevronRight,
 } from "lucide-react";
@@ -136,6 +137,7 @@ export function Sidebar() {
   const { config, programId, setProgramId } = useProgram();
   const { session } = useAuth();
   const isEcosystem = session?.role === "ecosystem";
+  const isAdmin = session?.role === "admin";
   const groups = isEcosystem
     ? [{
         title: "",
