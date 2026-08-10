@@ -135,12 +135,15 @@ function LaunchWizard() {
   const [startStatus, setStartStatus] = useState<string | null>(null);
   const [launchError, setLaunchError] = useState<string | null>(null);
   const [startPending, setStartPending] = useState(false);
+  const [requested, setRequested] = useState(false);
+  const { session } = useAuth();
 
   const listAgentsFn = useServerFn(listProgramAgents);
   const validateFn = useServerFn(validateContacts);
   const createBatchFn = useServerFn(rayaCreateBatch);
   const startBatchFn = useServerFn(rayaStartBatch);
   const recordBatchFn = useServerFn(recordLaunchedBatch);
+  const submitRequestFn = useServerFn(submitCampaignRequest);
   const nextDayFn = useServerFn(getNextCampaignDay);
   const usage = useConcurrencyUsage({ enabled: !launching });
   const refreshUsage = useRefreshConcurrency();
