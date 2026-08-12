@@ -32,6 +32,7 @@ export interface VerticalFunnelStage {
   secondaryLabel?: string;
   unit?: string;
   avgDurationSec?: number;
+  extraSub?: string;
 }
 
 const fmtNum = (n: number) => Math.round(n).toLocaleString();
