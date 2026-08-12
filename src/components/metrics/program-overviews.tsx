@@ -195,8 +195,18 @@ export function KkbOverviewMetrics({
     calls: "no pickup", picked: "drop after pickup", engaged: "don't reach jobs",
     jobs: "reach high-intent", intent: "never apply",
   };
-  const stageDefs: Array<{ key: string; label: string; description: string; color: FunnelColor }> = [
-    { key: "calls", label: "Calls made", description: "All dialled attempts", color: "blue" },
+  const uploaded = (callOutcomes ?? []).reduce((s, o) => s + o.n, 0);
+  const notDialled = (callOutcomes ?? []).filter((o) => {
+    const x = o.outcome.trim().toLowerCase();
+    return x === "pending" || x.startsWith("not dialled");
+  }).reduce((s, o) => s + o.n, 0);
+  const topExtraSub =
+    uploaded > 0 && notDialled > 0
+      ? `of ${uploaded.toLocaleString("en-IN")} uploaded · ${notDialled.toLocaleString("en-IN")} not dialled`
+      : undefined;
+
+  const stageDefs: Array<{ key: string; label: string; description: string; color: FunnelColor; extraSub?: string }> = [
+    { key: "calls", label: "Calls made", description: "All dialled attempts", color: "blue", extraSub: topExtraSub },
     { key: "picked", label: "Picked up", description: "Seeker answered", color: "green" },
     { key: "engaged", label: "Engaged", description: "3+ real conversation turns", color: "green" },
     { key: "jobs", label: "Jobs shown", description: "Bot presented openings", color: "amber" },
@@ -216,6 +226,7 @@ export function KkbOverviewMetrics({
       unit: dimOf(s.key) === "seekers" ? "seekers" : undefined,
       nextAnnotation: dropAnn,
       avgDurationSec: stageDurations?.[s.key],
+      extraSub: s.extraSub,
     };
   });
 
