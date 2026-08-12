@@ -226,6 +226,7 @@ export function KkbOverviewMetrics({
       unit: dimOf(s.key) === "seekers" ? "seekers" : undefined,
       nextAnnotation: dropAnn,
       avgDurationSec: stageDurations?.[s.key],
+      extraSub: s.extraSub,
     };
   });
 
