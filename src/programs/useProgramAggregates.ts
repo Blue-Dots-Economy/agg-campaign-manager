@@ -10,7 +10,9 @@ import {
   fetchFunnelDurations,
   type AggregatePayload,
   type KkbDropAnalysisPayload,
+  fetchKkbCallOutcomes,
   type CampaignListItem,
+  type CallOutcomeCount,
 } from "@/lib/snapshot.functions";
 import {
   fetchReviewCalls,
@@ -69,6 +71,29 @@ export function useKkbDropAnalysis(filters?: OverviewFilters) {
   return useQuery<KkbDropAnalysisPayload>({
     queryKey: ["kkb-drop-analysis", state, dateFrom, dateTo, campaignType, campaign, channel],
     queryFn: () => fn({ data: { state, dateFrom, dateTo, campaignType, campaign, channel } }),
+    staleTime: 5 * 60_000,
+    gcTime: 30 * 60_000,
+    placeholderData: keepPreviousData,
+    refetchOnWindowFocus: false,
+    refetchOnReconnect: false,
+    refetchOnMount: false,
+    retry: 1,
+    retryDelay: 1500,
+  });
+}
+
+export function useKkbCallOutcomes(filters?: OverviewFilters, enabled = true) {
+  const fn = useServerFn(fetchKkbCallOutcomes);
+  const state = filters?.state ?? "all";
+  const dateFrom = filters?.dateFrom ?? null;
+  const dateTo = filters?.dateTo ?? null;
+  const campaignType = filters?.campaignType ?? "all";
+  const campaign = filters?.campaign ?? null;
+  const channel = filters?.channel ?? "all";
+  return useQuery<CallOutcomeCount[]>({
+    queryKey: ["kkb-call-outcomes", state, dateFrom, dateTo, campaignType, campaign, channel],
+    queryFn: () => fn({ data: { state, dateFrom, dateTo, campaignType, campaign, channel } }),
+    enabled,
     staleTime: 5 * 60_000,
     gcTime: 30 * 60_000,
     placeholderData: keepPreviousData,

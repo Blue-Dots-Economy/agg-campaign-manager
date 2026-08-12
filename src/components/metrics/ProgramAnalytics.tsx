@@ -17,7 +17,7 @@ import {
   Bar,
   Legend,
 } from "recharts";
-import { useProgramAggregates, useKkbDropAnalysis, useDkbDropAnalysis, useFunnelDurations } from "@/programs/useProgramAggregates";
+import { useProgramAggregates, useKkbDropAnalysis, useDkbDropAnalysis, useFunnelDurations, useKkbCallOutcomes } from "@/programs/useProgramAggregates";
 import type { ProgramConfig } from "@/programs/registry";
 import { KpiCard } from "@/components/KpiCard";
 import {
@@ -298,6 +298,7 @@ export function ProgramAnalytics({
             comparisonLabel={comparisonLabel}
             onFunnelStageClick={handleStageClick}
             stageDurations={stageDurations}
+            callOutcomes={callOutcomes.data ?? []}
           />
         )
       ) : (
