@@ -108,6 +108,7 @@ export function ProgramAnalytics({
   const dkbDropAnalysisQuery = useDkbDropAnalysis(isDkb ? scopedFilters : undefined);
   const durationsQuery = useFunnelDurations(config, scopedFilters);
   const stageDurations = durationsQuery.data ?? {};
+  const callOutcomes = useKkbCallOutcomes(scopedFilters, !isDkb);
   const data = query.data;
 
   // Previous-period baseline (default behavior, used only when no comparison override).
