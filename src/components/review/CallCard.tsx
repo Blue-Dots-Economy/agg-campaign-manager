@@ -16,7 +16,7 @@ export function CallCard({ call, reviewStatus }: { call: ReviewCall; reviewStatu
   const isReviewed = !!reviewStatus?.is_reviewed;
   const youReviewed = !!reviewStatus?.you_reviewed;
   const callId = String(call.call_id || call.job_id || "");
-  const go = () => navigate({ to: "/review/$callId", params: { callId }, search: {} });
+  const go = () => navigate({ to: "/review/$callId", params: { callId } });
   return (
     <div className={cn("rounded-2xl bg-card shadow-sm transition-all", isReviewed ? "border-l-4 border-l-emerald-500" : "border border-border")}>
       <div className="flex w-full items-start justify-between gap-4 p-4 sm:p-5">
