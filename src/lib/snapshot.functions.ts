@@ -1017,3 +1017,31 @@ export const fetchFunnelDurations = createServerFn({ method: "GET" })
       return {};
     }
   });
+
+export interface CallOutcomeCount { outcome: string; n: number }
+
+/** KKB-only: call_outcome breakdown honouring the same filters as the funnel. */
+export const fetchKkbCallOutcomes = createServerFn({ method: "GET" })
+  .inputValidator(
+    (d: { state?: string; dateFrom?: string | null; dateTo?: string | null; campaignType?: string; campaign?: string | null; channel?: string }) => d,
+  )
+  .handler(async ({ data }): Promise<CallOutcomeCount[]> => {
+    try {
+      const client = sb();
+      const { data: rpcData, error } = await client.rpc("get_kkb_call_outcomes", {
+        _state: data.state && data.state !== "all" ? data.state : "all",
+        _date_from: data.dateFrom ?? null,
+        _date_to: data.dateTo ?? null,
+        _campaign_type: data.campaignType ?? "all",
+        _campaign: data.campaign ?? null,
+        _channel: data.channel ?? "all",
+      });
+      if (error) throw new Error(error.message);
+      if (!Array.isArray(rpcData)) return [];
+      return (rpcData as Array<Record<string, unknown>>)
+        .map((r) => ({ outcome: String(r.outcome ?? "Unknown"), n: Number(r.n ?? 0) || 0 }))
+        .sort((a, b) => b.n - a.n);
+    } catch {
+      return [];
+    }
+  });

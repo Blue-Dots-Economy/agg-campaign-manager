@@ -717,6 +717,17 @@ export type Database = {
         }
         Returns: Json
       }
+      get_kkb_call_outcomes: {
+        Args: {
+          _campaign?: string
+          _campaign_type?: string
+          _channel?: string
+          _date_from?: string
+          _date_to?: string
+          _state?: string
+        }
+        Returns: Json
+      }
       get_kkb_drop_analysis: {
         Args: {
           _campaign?: string
