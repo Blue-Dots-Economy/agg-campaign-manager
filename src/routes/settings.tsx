@@ -26,6 +26,7 @@ import { ConnectionsSection } from "@/components/settings/ConnectionsSection";
 import { AgentsSection } from "@/components/settings/AgentsSection";
 import { ReviewersSection } from "@/components/settings/ReviewersSection";
 import { useAuth } from "@/auth/context";
+import { UsersRolesSection } from "@/components/settings/UsersRolesSection";
 
 export const Route = createFileRoute("/settings")({
   component: Settings,
@@ -44,12 +45,14 @@ function Settings() {
           <TabsTrigger value="connections">Connections</TabsTrigger>
           <TabsTrigger value="agents">Agents</TabsTrigger>
           {isAdmin && <TabsTrigger value="reviewers">Reviewers</TabsTrigger>}
+          {isAdmin && <TabsTrigger value="users-roles">Users & Roles</TabsTrigger>}
           <TabsTrigger value="general">General</TabsTrigger>
           <TabsTrigger value="reference">Reference</TabsTrigger>
         </TabsList>
         <TabsContent value="connections" className="mt-4"><ConnectionsSection /></TabsContent>
         <TabsContent value="agents" className="mt-4"><AgentsSection /></TabsContent>
         {isAdmin && <TabsContent value="reviewers" className="mt-4"><ReviewersSection /></TabsContent>}
+        {isAdmin && <TabsContent value="users-roles" className="mt-4"><UsersRolesSection /></TabsContent>}
         <TabsContent value="general" className="mt-4"><GeneralSettings /></TabsContent>
         <TabsContent value="reference" className="mt-4"><ReferenceSettings /></TabsContent>
       </Tabs>
