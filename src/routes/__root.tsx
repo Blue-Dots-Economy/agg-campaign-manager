@@ -131,21 +131,26 @@ import { useNavigate, useRouterState } from "@tanstack/react-router";
 
 function AuthGate({ children }: { children: ReactNode }) {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
-  const { isAuthenticated, hydrated } = useAuth();
+  const { isAuthenticated, hydrated, session } = useAuth();
   const navigate = useNavigate();
   const isLogin = pathname === "/login";
+  const role = session?.role;
+  const allowed = isLogin || canAccess(role, pathname);
 
   useEffect(() => {
     if (!hydrated) return;
     if (!isAuthenticated && !isLogin) navigate({ to: "/login" });
-    else if (isAuthenticated && isLogin) navigate({ to: "/user-level-analysis" });
-  }, [hydrated, isAuthenticated, isLogin, navigate]);
+    else if (isAuthenticated && isLogin) navigate({ to: landingFor(role) });
+    else if (isAuthenticated && !allowed) navigate({ to: landingFor(role) });
+  }, [hydrated, isAuthenticated, isLogin, allowed, role, navigate]);
 
   if (!hydrated) return null;
   if (isLogin) return <>{children}</>;
   if (!isAuthenticated) return null;
+  if (!allowed) return null;
   return <AppShell>{children}</AppShell>;
 }
+
 
 function RootComponent() {
   const { queryClient } = Route.useRouteContext();
