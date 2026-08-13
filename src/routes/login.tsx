@@ -4,6 +4,7 @@ import { Briefcase } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/auth/context";
+import { landingFor } from "@/auth/permissions";
 import { AuroraFlow } from "@/components/AuroraFlow";
 
 
@@ -20,8 +21,8 @@ function LoginPage() {
 
   const onSubmit = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    const ok = await login(email, password);
-    if (ok) navigate({ to: "/user-level-analysis" });
+    const role = await login(email, password);
+    if (role) navigate({ to: landingFor(role) });
     else setError(true);
   };
 

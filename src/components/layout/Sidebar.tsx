@@ -17,6 +17,7 @@ import { useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { useProgram } from "@/programs/context";
 import { useAuth } from "@/auth/context";
+import { canAccess } from "@/auth/permissions";
 import { listConnections } from "@/lib/connections.functions";
 import { cn } from "@/lib/utils";
 
@@ -136,26 +137,24 @@ function NavLink({
 export function Sidebar() {
   const { config, programId, setProgramId } = useProgram();
   const { session } = useAuth();
-  const isEcosystem = session?.role === "ecosystem";
-  const isAdmin = session?.role === "admin";
-  const groups = isEcosystem
-    ? [{
-        title: "",
-        items: [
-          GROUPS[0].items[3], // Ecosystem View
-          GROUPS[0].items[0], // My Bluedots
-          { to: "/", label: "Campaign Overview", icon: LayoutDashboard },
-        ] as NavItem[],
-      }]
-    : GROUPS.map((g) => ({
-        ...g,
-        items: g.items.flatMap((item) =>
-          item.to === "/launch" && isAdmin
-            ? [item, { to: "/campaign-requests", label: "Campaign Requests", icon: Inbox } as NavItem]
-            : [item],
-        ),
-      }));
+  const role = session?.role;
+  const groups = GROUPS.map((g) => ({
+    ...g,
+    items: g.items
+      .flatMap((item) =>
+        item.to === "/launch"
+          ? [item, { to: "/campaign-requests", label: "Campaign Requests", icon: Inbox } as NavItem]
+          : [item],
+      )
+      .filter((item) => canAccess(role, item.to))
+      .map((item) => ({
+        ...item,
+        children: item.children?.filter((c) => canAccess(role, c.to)),
+      })),
+  })).filter((g) => g.items.length > 0);
+  const showSettings = canAccess(role, SETTINGS.to);
   const pathname = useRouterState({ select: (s) => s.location.pathname });
+
   const listFn = useServerFn(listConnections);
   const { data: conns } = useQuery({
     queryKey: ["connections", programId],
@@ -245,7 +244,7 @@ export function Sidebar() {
         ))}
       </nav>
 
-      {!isEcosystem && (
+      {showSettings && (
         <div className="border-t border-sidebar-border px-3 py-2">
           {(() => {
             const item = SETTINGS;

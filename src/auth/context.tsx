@@ -30,7 +30,7 @@ type AuthContextValue = {
   isAuthenticated: boolean;
   isAdmin: boolean;
   hydrated: boolean;
-  login: (email: string, password: string) => Promise<boolean>;
+  login: (email: string, password: string) => Promise<Role | null>;
   logout: () => void;
 };
 
@@ -77,9 +77,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         writeCookie(COOKIE_KEY, raw);
       }
       setSession(s);
-      return true;
+      return s.role;
     }
-    return false;
+    return null;
   };
 
   const logout = () => {
