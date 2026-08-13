@@ -5,8 +5,8 @@ import { resolveLogin } from "@/lib/reviewers.functions";
 const STORAGE_KEY = "rozgar-auth";
 const COOKIE_KEY = "rozgar_auth";
 const COOKIE_MAX_AGE = 60 * 60 * 24 * 365; // 1 year
-export type Role = "admin" | "user" | "ecosystem";
-export type Session = { email: string; role: Role };
+export type Role = "admin" | "user" | "ecosystem" | "jfc" | "owner" | "coordinator";
+export type Session = { email: string; role: Role; name?: string | null; district?: string | null; program?: string | null; nodeType?: string | null; nodeName?: string | null };
 
 function readCookie(name: string): string | null {
   if (typeof document === "undefined") return null;
@@ -70,7 +70,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const login = async (email: string, password: string) => {
     const res = await resolve({ data: { email, password } });
     if (res?.role) {
-      const s: Session = { email: email.trim().toLowerCase(), role: res.role };
+      const s: Session = { email: email.trim().toLowerCase(), role: res.role, name: res.name ?? null, district: res.district ?? null, program: res.program ?? null, nodeType: res.node_type ?? null, nodeName: res.node_name ?? null };
       const raw = JSON.stringify(s);
       if (typeof window !== "undefined") {
         try { window.localStorage.setItem(STORAGE_KEY, raw); } catch { /* ignore */ }
