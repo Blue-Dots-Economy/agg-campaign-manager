@@ -128,6 +128,8 @@ import { AppShell } from "../components/layout/AppShell";
 import { AuthProvider, useAuth } from "../auth/context";
 import { ThemeProvider } from "../lib/theme";
 import { useNavigate, useRouterState } from "@tanstack/react-router";
+import { canAccess, landingFor } from "../auth/permissions";
+
 
 function AuthGate({ children }: { children: ReactNode }) {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
