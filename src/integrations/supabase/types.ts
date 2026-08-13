@@ -14,6 +14,51 @@ export type Database = {
   }
   public: {
     Tables: {
+      app_users: {
+        Row: {
+          active: boolean
+          created_at: string
+          district: string | null
+          email: string
+          id: string
+          name: string | null
+          node_name: string | null
+          node_type: string | null
+          password_hash: string | null
+          program: string | null
+          role: string
+          updated_at: string
+        }
+        Insert: {
+          active?: boolean
+          created_at?: string
+          district?: string | null
+          email: string
+          id?: string
+          name?: string | null
+          node_name?: string | null
+          node_type?: string | null
+          password_hash?: string | null
+          program?: string | null
+          role: string
+          updated_at?: string
+        }
+        Update: {
+          active?: boolean
+          created_at?: string
+          district?: string | null
+          email?: string
+          id?: string
+          name?: string | null
+          node_name?: string | null
+          node_type?: string | null
+          password_hash?: string | null
+          program?: string | null
+          role?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       call_rows: {
         Row: {
           applications_count: number | null
@@ -651,6 +696,18 @@ export type Database = {
       }
     }
     Functions: {
+      app_user_login: {
+        Args: { _email: string; _password?: string }
+        Returns: {
+          district: string
+          email: string
+          name: string
+          node_name: string
+          node_type: string
+          program: string
+          role: string
+        }[]
+      }
       get_campaign_drop_causes: {
         Args: {
           _campaign: string
@@ -786,6 +843,20 @@ export type Database = {
           _state?: string
         }
         Returns: Json
+      }
+      upsert_app_user: {
+        Args: {
+          _active?: boolean
+          _district: string
+          _email: string
+          _name: string
+          _node_name: string
+          _node_type: string
+          _password?: string
+          _program: string
+          _role: string
+        }
+        Returns: string
       }
     }
     Enums: {
