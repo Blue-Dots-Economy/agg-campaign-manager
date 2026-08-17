@@ -1,6 +1,7 @@
 import { Upload, Rocket, RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useProgram } from "@/programs/context";
+import { useAuth } from "@/auth/context";
 import { Link, useRouterState } from "@tanstack/react-router";
 import { MobileNav } from "./MobileNav";
 import { AccountMenu } from "./AccountMenu";
@@ -13,6 +14,8 @@ import { ConcurrencyChip } from "@/components/ConcurrencyChip";
 
 export function TopBar() {
   const { config } = useProgram();
+  const { session } = useAuth();
+  const canDirectLaunch = session?.role === "admin" || session?.role === "jfc";
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const isUserOverview = pathname === "/user-level-analysis";
   const sync = useSyncProgram(config.id);
@@ -75,7 +78,7 @@ export function TopBar() {
             </Link>
             <Link to="/launch">
               <Button size="sm" className="gap-1.5 bg-brand text-brand-foreground hover:bg-brand/90">
-                <Rocket className="h-4 w-4" /> Launch campaign
+                <Rocket className="h-4 w-4" /> {canDirectLaunch ? "Launch campaign" : "Request campaign"}
               </Button>
             </Link>
           </>
