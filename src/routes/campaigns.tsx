@@ -103,7 +103,26 @@ function CompletedCampaigns() {
           <p className="text-xs text-muted-foreground mt-1">Drill into one campaign and compare it to its region's average.</p>
         </div>
         <div className="flex items-center gap-2">
+          <div className="inline-flex rounded-md border border-border bg-card p-0.5 text-xs">
+            {([
+              { value: "list" as const, label: "List" },
+              { value: "calendar" as const, label: "Calendar" },
+            ]).map((opt) => (
+              <button
+                key={opt.value}
+                type="button"
+                onClick={() => setView(opt.value)}
+                className={cn(
+                  "px-3 py-1.5 rounded transition-colors",
+                  view === opt.value ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground"
+                )}
+              >
+                {opt.label}
+              </button>
+            ))}
+          </div>
           {!isDkb && (
+
             <div className="inline-flex rounded-md border border-border bg-card p-0.5 text-xs">
               {([
                 { value: "all" as const, label: "All calls" },
