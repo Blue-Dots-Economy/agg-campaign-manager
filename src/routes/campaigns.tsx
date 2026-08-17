@@ -149,7 +149,9 @@ function CompletedCampaigns() {
           </div>
         </div>
       </div>
-      {isLoading && !data ? <LoadingState /> : (
+      {isLoading && !data ? <LoadingState /> : view === "calendar" ? (
+        <CampaignCalendar campaigns={all} channel={channel} />
+      ) : (
         <>
           {recent.length > 0 && (
             <div className="space-y-3">
@@ -157,6 +159,7 @@ function CompletedCampaigns() {
               <div className="grid gap-3 md:grid-cols-2">{recent.map((c) => <CampaignCard key={`${c.campaignType}__${c.campaignDate ?? "nd"}`} campaign={c} successLabel={successLabel} channel={channel} highlighted />)}</div>
             </div>
           )}
+
           <div className="space-y-3">
             <div className="flex items-center justify-between">
               <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">All campaigns</h3>
