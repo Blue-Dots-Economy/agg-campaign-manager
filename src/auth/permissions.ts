@@ -7,7 +7,7 @@ export const ROLE_ROUTES: Record<Role, string[]> = {
   coordinator: ["/user-level-analysis", "/", "/campaigns", "/review", "/launch"],
   owner: ["/user-level-analysis", "/"],
   ecosystem: ["/ecosystem-view", "/user-level-analysis", "/"],
-  user: ["/review"],
+  user: ["/user-level-analysis", "/", "/campaigns", "/review"],
 };
 
 export const DEFAULT_LANDING: Record<Role, string> = {
@@ -16,7 +16,7 @@ export const DEFAULT_LANDING: Record<Role, string> = {
   coordinator: "/user-level-analysis",
   owner: "/user-level-analysis",
   ecosystem: "/ecosystem-view",
-  user: "/review",
+  user: "/",
 };
 
 export function landingFor(role: Role | undefined): string {
