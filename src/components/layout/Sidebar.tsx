@@ -6,7 +6,6 @@ import {
   Megaphone,
   Rocket,
   Settings,
-  Briefcase,
   Headphones,
   Users,
   Inbox,
@@ -20,6 +19,7 @@ import { useAuth } from "@/auth/context";
 import { canAccess } from "@/auth/permissions";
 import { listConnections } from "@/lib/connections.functions";
 import { cn } from "@/lib/utils";
+import { BlueDotsMark } from "./BlueDotsMark";
 
 type NavItem = {
   to: string;
