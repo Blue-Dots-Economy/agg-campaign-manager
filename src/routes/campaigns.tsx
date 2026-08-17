@@ -7,6 +7,8 @@ import { Search, ArrowRight, ExternalLink, ShieldAlert, ChevronLeft, ChevronRigh
 import { useProgram } from "@/programs/context";
 import { useCampaignList } from "@/programs/useProgramAggregates";
 import { humanizeCampaignType } from "@/lib/campaign-name";
+import { CampaignCalendar } from "@/components/campaigns/CampaignCalendar";
+
 import { Panel } from "@/components/Panel";
 import { LoadingState } from "@/components/EmptyState";
 import { Input } from "@/components/ui/input";
@@ -72,7 +74,16 @@ function CompletedCampaigns() {
   const { data, isLoading } = useCampaignList(config, { channel });
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(1);
+  const [view, setView] = useState<"list" | "calendar">("calendar");
+  useEffect(() => {
+    const saved = typeof window !== "undefined" ? window.localStorage.getItem("campaigns_view") : null;
+    if (saved === "list" || saved === "calendar") setView(saved);
+  }, []);
+  useEffect(() => {
+    if (typeof window !== "undefined") window.localStorage.setItem("campaigns_view", view);
+  }, [view]);
   useEffect(() => { setPage(1); }, [search]);
+
   const { recent, all } = useMemo(() => {
     const items = (data ?? []).slice();
     const today = new Date(); today.setHours(0,0,0,0);
@@ -94,7 +105,26 @@ function CompletedCampaigns() {
           <p className="text-xs text-muted-foreground mt-1">Drill into one campaign and compare it to its region's average.</p>
         </div>
         <div className="flex items-center gap-2">
+          <div className="inline-flex rounded-md border border-border bg-card p-0.5 text-xs">
+            {([
+              { value: "list" as const, label: "List" },
+              { value: "calendar" as const, label: "Calendar" },
+            ]).map((opt) => (
+              <button
+                key={opt.value}
+                type="button"
+                onClick={() => setView(opt.value)}
+                className={cn(
+                  "px-3 py-1.5 rounded transition-colors",
+                  view === opt.value ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground"
+                )}
+              >
+                {opt.label}
+              </button>
+            ))}
+          </div>
           {!isDkb && (
+
             <div className="inline-flex rounded-md border border-border bg-card p-0.5 text-xs">
               {([
                 { value: "all" as const, label: "All calls" },
@@ -121,7 +151,9 @@ function CompletedCampaigns() {
           </div>
         </div>
       </div>
-      {isLoading && !data ? <LoadingState /> : (
+      {isLoading && !data ? <LoadingState /> : view === "calendar" ? (
+        <CampaignCalendar campaigns={all} channel={channel} />
+      ) : (
         <>
           {recent.length > 0 && (
             <div className="space-y-3">
@@ -129,6 +161,7 @@ function CompletedCampaigns() {
               <div className="grid gap-3 md:grid-cols-2">{recent.map((c) => <CampaignCard key={`${c.campaignType}__${c.campaignDate ?? "nd"}`} campaign={c} successLabel={successLabel} channel={channel} highlighted />)}</div>
             </div>
           )}
+
           <div className="space-y-3">
             <div className="flex items-center justify-between">
               <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">All campaigns</h3>
