@@ -7,6 +7,8 @@ import { Search, ArrowRight, ExternalLink, ShieldAlert, ChevronLeft, ChevronRigh
 import { useProgram } from "@/programs/context";
 import { useCampaignList } from "@/programs/useProgramAggregates";
 import { humanizeCampaignType } from "@/lib/campaign-name";
+import { CampaignCalendar } from "@/components/campaigns/CampaignCalendar";
+
 import { Panel } from "@/components/Panel";
 import { LoadingState } from "@/components/EmptyState";
 import { Input } from "@/components/ui/input";
