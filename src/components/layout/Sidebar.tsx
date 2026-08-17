@@ -146,11 +146,13 @@ export function Sidebar() {
           ? [item, { to: "/campaign-requests", label: "Campaign Requests", icon: Inbox } as NavItem]
           : [item],
       )
-      .filter((item) => canAccess(role, item.to))
       .map((item) => ({
         ...item,
         children: item.children?.filter((c) => canAccess(role, c.to)),
-      })),
+      }))
+      .filter(
+        (item) => canAccess(role, item.to) || (item.children && item.children.length > 0),
+      ),
   })).filter((g) => g.items.length > 0);
   const showSettings = canAccess(role, SETTINGS.to);
   const pathname = useRouterState({ select: (s) => s.location.pathname });
