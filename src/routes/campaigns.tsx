@@ -72,7 +72,16 @@ function CompletedCampaigns() {
   const { data, isLoading } = useCampaignList(config, { channel });
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(1);
+  const [view, setView] = useState<"list" | "calendar">("calendar");
+  useEffect(() => {
+    const saved = typeof window !== "undefined" ? window.localStorage.getItem("campaigns_view") : null;
+    if (saved === "list" || saved === "calendar") setView(saved);
+  }, []);
+  useEffect(() => {
+    if (typeof window !== "undefined") window.localStorage.setItem("campaigns_view", view);
+  }, [view]);
   useEffect(() => { setPage(1); }, [search]);
+
   const { recent, all } = useMemo(() => {
     const items = (data ?? []).slice();
     const today = new Date(); today.setHours(0,0,0,0);
