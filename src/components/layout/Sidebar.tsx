@@ -194,14 +194,7 @@ export function Sidebar() {
   return (
     <aside className="hidden min-h-screen w-64 shrink-0 overflow-hidden rounded-r-2xl bg-sidebar text-sidebar-foreground md:sticky md:top-0 md:flex md:h-screen md:flex-col">
       <div className="px-5 pt-6 pb-4">
-        <div className="flex items-center gap-2">
-          <div className="h-9 w-9 rounded-lg bg-sidebar-accent flex items-center justify-center">
-            <Briefcase className="h-5 w-5" />
-          </div>
-          <div>
-            <div className="text-[11px] opacity-80 leading-tight">{config.subtitle}</div>
-          </div>
-        </div>
+        <BlueDotsMark />
 
         <div
           role="group"
