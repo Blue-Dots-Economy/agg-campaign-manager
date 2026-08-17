@@ -1,0 +1,1 @@
+alter table public.campaign_requests add column if not exists note text;
