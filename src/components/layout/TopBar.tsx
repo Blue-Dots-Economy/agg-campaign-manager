@@ -71,12 +71,14 @@ export function TopBar() {
               <RefreshCw className={`h-4 w-4 ${isSyncing ? "animate-spin" : ""}`} />
               {isSyncing ? "Syncing…" : "Refresh"}
             </Button>
-            <Link to="/launch">
-              <Button variant="outline" size="sm" className="gap-1.5">
-                <Upload className="h-4 w-4" /> Upload CSV
-              </Button>
-            </Link>
-            <Link to="/launch">
+            {canDirectLaunch && (
+              <Link to="/launch">
+                <Button variant="outline" size="sm" className="gap-1.5">
+                  <Upload className="h-4 w-4" /> Upload CSV
+                </Button>
+              </Link>
+            )}
+            <Link to={canDirectLaunch ? "/launch" : "/request-campaign"}>
               <Button size="sm" className="gap-1.5 bg-brand text-brand-foreground hover:bg-brand/90">
                 <Rocket className="h-4 w-4" /> {canDirectLaunch ? "Launch campaign" : "Request campaign"}
               </Button>
