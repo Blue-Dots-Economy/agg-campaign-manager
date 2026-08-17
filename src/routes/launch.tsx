@@ -137,6 +137,7 @@ function LaunchWizard() {
   const [startPending, setStartPending] = useState(false);
   const [requested, setRequested] = useState(false);
   const { session } = useAuth();
+  const canDirectLaunch = session?.role === "admin" || session?.role === "jfc";
 
   const listAgentsFn = useServerFn(listProgramAgents);
   const validateFn = useServerFn(validateContacts);
@@ -702,12 +703,14 @@ function LaunchWizard() {
                 >
                   <Rocket className="h-4 w-4" /> Request campaign
                 </Button>
-                <div className="space-y-1">
-                  <Button onClick={launch} variant="outline" className="gap-1.5">
-                    <Rocket className="h-4 w-4" /> Launch campaign
-                  </Button>
-                  <p className="text-xs text-muted-foreground">Launch now (skips the request queue)</p>
-                </div>
+                {canDirectLaunch && (
+                  <div className="space-y-1">
+                    <Button onClick={launch} variant="outline" className="gap-1.5">
+                      <Rocket className="h-4 w-4" /> Launch campaign
+                    </Button>
+                    <p className="text-xs text-muted-foreground">Launch now (skips the request queue)</p>
+                  </div>
+                )}
               </div>
             )}
             {requested && !batchId && (
