@@ -29,6 +29,7 @@ export interface CampaignRequestInput {
   retry_after_hrs?: number | null;
   selected_statuses?: string[] | null;
   requested_by?: string | null;
+  note?: string | null;
 }
 
 export const submitCampaignRequest = createServerFn({ method: "POST" })
@@ -47,6 +48,7 @@ export const submitCampaignRequest = createServerFn({ method: "POST" })
       contacts: r.contacts, contact_count: r.contacts.length, schedule: r.schedule ?? null,
       concurrency: r.concurrency ?? null, max_retries: r.max_retries ?? null, retry_after_hrs: r.retry_after_hrs ?? null,
       selected_statuses: r.selected_statuses ?? null, requested_by: r.requested_by ?? null, status: "pending",
+      note: r.note ?? null,
     };
     const { data: ins, error } = await client.from("campaign_requests").insert(row).select("id").single();
     if (error) throw new Error(error.message);

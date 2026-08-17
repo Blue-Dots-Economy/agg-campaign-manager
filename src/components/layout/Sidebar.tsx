@@ -142,11 +142,14 @@ export function Sidebar() {
   const groups = GROUPS.map((g) => ({
     ...g,
     items: g.items
-      .flatMap((item) =>
-        item.to === "/launch"
-          ? [item, { to: "/campaign-requests", label: "Campaign Requests", icon: Inbox } as NavItem]
-          : [item],
-      )
+      .flatMap((item) => {
+        if (item.to !== "/launch") return [item];
+        const launchItem: NavItem =
+          role === "admin" || role === "jfc"
+            ? item
+            : { to: "/request-campaign", label: "Request a campaign", icon: Rocket };
+        return [launchItem, { to: "/campaign-requests", label: "Campaign Requests", icon: Inbox } as NavItem];
+      })
       .map((item) => ({
         ...item,
         children: item.children?.filter((c) => canAccess(role, c.to)),

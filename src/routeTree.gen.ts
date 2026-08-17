@@ -12,6 +12,7 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as UserLevelAnalysisRouteImport } from './routes/user-level-analysis'
 import { Route as SettingsRouteImport } from './routes/settings'
 import { Route as ReviewRouteImport } from './routes/review'
+import { Route as RequestCampaignRouteImport } from './routes/request-campaign'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as LaunchRouteImport } from './routes/launch'
 import { Route as EcosystemViewRouteImport } from './routes/ecosystem-view'
@@ -35,6 +36,11 @@ const SettingsRoute = SettingsRouteImport.update({
 const ReviewRoute = ReviewRouteImport.update({
   id: '/review',
   path: '/review',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const RequestCampaignRoute = RequestCampaignRouteImport.update({
+  id: '/request-campaign',
+  path: '/request-campaign',
   getParentRoute: () => rootRouteImport,
 } as any)
 const LoginRoute = LoginRouteImport.update({
@@ -91,6 +97,7 @@ export interface FileRoutesByFullPath {
   '/ecosystem-view': typeof EcosystemViewRoute
   '/launch': typeof LaunchRoute
   '/login': typeof LoginRoute
+  '/request-campaign': typeof RequestCampaignRoute
   '/review': typeof ReviewRoute
   '/settings': typeof SettingsRoute
   '/user-level-analysis': typeof UserLevelAnalysisRoute
@@ -105,6 +112,7 @@ export interface FileRoutesByTo {
   '/ecosystem-view': typeof EcosystemViewRoute
   '/launch': typeof LaunchRoute
   '/login': typeof LoginRoute
+  '/request-campaign': typeof RequestCampaignRoute
   '/review': typeof ReviewRoute
   '/settings': typeof SettingsRoute
   '/user-level-analysis': typeof UserLevelAnalysisRoute
@@ -120,6 +128,7 @@ export interface FileRoutesById {
   '/ecosystem-view': typeof EcosystemViewRoute
   '/launch': typeof LaunchRoute
   '/login': typeof LoginRoute
+  '/request-campaign': typeof RequestCampaignRoute
   '/review': typeof ReviewRoute
   '/settings': typeof SettingsRoute
   '/user-level-analysis': typeof UserLevelAnalysisRoute
@@ -136,6 +145,7 @@ export interface FileRouteTypes {
     | '/ecosystem-view'
     | '/launch'
     | '/login'
+    | '/request-campaign'
     | '/review'
     | '/settings'
     | '/user-level-analysis'
@@ -150,6 +160,7 @@ export interface FileRouteTypes {
     | '/ecosystem-view'
     | '/launch'
     | '/login'
+    | '/request-campaign'
     | '/review'
     | '/settings'
     | '/user-level-analysis'
@@ -164,6 +175,7 @@ export interface FileRouteTypes {
     | '/ecosystem-view'
     | '/launch'
     | '/login'
+    | '/request-campaign'
     | '/review'
     | '/settings'
     | '/user-level-analysis'
@@ -179,6 +191,7 @@ export interface RootRouteChildren {
   EcosystemViewRoute: typeof EcosystemViewRoute
   LaunchRoute: typeof LaunchRoute
   LoginRoute: typeof LoginRoute
+  RequestCampaignRoute: typeof RequestCampaignRoute
   ReviewRoute: typeof ReviewRoute
   SettingsRoute: typeof SettingsRoute
   UserLevelAnalysisRoute: typeof UserLevelAnalysisRoute
@@ -208,6 +221,13 @@ declare module '@tanstack/react-router' {
       path: '/review'
       fullPath: '/review'
       preLoaderRoute: typeof ReviewRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/request-campaign': {
+      id: '/request-campaign'
+      path: '/request-campaign'
+      fullPath: '/request-campaign'
+      preLoaderRoute: typeof RequestCampaignRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/login': {
@@ -283,6 +303,7 @@ const rootRouteChildren: RootRouteChildren = {
   EcosystemViewRoute: EcosystemViewRoute,
   LaunchRoute: LaunchRoute,
   LoginRoute: LoginRoute,
+  RequestCampaignRoute: RequestCampaignRoute,
   ReviewRoute: ReviewRoute,
   SettingsRoute: SettingsRoute,
   UserLevelAnalysisRoute: UserLevelAnalysisRoute,

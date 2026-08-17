@@ -173,6 +173,7 @@ export type Database = {
           id: string
           language: string | null
           max_retries: number | null
+          note: string | null
           program: string
           region: string | null
           requested_by: string | null
@@ -204,6 +205,7 @@ export type Database = {
           id?: string
           language?: string | null
           max_retries?: number | null
+          note?: string | null
           program: string
           region?: string | null
           requested_by?: string | null
@@ -235,6 +237,7 @@ export type Database = {
           id?: string
           language?: string | null
           max_retries?: number | null
+          note?: string | null
           program?: string
           region?: string | null
           requested_by?: string | null
