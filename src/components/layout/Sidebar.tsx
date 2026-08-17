@@ -6,6 +6,7 @@ import {
   Megaphone,
   Rocket,
   Settings,
+  Briefcase,
   Headphones,
   Users,
   Inbox,
