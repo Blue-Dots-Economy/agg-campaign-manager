@@ -29,6 +29,7 @@ export interface CampaignRequestInput {
   retry_after_hrs?: number | null;
   selected_statuses?: string[] | null;
   requested_by?: string | null;
+  note?: string | null;
 }
 
 export const submitCampaignRequest = createServerFn({ method: "POST" })
