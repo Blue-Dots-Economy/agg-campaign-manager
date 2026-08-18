@@ -13,7 +13,6 @@ import { Route as UserLevelAnalysisRouteImport } from './routes/user-level-analy
 import { Route as SettingsRouteImport } from './routes/settings'
 import { Route as ReviewRouteImport } from './routes/review'
 import { Route as RequestCampaignRouteImport } from './routes/request-campaign'
-import { Route as PilotDebugRouteImport } from './routes/pilot-debug'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as LaunchRouteImport } from './routes/launch'
 import { Route as EcosystemViewRouteImport } from './routes/ecosystem-view'
@@ -42,11 +41,6 @@ const ReviewRoute = ReviewRouteImport.update({
 const RequestCampaignRoute = RequestCampaignRouteImport.update({
   id: '/request-campaign',
   path: '/request-campaign',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const PilotDebugRoute = PilotDebugRouteImport.update({
-  id: '/pilot-debug',
-  path: '/pilot-debug',
   getParentRoute: () => rootRouteImport,
 } as any)
 const LoginRoute = LoginRouteImport.update({
@@ -103,7 +97,6 @@ export interface FileRoutesByFullPath {
   '/ecosystem-view': typeof EcosystemViewRoute
   '/launch': typeof LaunchRoute
   '/login': typeof LoginRoute
-  '/pilot-debug': typeof PilotDebugRoute
   '/request-campaign': typeof RequestCampaignRoute
   '/review': typeof ReviewRoute
   '/settings': typeof SettingsRoute
@@ -119,7 +112,6 @@ export interface FileRoutesByTo {
   '/ecosystem-view': typeof EcosystemViewRoute
   '/launch': typeof LaunchRoute
   '/login': typeof LoginRoute
-  '/pilot-debug': typeof PilotDebugRoute
   '/request-campaign': typeof RequestCampaignRoute
   '/review': typeof ReviewRoute
   '/settings': typeof SettingsRoute
@@ -136,7 +128,6 @@ export interface FileRoutesById {
   '/ecosystem-view': typeof EcosystemViewRoute
   '/launch': typeof LaunchRoute
   '/login': typeof LoginRoute
-  '/pilot-debug': typeof PilotDebugRoute
   '/request-campaign': typeof RequestCampaignRoute
   '/review': typeof ReviewRoute
   '/settings': typeof SettingsRoute
@@ -154,7 +145,6 @@ export interface FileRouteTypes {
     | '/ecosystem-view'
     | '/launch'
     | '/login'
-    | '/pilot-debug'
     | '/request-campaign'
     | '/review'
     | '/settings'
@@ -170,7 +160,6 @@ export interface FileRouteTypes {
     | '/ecosystem-view'
     | '/launch'
     | '/login'
-    | '/pilot-debug'
     | '/request-campaign'
     | '/review'
     | '/settings'
@@ -186,7 +175,6 @@ export interface FileRouteTypes {
     | '/ecosystem-view'
     | '/launch'
     | '/login'
-    | '/pilot-debug'
     | '/request-campaign'
     | '/review'
     | '/settings'
@@ -203,7 +191,6 @@ export interface RootRouteChildren {
   EcosystemViewRoute: typeof EcosystemViewRoute
   LaunchRoute: typeof LaunchRoute
   LoginRoute: typeof LoginRoute
-  PilotDebugRoute: typeof PilotDebugRoute
   RequestCampaignRoute: typeof RequestCampaignRoute
   ReviewRoute: typeof ReviewRoute
   SettingsRoute: typeof SettingsRoute
@@ -241,13 +228,6 @@ declare module '@tanstack/react-router' {
       path: '/request-campaign'
       fullPath: '/request-campaign'
       preLoaderRoute: typeof RequestCampaignRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/pilot-debug': {
-      id: '/pilot-debug'
-      path: '/pilot-debug'
-      fullPath: '/pilot-debug'
-      preLoaderRoute: typeof PilotDebugRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/login': {
@@ -323,7 +303,6 @@ const rootRouteChildren: RootRouteChildren = {
   EcosystemViewRoute: EcosystemViewRoute,
   LaunchRoute: LaunchRoute,
   LoginRoute: LoginRoute,
-  PilotDebugRoute: PilotDebugRoute,
   RequestCampaignRoute: RequestCampaignRoute,
   ReviewRoute: ReviewRoute,
   SettingsRoute: SettingsRoute,
