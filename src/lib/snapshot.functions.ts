@@ -125,6 +125,11 @@ export interface SyncResult {
 const inflight = new Map<ProgramId, Promise<SyncResult>>();
 
 export async function performSync(program: ProgramId, opts?: { force?: boolean }): Promise<SyncResult> {
+  const { usesSecondProject } = await import("@/lib/db.server");
+  if (usesSecondProject()) {
+    // Pilot user's data comes from the Raya pipeline in the second project; call_rows is a read-only view there.
+    return { ok: true, skipped: true } as any;
+  }
   const existing = inflight.get(program);
   if (existing && !opts?.force) return existing;
   const p = (async (): Promise<SyncResult> => {
