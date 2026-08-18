@@ -1,4 +1,5 @@
 import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { resolveLogin } from "@/lib/reviewers.functions";
 
@@ -39,6 +40,7 @@ const AuthContext = createContext<AuthContextValue | null>(null);
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [session, setSession] = useState<Session | null>(null);
   const [hydrated, setHydrated] = useState(false);
+  const queryClient = useQueryClient();
   const resolve = useServerFn(resolveLogin);
 
   useEffect(() => {
@@ -60,6 +62,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             // next person signed in as admin. Clear the stale stored session.
             try { window.localStorage.removeItem(STORAGE_KEY); } catch { /* ignore */ }
             clearCookie(COOKIE_KEY);
+            queryClient.clear();
           }
         }
       } catch { /* ignore */ }
@@ -77,6 +80,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         writeCookie(COOKIE_KEY, raw);
       }
       setSession(s);
+      queryClient.clear();
       return s.role;
     }
     return null;
@@ -88,6 +92,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       clearCookie(COOKIE_KEY);
     }
     setSession(null);
+    queryClient.clear();
   };
 
 
