@@ -1,5 +1,4 @@
 import { createServerFn } from "@tanstack/react-start";
-import { createClient } from "@supabase/supabase-js";
 import { type ProgramId } from "@/programs/registry";
 import { rayaFetch, RayaApiError } from "./raya-api";
 
@@ -13,12 +12,9 @@ export interface ProgramAgent {
   created_at: string;
 }
 
-function sb() {
-  return createClient(
-    process.env.SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!,
-    { auth: { persistSession: false, autoRefreshToken: false } },
-  );
+async function sb() {
+  const { sbFor } = await import("@/lib/db.server");
+  return sbFor();
 }
 
 async function rayaGetAgent(agentId: string): Promise<{ ok: true; name: string; raw: any } | { ok: false; error: string }> {
@@ -43,7 +39,7 @@ export const loadAgent = createServerFn({ method: "POST" })
 export const listProgramAgents = createServerFn({ method: "GET" })
   .inputValidator((d: { program?: ProgramId }) => d)
   .handler(async ({ data }) => {
-    const c = sb();
+    const c = await sb();
     let q = c.from("program_agents").select("*").order("created_at", { ascending: true });
     if (data.program) q = q.eq("program", data.program);
     const { data: rows, error } = await q;
@@ -63,7 +59,7 @@ export const createProgramAgent = createServerFn({ method: "POST" })
     const last_error = fetched.ok ? null : fetched.error;
     const name = (data.name?.trim()) || (fetched.ok ? fetched.name : data.agentId.trim());
 
-    const c = sb();
+    const c = await sb();
     const { data: row, error } = await c
       .from("program_agents")
       .upsert(
@@ -85,7 +81,7 @@ export const createProgramAgent = createServerFn({ method: "POST" })
 export const refreshProgramAgent = createServerFn({ method: "POST" })
   .inputValidator((d: { id: string }) => d)
   .handler(async ({ data }) => {
-    const c = sb();
+    const c = await sb();
     const { data: existing, error: e1 } = await c
       .from("program_agents")
       .select("*")
@@ -110,7 +106,7 @@ export const refreshProgramAgent = createServerFn({ method: "POST" })
 export const deleteProgramAgent = createServerFn({ method: "POST" })
   .inputValidator((d: { id: string }) => d)
   .handler(async ({ data }) => {
-    const c = sb();
+    const c = await sb();
     const { error } = await c.from("program_agents").delete().eq("id", data.id);
     if (error) throw new Error(error.message);
     return { ok: true };

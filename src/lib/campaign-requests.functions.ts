@@ -1,10 +1,8 @@
 import { createServerFn } from "@tanstack/react-start";
-import { createClient } from "@supabase/supabase-js";
 
-function sb() {
-  return createClient(process.env.SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!, {
-    auth: { persistSession: false, autoRefreshToken: false },
-  });
+async function sb() {
+  const { sbFor } = await import("@/lib/db.server");
+  return sbFor();
 }
 
 export interface CampaignRequestInput {
@@ -38,7 +36,7 @@ export const submitCampaignRequest = createServerFn({ method: "POST" })
     const r = data.request;
     if (!r.agent_id) throw new Error("Missing agent.");
     if (!r.contacts?.length) throw new Error("No contacts to request.");
-    const client = sb();
+    const client = await sb();
     const row = {
       program: r.program, agent_id: r.agent_id, agent_name: r.agent_name ?? null,
       batch_name: r.batch_name, campaign_day: r.campaign_day ?? null, campaign_date: r.campaign_date ?? null,
@@ -58,7 +56,7 @@ export const submitCampaignRequest = createServerFn({ method: "POST" })
 export const listCampaignRequests = createServerFn({ method: "GET" })
   .inputValidator((data: { status?: string; program?: string }) => data)
   .handler(async ({ data }) => {
-    const client = sb();
+    const client = await sb();
     let q = client.from("campaign_requests").select("*").order("created_at", { ascending: false });
     if (data?.status) q = q.eq("status", data.status);
     if (data?.program) q = q.eq("program", data.program);
@@ -70,7 +68,7 @@ export const listCampaignRequests = createServerFn({ method: "GET" })
 export const updateCampaignRequest = createServerFn({ method: "POST" })
   .inputValidator((data: { id: string; patch: Record<string, unknown> }) => data)
   .handler(async ({ data }): Promise<{ ok: boolean }> => {
-    const client = sb();
+    const client = await sb();
     const allowed = ["schedule", "concurrency", "max_retries", "retry_after_hrs", "selected_statuses", "batch_name", "campaign_day", "campaign_date"];
     const patch: Record<string, unknown> = {};
     for (const k of allowed) if (k in data.patch) patch[k] = (data.patch as Record<string, unknown>)[k];
@@ -83,7 +81,7 @@ export const updateCampaignRequest = createServerFn({ method: "POST" })
 export const setCampaignRequestStatus = createServerFn({ method: "POST" })
   .inputValidator((data: { id: string; status: string; reviewer_email?: string; batch_id?: string; decline_reason?: string }) => data)
   .handler(async ({ data }): Promise<{ ok: boolean }> => {
-    const client = sb();
+    const client = await sb();
     const patch: Record<string, unknown> = { status: data.status, updated_at: new Date().toISOString() };
     if (data.reviewer_email) patch["reviewer_email"] = data.reviewer_email;
     if (data.batch_id) patch["batch_id"] = data.batch_id;

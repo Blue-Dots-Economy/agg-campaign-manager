@@ -2,7 +2,6 @@
 // Raya gives ONE pool (default 20) shared by every agent / program.
 
 import { createServerFn } from "@tanstack/react-start";
-import { createClient } from "@supabase/supabase-js";
 import { delay, rayaFetch } from "./raya-api";
 
 export const CONCURRENCY_CAP_DEFAULT = 20;
@@ -20,12 +19,9 @@ const ACTIVE_STATUSES = new Set([
   "live",
 ]);
 
-function sb() {
-  return createClient(
-    process.env.SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!,
-    { auth: { persistSession: false, autoRefreshToken: false } },
-  );
+async function sb() {
+  const { sbFor } = await import("@/lib/db.server");
+  return sbFor();
 }
 
 interface ActiveBatch {
@@ -70,7 +66,7 @@ export const getConcurrencyUsage = createServerFn({ method: "GET" })
       return { cap, used: 0, available: cap, batches: [] as ActiveBatch[], error: "RAYA_API_KEY not set" };
     }
 
-    const c = sb();
+    const c = await sb();
     const { data: agents, error } = await c
       .from("program_agents")
       .select("program,agent_id,name");

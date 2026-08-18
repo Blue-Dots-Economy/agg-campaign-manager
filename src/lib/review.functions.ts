@@ -1,5 +1,4 @@
 import { createServerFn } from "@tanstack/react-start";
-import { createClient } from "@supabase/supabase-js";
 import {
   getCallDetail,
   readStagingCallIds,
@@ -11,12 +10,9 @@ import {
 
 export type ReviewDataset = "kkb" | "dkb";
 
-function sb() {
-  return createClient(
-    process.env.SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!,
-    { auth: { persistSession: false, autoRefreshToken: false } },
-  );
+async function sb() {
+  const { sbFor } = await import("@/lib/db.server");
+  return sbFor();
 }
 
 function normKey(h: string): string {
@@ -27,7 +23,7 @@ async function resolveSheet(
   dataset: ReviewDataset,
   channel?: string,
 ): Promise<{ sheet_id: string; tab_name: string | null }> {
-  const client = sb();
+  const client = await sb();
   const { data, error } = await client
     .from("sheet_connections")
     .select("sheet_id, tab_name, channel")
@@ -47,7 +43,7 @@ async function resolveSheet(
 export const fetchReviewCalls = createServerFn({ method: "GET" })
   .inputValidator((data: { dataset: ReviewDataset }) => data)
   .handler(async ({ data }): Promise<Array<Record<string, string>>> => {
-    const client = sb();
+    const client = await sb();
     const cols = "call_id, campaign_day, campaign_date, campaign_type, language, city_campaign, call_outcome, call_duration_seconds, intent_score, drop_reason, job_status, phone, channel, data";
     const rows: Record<string, unknown>[] = [];
     let _from = 0;
@@ -98,7 +94,7 @@ export const fetchReviewCalls = createServerFn({ method: "GET" })
 export const fetchCallDetail = createServerFn({ method: "GET" })
   .inputValidator((data: { dataset: ReviewDataset; callId: string }) => data)
   .handler(async ({ data }) => {
-    const client = sb();
+    const client = await sb();
     const { data: row } = await client
       .from("call_rows")
       .select("channel")
@@ -114,7 +110,7 @@ export const fetchCallDetail = createServerFn({ method: "GET" })
   });
 
 export const fetchReviewMap = createServerFn({ method: "GET" }).handler(async () => {
-  const client = sb();
+  const client = await sb();
   const { data, error } = await client
     .from("transcript_reviews")
     .select("call_id, job_id, reviewer_email");
@@ -131,7 +127,7 @@ export const fetchReviewedCallIds = createServerFn({ method: "GET" })
   .handler(async ({ data }): Promise<string[]> => {
     const email = (data.email || "").trim().toLowerCase();
     if (!email) return [];
-    const client = sb();
+    const client = await sb();
     const ids = new Set<string>();
     // 1) Supabase transcript_reviews (paginated past the ~1000-row cap)
     let from = 0;
@@ -165,7 +161,7 @@ export const fetchReviewedCallIds = createServerFn({ method: "GET" })
 export const fetchAllReviewedCallIds = createServerFn({ method: "GET" })
   .inputValidator((data: { program: ReviewDataset }) => data)
   .handler(async ({ data }): Promise<string[]> => {
-    const client = sb();
+    const client = await sb();
     const ids = new Set<string>();
     // 1) Supabase transcript_reviews for this program (+ legacy null-dataset rows), paginated.
     let from = 0;
@@ -196,7 +192,7 @@ export const fetchAllReviewedCallIds = createServerFn({ method: "GET" })
 export const fetchExistingReviews = createServerFn({ method: "GET" })
   .inputValidator((data: { callId?: string | null; jobId?: string | null }) => data)
   .handler(async ({ data }) => {
-    const client = sb();
+    const client = await sb();
     const callId = (data.callId ?? "").trim();
     const jobId = (data.jobId ?? "").trim();
     let query = client
@@ -267,7 +263,7 @@ export const submitReview = createServerFn({ method: "POST" })
   .inputValidator((data: { review: ReviewInput }) => data)
   .handler(async ({ data }) => {
     const review: ReviewInput = { review_type: "transcript", ...data.review, company_name: "" };
-    const client = sb();
+    const client = await sb();
     const { error } = await client
       .from("transcript_reviews")
       .upsert(review as unknown as Record<string, unknown>, {
