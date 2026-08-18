@@ -1,10 +1,8 @@
 import { createServerFn } from "@tanstack/react-start";
-import { createClient } from "@supabase/supabase-js";
 
-function sb() {
-  return createClient(process.env.SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!, {
-    auth: { persistSession: false, autoRefreshToken: false },
-  });
+async function sb() {
+  const { sbFor } = await import("@/lib/db.server");
+  return sbFor();
 }
 
 export interface NorthStarConfigRow {
@@ -18,7 +16,7 @@ export const fetchNorthStar = createServerFn({ method: "GET" })
   .inputValidator((d: { program: string }) => d)
   .handler(async ({ data }): Promise<NorthStarConfigRow[]> => {
     try {
-      const client = sb();
+      const client = await sb();
       const { data: rows, error } = await client
         .from("north_star_config")
         .select("key, threshold, enabled, sort")
@@ -39,7 +37,7 @@ export const fetchNorthStar = createServerFn({ method: "GET" })
 export const saveNorthStar = createServerFn({ method: "POST" })
   .inputValidator((d: { program: string; key: string; threshold: number | null; enabled?: boolean }) => d)
   .handler(async ({ data }) => {
-    const client = sb();
+    const client = await sb();
     const { error } = await client.from("north_star_config").upsert(
       {
         program: data.program,

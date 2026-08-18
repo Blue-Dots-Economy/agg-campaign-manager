@@ -1,5 +1,4 @@
 import { createServerFn } from "@tanstack/react-start";
-import { createClient } from "@supabase/supabase-js";
 import type { CallRow } from "@/programs/data";
 import { type ProgramId } from "@/programs/registry";
 
@@ -17,18 +16,15 @@ export interface SheetConnection {
   created_at: string;
 }
 
-function getServerSupabase() {
-  return createClient(
-    process.env.SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!,
-    { auth: { persistSession: false, autoRefreshToken: false } },
-  );
+async function getServerSupabase() {
+  const { sbFor } = await import("@/lib/db.server");
+  return sbFor();
 }
 
 export const listConnections = createServerFn({ method: "GET" })
   .inputValidator((d: { program: ProgramId }) => d)
   .handler(async ({ data }) => {
-    const sb = getServerSupabase();
+    const sb = await getServerSupabase();
     const { data: rows, error } = await sb
       .from("sheet_connections")
       .select("*")
@@ -41,7 +37,7 @@ export const listConnections = createServerFn({ method: "GET" })
 export const createConnection = createServerFn({ method: "POST" })
   .inputValidator((d: { program: ProgramId; name: string; sheet_id: string; tab_name?: string }) => d)
   .handler(async ({ data }) => {
-    const sb = getServerSupabase();
+    const sb = await getServerSupabase();
     const { data: row, error } = await sb
       .from("sheet_connections")
       .insert({
@@ -61,7 +57,7 @@ export const createConnection = createServerFn({ method: "POST" })
 export const updateConnection = createServerFn({ method: "POST" })
   .inputValidator((d: { id: string; enabled?: boolean; name?: string; tab_name?: string | null }) => d)
   .handler(async ({ data }) => {
-    const sb = getServerSupabase();
+    const sb = await getServerSupabase();
     const patch: Record<string, unknown> = {};
     if (data.enabled !== undefined) patch.enabled = data.enabled;
     if (data.name !== undefined) patch.name = data.name;
@@ -79,7 +75,7 @@ export const updateConnection = createServerFn({ method: "POST" })
 export const deleteConnection = createServerFn({ method: "POST" })
   .inputValidator((d: { id: string }) => d)
   .handler(async ({ data }) => {
-    const sb = getServerSupabase();
+    const sb = await getServerSupabase();
     const { error } = await sb.from("sheet_connections").delete().eq("id", data.id);
     if (error) throw new Error(error.message);
     return { ok: true };
@@ -104,7 +100,7 @@ export const testConnection = createServerFn({ method: "POST" })
     try {
       const result = await readSheet(data.sheet_id, data.tab_name);
       if (data.id) {
-        const sb = getServerSupabase();
+        const sb = await getServerSupabase();
         const patch: Record<string, unknown> = {
           status: "connected",
           row_count: result.rowCount,
@@ -125,7 +121,7 @@ export const testConnection = createServerFn({ method: "POST" })
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
       if (data.id) {
-        const sb = getServerSupabase();
+        const sb = await getServerSupabase();
         await sb
           .from("sheet_connections")
           .update({ status: "error", last_error: msg, last_synced_at: new Date().toISOString() })
@@ -139,7 +135,7 @@ export const testConnection = createServerFn({ method: "POST" })
 export const revalidateConnections = createServerFn({ method: "POST" })
   .inputValidator((d: { program: ProgramId }) => d)
   .handler(async ({ data }) => {
-    const sb = getServerSupabase();
+    const sb = await getServerSupabase();
     const { data: rows } = await sb
       .from("sheet_connections")
       .select("*")
@@ -266,7 +262,7 @@ function mapRow(headers: string[], values: string[]): CallRow {
 export const getCallDetailFn = createServerFn({ method: "POST" })
   .inputValidator((d: { program: ProgramId; call_id: string }) => d)
   .handler(async ({ data }) => {
-    const sb = getServerSupabase();
+    const sb = await getServerSupabase();
     const { data: conns } = await sb
       .from("sheet_connections")
       .select("*")
@@ -291,7 +287,7 @@ export const getCallDetailFn = createServerFn({ method: "POST" })
 export const fetchProgramRows = createServerFn({ method: "GET" })
   .inputValidator((d: { program: ProgramId }) => d)
   .handler(async ({ data }) => {
-    const sb = getServerSupabase();
+    const sb = await getServerSupabase();
     const { data: conns, error } = await sb
       .from("sheet_connections")
       .select("*")
