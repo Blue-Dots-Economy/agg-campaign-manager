@@ -3,7 +3,7 @@ import type { Role } from "@/auth/context";
 // Route prefixes each role may open. "*" = everything.
 export const ROLE_ROUTES: Record<Role, string[]> = {
   admin: ["*"],
-  jfc: ["/user-level-analysis", "/", "/campaigns", "/review", "/launch", "/ecosystem-view", "/campaign-requests", "/request-campaign", "/pilot-debug"],
+  jfc: ["/user-level-analysis", "/", "/campaigns", "/review", "/launch", "/ecosystem-view", "/campaign-requests", "/request-campaign"],
   coordinator: ["/user-level-analysis", "/", "/campaigns", "/review", "/request-campaign"],
   owner: ["/user-level-analysis", "/"],
   ecosystem: ["/ecosystem-view", "/user-level-analysis", "/"],
