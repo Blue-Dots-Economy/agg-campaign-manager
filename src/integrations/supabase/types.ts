@@ -152,6 +152,99 @@ export type Database = {
         }
         Relationships: []
       }
+      call_rows_np: {
+        Row: {
+          applications_count: number | null
+          applied_to_job: boolean | null
+          call_answered: boolean | null
+          call_duration_seconds: number | null
+          call_engaged: boolean | null
+          call_id: string
+          call_outcome: string | null
+          call_status: string | null
+          campaign_date: string | null
+          campaign_day: string
+          campaign_type: string | null
+          channel: string
+          city_campaign: string | null
+          connection_id: string | null
+          data: Json
+          drop_reason: string | null
+          id: string
+          intent_score: number | null
+          job_status: string | null
+          language: string | null
+          new_job_posted: string | null
+          phases_reached: string | null
+          phone: string | null
+          program: string
+          row_hash: string | null
+          synced_at: string
+          talent_insights_shown: string | null
+          tried_to_apply: boolean | null
+        }
+        Insert: {
+          applications_count?: number | null
+          applied_to_job?: boolean | null
+          call_answered?: boolean | null
+          call_duration_seconds?: number | null
+          call_engaged?: boolean | null
+          call_id?: string
+          call_outcome?: string | null
+          call_status?: string | null
+          campaign_date?: string | null
+          campaign_day?: string
+          campaign_type?: string | null
+          channel?: string
+          city_campaign?: string | null
+          connection_id?: string | null
+          data: Json
+          drop_reason?: string | null
+          id?: string
+          intent_score?: number | null
+          job_status?: string | null
+          language?: string | null
+          new_job_posted?: string | null
+          phases_reached?: string | null
+          phone?: string | null
+          program: string
+          row_hash?: string | null
+          synced_at?: string
+          talent_insights_shown?: string | null
+          tried_to_apply?: boolean | null
+        }
+        Update: {
+          applications_count?: number | null
+          applied_to_job?: boolean | null
+          call_answered?: boolean | null
+          call_duration_seconds?: number | null
+          call_engaged?: boolean | null
+          call_id?: string
+          call_outcome?: string | null
+          call_status?: string | null
+          campaign_date?: string | null
+          campaign_day?: string
+          campaign_type?: string | null
+          channel?: string
+          city_campaign?: string | null
+          connection_id?: string | null
+          data?: Json
+          drop_reason?: string | null
+          id?: string
+          intent_score?: number | null
+          job_status?: string | null
+          language?: string | null
+          new_job_posted?: string | null
+          phases_reached?: string | null
+          phone?: string | null
+          program?: string
+          row_hash?: string | null
+          synced_at?: string
+          talent_insights_shown?: string | null
+          tried_to_apply?: boolean | null
+        }
+        Relationships: []
+      }
       campaign_requests: {
         Row: {
           agent_id: string
@@ -721,6 +814,16 @@ export type Database = {
         }
         Returns: Json
       }
+      get_campaign_drop_causes_np: {
+        Args: {
+          _campaign: string
+          _channel?: string
+          _date_from?: string
+          _date_to?: string
+          _state?: string
+        }
+        Returns: Json
+      }
       get_campaign_list: {
         Args: {
           _channel?: string
@@ -731,7 +834,27 @@ export type Database = {
         }
         Returns: Json
       }
+      get_campaign_list_np: {
+        Args: {
+          _channel?: string
+          _date_from?: string
+          _date_to?: string
+          _program: string
+          _state?: string
+        }
+        Returns: Json
+      }
       get_dkb_campaign_causes: {
+        Args: {
+          _campaign: string
+          _channel?: string
+          _date_from?: string
+          _date_to?: string
+          _state?: string
+        }
+        Returns: Json
+      }
+      get_dkb_campaign_causes_np: {
         Args: {
           _campaign: string
           _channel?: string
@@ -752,7 +875,31 @@ export type Database = {
         }
         Returns: Json
       }
+      get_dkb_drop_analysis_np: {
+        Args: {
+          _campaign?: string
+          _campaign_type?: string
+          _channel?: string
+          _date_from?: string
+          _date_to?: string
+          _state?: string
+        }
+        Returns: Json
+      }
       get_funnel_call_ids: {
+        Args: {
+          _campaign?: string
+          _campaign_type?: string
+          _channel?: string
+          _date_from?: string
+          _date_to?: string
+          _program: string
+          _stage?: string
+          _state?: string
+        }
+        Returns: Json
+      }
+      get_funnel_call_ids_np: {
         Args: {
           _campaign?: string
           _campaign_type?: string
@@ -777,7 +924,30 @@ export type Database = {
         }
         Returns: Json
       }
+      get_funnel_durations_np: {
+        Args: {
+          _campaign?: string
+          _campaign_type?: string
+          _channel?: string
+          _date_from?: string
+          _date_to?: string
+          _program: string
+          _state?: string
+        }
+        Returns: Json
+      }
       get_kkb_call_outcomes: {
+        Args: {
+          _campaign?: string
+          _campaign_type?: string
+          _channel?: string
+          _date_from?: string
+          _date_to?: string
+          _state?: string
+        }
+        Returns: Json
+      }
+      get_kkb_call_outcomes_np: {
         Args: {
           _campaign?: string
           _campaign_type?: string
@@ -799,7 +969,30 @@ export type Database = {
         }
         Returns: Json
       }
+      get_kkb_drop_analysis_np: {
+        Args: {
+          _campaign?: string
+          _campaign_type?: string
+          _channel?: string
+          _date_from?: string
+          _date_to?: string
+          _state?: string
+        }
+        Returns: Json
+      }
       get_program_aggregate_payload: {
+        Args: {
+          _campaign?: string
+          _campaign_type?: string
+          _channel?: string
+          _date_from?: string
+          _date_to?: string
+          _program: string
+          _state?: string
+        }
+        Returns: Json
+      }
+      get_program_aggregate_payload_np: {
         Args: {
           _campaign?: string
           _campaign_type?: string
@@ -823,6 +1016,18 @@ export type Database = {
         }
         Returns: Json
       }
+      get_program_aggregates_np: {
+        Args: {
+          _campaign?: string
+          _campaign_type?: string
+          _channel?: string
+          _date_from?: string
+          _date_to?: string
+          _program: string
+          _state?: string
+        }
+        Returns: Json
+      }
       get_program_metric_groups: {
         Args: {
           _campaign?: string
@@ -835,7 +1040,31 @@ export type Database = {
         }
         Returns: Json
       }
+      get_program_metric_groups_np: {
+        Args: {
+          _campaign?: string
+          _campaign_type?: string
+          _channel?: string
+          _date_from?: string
+          _date_to?: string
+          _program: string
+          _state?: string
+        }
+        Returns: Json
+      }
       get_program_metrics_raw: {
+        Args: {
+          _campaign?: string
+          _campaign_type?: string
+          _channel?: string
+          _date_from?: string
+          _date_to?: string
+          _program: string
+          _state?: string
+        }
+        Returns: Json
+      }
+      get_program_metrics_raw_np: {
         Args: {
           _campaign?: string
           _campaign_type?: string
