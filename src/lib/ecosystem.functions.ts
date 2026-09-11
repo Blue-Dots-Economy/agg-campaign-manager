@@ -1,6 +1,6 @@
 import { createServerFn } from "@tanstack/react-start";
 
-export const fetchEcosystemData = createServerFn({ method: "GET" })
+export const fetchEcosystemData = createServerFn({ method: "POST" })
   .inputValidator((d: { state: string; district: string }) => d)
   .handler(async ({ data }) => {
     // Vineela pilot reads the Ecosystem View from Palak's Blue Dots Supabase;
