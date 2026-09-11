@@ -124,7 +124,7 @@ function ReviewHub() {
   }, [calls]);
 
   const baseSet = useMemo(() => {
-    return (calls ?? []).filter((c) => c.call_outcome === "Completed" || c.call_outcome === "Early Disconnect");
+    return (calls ?? []).filter((c) => !NON_REVIEWABLE_OUTCOMES.has(String(c.call_outcome || "").trim().toLowerCase()));
   }, [calls]);
 
   const searchTokens = useMemo(() =>
