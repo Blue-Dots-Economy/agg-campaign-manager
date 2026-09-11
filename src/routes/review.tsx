@@ -120,7 +120,8 @@ function ReviewHub() {
     const langs = distinct(list.map((c) => c.language)).sort();
     const cities = distinct(list.map((c) => c.city_campaign)).sort();
     const drops = distinct(list.map((c) => c.drop_reason)).sort();
-    return { days, dates, campaigns, langs, cities, drops };
+    const outcomes = distinct(list.map((c) => c.call_outcome)).sort();
+    return { days, dates, campaigns, langs, cities, drops, outcomes };
   }, [calls]);
 
   const baseSet = useMemo(() => {
