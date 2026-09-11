@@ -12,7 +12,7 @@ function ecoClient(): SupabaseClient | null {
   return createClient(url, key, {
     db: { schema: "bluedot" },
     auth: { persistSession: false, autoRefreshToken: false },
-  }) as SupabaseClient;
+  }) as unknown as SupabaseClient;
 }
 
 export function ecoBlueDotsAvailable(): boolean {
