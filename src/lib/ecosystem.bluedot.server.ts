@@ -44,12 +44,12 @@ export async function loadEcosystemFromBlueDots(state: string, district: string)
 
   type JobRow = { item_id: string; employer: string | null; role_raw: string | null; nature_of_job: string | null; positions: number | null; salary_min: number | null; salary_max: number | null; lifecycle_status: string | null; created_at: string | null };
   const jobRows = await fetchAll<JobRow>(() =>
-    sb.from("job_postings").select("item_id,employer,role_raw,nature_of_job,positions,salary_min,salary_max,lifecycle_status,created_at").eq("instance", inst),
+    sb.from("job_postings").select("item_id,employer,role_raw,nature_of_job,positions,salary_min,salary_max,lifecycle_status,created_at").eq("instance", inst).order("item_id", { ascending: true }),
   );
 
   type ActRow = { action_id: string; source_item_id: string | null; target_item_id: string | null; created_at: string | null };
   const actRows = await fetchAll<ActRow>(() =>
-    sb.from("item_actions").select("action_id,source_item_id,target_item_id,created_at").eq("instance", inst).eq("action_type", "apply"),
+    sb.from("item_actions").select("action_id,source_item_id,target_item_id,created_at").eq("instance", inst).eq("action_type", "apply").order("action_id", { ascending: true }),
   );
   const appsByJob = new Map<string, number>();
   for (const a of actRows) {
