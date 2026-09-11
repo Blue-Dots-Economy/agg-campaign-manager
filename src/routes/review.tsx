@@ -133,6 +133,17 @@ function ReviewHub() {
   , [filters.search]);
 
   const filtered = useMemo(() => {
+    // Call ID / Job ID search is an escape hatch: paste IDs and get exactly
+    // those calls, regardless of outcome, review tab, or the other filters.
+    if (searchTokens.length > 0) {
+      const rows = (calls ?? []).filter((c) => {
+        const cid = String(c.call_id || "").toLowerCase();
+        const jid = String(c.job_id || "").toLowerCase();
+        return searchTokens.some((t) => (cid && cid.includes(t)) || (jid && jid.includes(t)));
+      });
+      rows.sort((a, b) => parseIst(b.call_datetime_ist) - parseIst(a.call_datetime_ist));
+      return rows;
+    }
     const rows = baseSet.filter((c) => {
       if (filters.day !== "All" && c.campaign_day !== filters.day) return false;
       if (filters.date.length > 0 && !filters.date.includes(c.campaign_date)) return false;
@@ -149,12 +160,6 @@ function ReviewHub() {
         if (!isFinite(score)) return false;
         if (filters.intent === "High Intent Score" && score < 5) return false;
         if (filters.intent === "Low Intent Score" && score >= 5) return false;
-      }
-      if (searchTokens.length > 0) {
-        const cid = String(c.call_id || "").toLowerCase();
-        const jid = String(c.job_id || "").toLowerCase();
-        if (!searchTokens.some((t) => cid.includes(t) || jid.includes(t))) return false;
-        return true;
       }
       if (filters.tab !== "all") {
         if (!statusMap) return false;
@@ -173,7 +178,7 @@ function ReviewHub() {
       return parseIst(b.call_datetime_ist) - parseIst(a.call_datetime_ist);
     });
     return rows;
-  }, [baseSet, filters, searchTokens, statusMap]);
+  }, [calls, baseSet, filters, searchTokens, statusMap]);
 
   const stats = useMemo(() => {
     let reviewed = 0;
