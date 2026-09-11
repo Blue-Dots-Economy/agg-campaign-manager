@@ -182,6 +182,45 @@ function ReviewHub() {
     return rows;
   }, [calls, baseSet, filters, searchTokens, statusMap]);
 
+  const searchDiag = useMemo(() => {
+    if (searchTokens.length === 0) return null;
+    const all = calls ?? [];
+    const uniq = Array.from(new Set(searchTokens));
+    const notFound: string[] = [];
+    const nonReviewable: string[] = [];
+    for (const t of uniq) {
+      const matches = all.filter((c) => {
+        const cid = String(c.call_id || "").toLowerCase();
+        const jid = String(c.job_id || "").toLowerCase();
+        return (cid && cid.includes(t)) || (jid && jid.includes(t));
+      });
+      if (matches.length === 0) { notFound.push(t); continue; }
+      const anyReviewable = matches.some(
+        (c) => !NON_REVIEWABLE_OUTCOMES.has(String(c.call_outcome || "").trim().toLowerCase()),
+      );
+      if (!anyReviewable) nonReviewable.push(t);
+    }
+    return { notFound, nonReviewable };
+  }, [calls, searchTokens]);
+
+  useEffect(() => {
+    if (!searchDiag) { toast.dismiss("review-search-diag"); return; }
+    const { notFound, nonReviewable } = searchDiag;
+    if (notFound.length === 0 && nonReviewable.length === 0) {
+      toast.dismiss("review-search-diag");
+      return;
+    }
+    const fmt = (ids: string[]) => ids.slice(0, 12).join(", ") + (ids.length > 12 ? ` +${ids.length - 12} more` : "");
+    const parts: string[] = [];
+    if (nonReviewable.length) parts.push(`${nonReviewable.length} not reviewable (no recording): ${fmt(nonReviewable)}`);
+    if (notFound.length) parts.push(`${notFound.length} not found in this program: ${fmt(notFound)}`);
+    toast.warning("Some Call IDs couldn't be opened for review", {
+      id: "review-search-diag",
+      description: parts.join(" · "),
+      duration: 8000,
+    });
+  }, [searchDiag]);
+
   const stats = useMemo(() => {
     let reviewed = 0;
     if (statusMap) {
