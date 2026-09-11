@@ -257,7 +257,7 @@ function ReviewHub() {
           <SelectFilter value={filters.campaign} onChange={(v) => set("campaign", v)} options={["All", ...options.campaigns]} placeholder="Campaign" />
           <SelectFilter value={filters.lang} onChange={(v) => set("lang", v)} options={["All", ...options.langs]} placeholder="Language" />
           <SelectFilter value={filters.city} onChange={(v) => set("city", v)} options={["All", ...options.cities]} placeholder="City" />
-          <SelectFilter value={filters.outcome} onChange={(v) => set("outcome", v)} options={OUTCOME_OPTIONS} placeholder="Outcome" />
+          <SelectFilter value={filters.outcome} onChange={(v) => set("outcome", v)} options={["All", ...options.outcomes]} placeholder="Outcome" />
           <SelectFilter value={filters.duration} onChange={(v) => set("duration", v)} options={DURATION_OPTIONS} placeholder="Duration" />
           <SelectFilter value={filters.intent} onChange={(v) => set("intent", v)} options={INTENT_OPTIONS} placeholder="Intent" />
           <SelectFilter value={filters.dropReason} onChange={(v) => set("dropReason", v)} options={["All", ...options.drops]} placeholder="Drop reason" />
