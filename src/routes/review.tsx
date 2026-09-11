@@ -15,7 +15,9 @@ export const Route = createFileRoute("/review")({
   component: ReviewHub,
 });
 
-const OUTCOME_OPTIONS = ["All", "Completed", "Early Disconnect"];
+const NON_REVIEWABLE_OUTCOMES = new Set([
+  "unanswered", "no answer", "pending", "failure", "not dialled (batch incomplete)",
+]);
 const DURATION_OPTIONS = ["All", "< 30s", "30s – 1m", "1 – 2m", "2 – 5m", "> 5m"];
 const INTENT_OPTIONS = ["All", "High Intent Score", "Low Intent Score"];
 const CHANNEL_OPTIONS = ["All", "Outbound", "Inbound"];
@@ -118,11 +120,12 @@ function ReviewHub() {
     const langs = distinct(list.map((c) => c.language)).sort();
     const cities = distinct(list.map((c) => c.city_campaign)).sort();
     const drops = distinct(list.map((c) => c.drop_reason)).sort();
-    return { days, dates, campaigns, langs, cities, drops };
+    const outcomes = distinct(list.map((c) => c.call_outcome)).sort();
+    return { days, dates, campaigns, langs, cities, drops, outcomes };
   }, [calls]);
 
   const baseSet = useMemo(() => {
-    return (calls ?? []).filter((c) => c.call_outcome === "Completed" || c.call_outcome === "Early Disconnect");
+    return (calls ?? []).filter((c) => !NON_REVIEWABLE_OUTCOMES.has(String(c.call_outcome || "").trim().toLowerCase()));
   }, [calls]);
 
   const searchTokens = useMemo(() =>
@@ -130,6 +133,17 @@ function ReviewHub() {
   , [filters.search]);
 
   const filtered = useMemo(() => {
+    // Call ID / Job ID search is an escape hatch: paste IDs and get exactly
+    // those calls, regardless of outcome, review tab, or the other filters.
+    if (searchTokens.length > 0) {
+      const rows = (calls ?? []).filter((c) => {
+        const cid = String(c.call_id || "").toLowerCase();
+        const jid = String(c.job_id || "").toLowerCase();
+        return searchTokens.some((t) => (cid && cid.includes(t)) || (jid && jid.includes(t)));
+      });
+      rows.sort((a, b) => parseIst(b.call_datetime_ist) - parseIst(a.call_datetime_ist));
+      return rows;
+    }
     const rows = baseSet.filter((c) => {
       if (filters.day !== "All" && c.campaign_day !== filters.day) return false;
       if (filters.date.length > 0 && !filters.date.includes(c.campaign_date)) return false;
@@ -146,12 +160,6 @@ function ReviewHub() {
         if (!isFinite(score)) return false;
         if (filters.intent === "High Intent Score" && score < 5) return false;
         if (filters.intent === "Low Intent Score" && score >= 5) return false;
-      }
-      if (searchTokens.length > 0) {
-        const cid = String(c.call_id || "").toLowerCase();
-        const jid = String(c.job_id || "").toLowerCase();
-        if (!searchTokens.some((t) => cid.includes(t) || jid.includes(t))) return false;
-        return true;
       }
       if (filters.tab !== "all") {
         if (!statusMap) return false;
@@ -170,7 +178,7 @@ function ReviewHub() {
       return parseIst(b.call_datetime_ist) - parseIst(a.call_datetime_ist);
     });
     return rows;
-  }, [baseSet, filters, searchTokens, statusMap]);
+  }, [calls, baseSet, filters, searchTokens, statusMap]);
 
   const stats = useMemo(() => {
     let reviewed = 0;
@@ -254,7 +262,7 @@ function ReviewHub() {
           <SelectFilter value={filters.campaign} onChange={(v) => set("campaign", v)} options={["All", ...options.campaigns]} placeholder="Campaign" />
           <SelectFilter value={filters.lang} onChange={(v) => set("lang", v)} options={["All", ...options.langs]} placeholder="Language" />
           <SelectFilter value={filters.city} onChange={(v) => set("city", v)} options={["All", ...options.cities]} placeholder="City" />
-          <SelectFilter value={filters.outcome} onChange={(v) => set("outcome", v)} options={OUTCOME_OPTIONS} placeholder="Outcome" />
+          <SelectFilter value={filters.outcome} onChange={(v) => set("outcome", v)} options={["All", ...options.outcomes]} placeholder="Outcome" />
           <SelectFilter value={filters.duration} onChange={(v) => set("duration", v)} options={DURATION_OPTIONS} placeholder="Duration" />
           <SelectFilter value={filters.intent} onChange={(v) => set("intent", v)} options={INTENT_OPTIONS} placeholder="Intent" />
           <SelectFilter value={filters.dropReason} onChange={(v) => set("dropReason", v)} options={["All", ...options.drops]} placeholder="Drop reason" />
