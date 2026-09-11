@@ -19,15 +19,24 @@ export function ecoBlueDotsAvailable(): boolean {
   return !!(process.env.ECO_SUPABASE_URL && process.env.ECO_SUPABASE_SERVICE_ROLE_KEY);
 }
 
-async function fetchAll<T>(make: () => any): Promise<T[]> {
+// Keyset pagination by a unique key column — immune to PostgREST max-rows/offset caps
+// (offset/range pagination was being capped on the bluedot views).
+async function fetchAllKeyset<T extends Record<string, unknown>>(
+  makeBase: () => any,
+  keyCol: string,
+): Promise<T[]> {
   const out: T[] = [];
   const page = 1000;
-  for (let from = 0; ; from += page) {
-    const { data, error } = await make().range(from, from + page - 1);
+  let last: string | null = null;
+  for (;;) {
+    let q = makeBase().order(keyCol, { ascending: true }).limit(page);
+    if (last !== null) q = q.gt(keyCol, last);
+    const { data, error } = await q;
     if (error) throw new Error(error.message);
     const rows = (data ?? []) as T[];
     out.push(...rows);
     if (rows.length < page) break;
+    last = String(rows[rows.length - 1][keyCol]);
   }
   return out;
 }
@@ -43,13 +52,15 @@ export async function loadEcosystemFromBlueDots(state: string, district: string)
   const inst = state; // `instance` column === state (KA / UP)
 
   type JobRow = { item_id: string; employer: string | null; role_raw: string | null; nature_of_job: string | null; positions: number | null; salary_min: number | null; salary_max: number | null; lifecycle_status: string | null; created_at: string | null };
-  const jobRows = await fetchAll<JobRow>(() =>
-    sb.from("job_postings").select("item_id,employer,role_raw,nature_of_job,positions,salary_min,salary_max,lifecycle_status,created_at").eq("instance", inst).order("item_id", { ascending: true }),
+  const jobRows = await fetchAllKeyset<JobRow>(
+    () => sb.from("job_postings").select("item_id,employer,role_raw,nature_of_job,positions,salary_min,salary_max,lifecycle_status,created_at").eq("instance", inst),
+    "item_id",
   );
 
   type ActRow = { action_id: string; source_item_id: string | null; target_item_id: string | null; created_at: string | null };
-  const actRows = await fetchAll<ActRow>(() =>
-    sb.from("item_actions").select("action_id,source_item_id,target_item_id,created_at").eq("instance", inst).eq("action_type", "apply").order("action_id", { ascending: true }),
+  const actRows = await fetchAllKeyset<ActRow>(
+    () => sb.from("item_actions").select("action_id,source_item_id,target_item_id,created_at").eq("instance", inst).eq("action_type", "apply"),
+    "action_id",
   );
   const appsByJob = new Map<string, number>();
   for (const a of actRows) {
