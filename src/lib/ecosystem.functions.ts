@@ -3,15 +3,20 @@ import { createServerFn } from "@tanstack/react-start";
 export const fetchEcosystemData = createServerFn({ method: "POST" })
   .inputValidator((d: { state: string; district: string }) => d)
   .handler(async ({ data }) => {
-    // Vineela pilot reads the Ecosystem View from Palak's Blue Dots Supabase;
-    // everyone else stays on Google Sheets (fail-safe fallback on any error).
+    const dbg: string[] = [];
     try {
       const { usesSecondProject } = await import("./db.server");
       const { ecoBlueDotsAvailable, loadEcosystemFromBlueDots } = await import("./ecosystem.bluedot.server");
-      if (usesSecondProject() && ecoBlueDotsAvailable()) {
+      const usp = usesSecondProject();
+      const av = ecoBlueDotsAvailable();
+      dbg.push("usesSecondProject=" + usp, "ecoBlueDotsAvailable=" + av);
+      if (usp && av) {
         return await loadEcosystemFromBlueDots(data.state, data.district);
       }
-    } catch { /* fall through to Sheets */ }
+    } catch (e) {
+      dbg.push("BLUEDOT_ERROR: " + String((e && (e as Error).message) ? (e as Error).message : e));
+    }
     const { loadEcosystem } = await import("./ecosystem.server");
-    return await loadEcosystem(data.state, data.district);
+    const sheet = await loadEcosystem(data.state, data.district);
+    return { ...sheet, unmapped: [...dbg, ...(sheet.unmapped || [])] };
   });
