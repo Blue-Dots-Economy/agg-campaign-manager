@@ -15,7 +15,9 @@ export const Route = createFileRoute("/review")({
   component: ReviewHub,
 });
 
-const OUTCOME_OPTIONS = ["All", "Completed", "Early Disconnect"];
+const NON_REVIEWABLE_OUTCOMES = new Set([
+  "unanswered", "no answer", "pending", "failure", "not dialled (batch incomplete)",
+]);
 const DURATION_OPTIONS = ["All", "< 30s", "30s – 1m", "1 – 2m", "2 – 5m", "> 5m"];
 const INTENT_OPTIONS = ["All", "High Intent Score", "Low Intent Score"];
 const CHANNEL_OPTIONS = ["All", "Outbound", "Inbound"];
