@@ -99,7 +99,7 @@ function RequestCampaignForm() {
   const toggleStatus = (s: string) =>
     setProfileStatuses((prev) => (prev.includes(s) ? prev.filter((x) => x !== s) : [...prev, s]));
 
-  const canSubmit = campaignName.trim().length > 0 && cohortContacts.length > 0 && !!agentId && !submitting;
+  const canSubmit = campaignName.trim().length > 0 && !!agentId && !submitting && (audienceSource === "cohort" ? cohortContacts.length > 0 : (pickResult?.count ?? 0) > 0);
 
   const daysLabel = schedule.days.slice().sort((a, b) => a - b).map((d) => DAY_NAMES[d]).join(", ") || "—";
   const audienceFilterLabel = intent === "drive"
