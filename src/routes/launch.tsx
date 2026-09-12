@@ -386,13 +386,15 @@ function LaunchWizard() {
       const contacts =
         source === "cohort"
           ? cohortContacts.map((c) => ({ ...c, _region: region }))
-          : (report?.validRows ?? []).map((r) => ({
-              contact_name: r.name,
-              contact_phone: r.phone,
-              country_code: r.cc,
-              ...r.extras,
-              _region: region,
-            }));
+          : source === "pick"
+            ? pickContacts.map((c) => ({ ...c, _region: region }))
+            : (report?.validRows ?? []).map((r) => ({
+                contact_name: r.name,
+                contact_phone: r.phone,
+                country_code: r.cc,
+                ...r.extras,
+                _region: region,
+              }));
       if (contacts.length === 0) {
         toast.error("No contacts to launch.");
         setLaunching(false);
@@ -525,10 +527,11 @@ function LaunchWizard() {
 
       {step === 2 && (
         <div className="space-y-4">
-          <div className="grid gap-3 sm:grid-cols-2 max-w-xl">
+          <div className="grid gap-3 sm:grid-cols-3 max-w-3xl">
             {([
               { id: "upload", icon: Upload, title: "Bulk upload", desc: "Dial a CSV of contacts you provide." },
               { id: "cohort", icon: Gauge, title: "Create cohort", desc: "Build an audience from My Blue Dots." },
+              { id: "pick", icon: Layers, title: "Pick from master", desc: "Auto-build from the campaign-manager master record." },
             ] as const).map((o) => (
               <button
                 key={o.id}
