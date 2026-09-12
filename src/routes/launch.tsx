@@ -407,11 +407,20 @@ function LaunchWizard() {
     }
     setLaunching(true); setLaunchError(null); setStartPending(false); setStartStatus(null);
     try {
+      if (source === "pick") {
+        if (pickCount === 0) { toast.error("Pick an audience first."); setLaunching(false); return; }
+        const created = await createMasterBatchFn({ data: { filters: pickFilters(), agentId, batchName } });
+        const id = created.batchId;
+        setBatchId(id);
+        try {
+          await recordBatchFn({ data: { batchId: id, program, agentId, agentName, batchName, campaignDay, campaignDate, campaignType, language: regionInfo.language, cityCampaign: regionInfo.city, region, inputRows: [] } });
+        } catch (e) { console.error("recordLaunchedBatch failed", e); }
+        await startCreatedBatch(id, created.count);
+        return;
+      }
       const contacts =
         source === "cohort"
           ? cohortContacts.map((c) => ({ ...c, _region: region }))
-          : source === "pick"
-            ? (pickContacts.map((c) => ({ ...c, _region: region })) as unknown as { contact_name: string; contact_phone: string; country_code: string; [k: string]: string }[])
             : (report?.validRows ?? []).map((r) => ({
                 contact_name: r.name,
                 contact_phone: r.phone,
@@ -599,7 +608,7 @@ function LaunchWizard() {
               setRegionFilter={setPickRegion}
               statusFilter={pickStatus}
               setStatusFilter={setPickStatus}
-              onResolved={(contacts, r) => { if (r) setRegion(r); setPickContacts(contacts); }}
+              onResolved={(count: number) => setPickCount(count)}
             />
           ) : (
             <CohortStep
@@ -718,7 +727,7 @@ function LaunchWizard() {
             <Field label="Campaign day" value={campaignDay} />
             <Field label="Campaign date" value={campaignDate} />
             <Field label="Campaign type" value={campaignType} />
-            <Field label="Contacts" value={source === "cohort" ? String(cohortContacts.length) : source === "pick" ? String(pickContacts.length) : `${report?.valid ?? 0} of ${report?.total ?? 0}`} />
+            <Field label="Contacts" value={source === "cohort" ? String(cohortContacts.length) : source === "pick" ? String(pickCount) : `${report?.valid ?? 0} of ${report?.total ?? 0}`} />
             <Field label="Will skip" value={String(report?.invalid ?? 0)} />
             <Field label="Days" value={dayLabels(schedule.days)} />
             <Field label="Time window" value={`${schedule.startTime}–${schedule.endTime}`} />
