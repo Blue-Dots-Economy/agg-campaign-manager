@@ -387,7 +387,7 @@ function LaunchWizard() {
         source === "cohort"
           ? cohortContacts.map((c) => ({ ...c, _region: region }))
           : source === "pick"
-            ? (pickContacts.map((c) => ({ ...c, _region: region })) as { contact_name: string; contact_phone: string; country_code: string; [k: string]: string }[])
+            ? (pickContacts.map((c) => ({ ...c, _region: region })) as unknown as { contact_name: string; contact_phone: string; country_code: string; [k: string]: string }[])
             : (report?.validRows ?? []).map((r) => ({
                 contact_name: r.name,
                 contact_phone: r.phone,
