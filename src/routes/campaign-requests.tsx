@@ -100,12 +100,24 @@ function toScheduleState(s: RequestRow["schedule"]): ScheduleState {
 
 function sourceLine(r: RequestRow) {
   if (r.source === "upload") return "Bulk upload";
+  if (r.source === "pick") return "Master record · Pick";
   return `Cohort · ${r.cohort_intent === "drive" ? "Drive Applications" : "Fill Missing Information"}`;
 }
 
 function filtersLine(r: RequestRow): string | null {
-  const f = r.cohort_filters as { profileStatuses?: string[]; confidenceBand?: string } | null;
+  const f = r.cohort_filters as {
+    profileStatuses?: string[]; confidenceBand?: string;
+    confidenceMin?: number | null; maxCampaigns?: number | null; cooldownDays?: number | null; region?: string | null;
+  } | null;
   if (!f) return null;
+  if (r.source === "pick") {
+    const parts: string[] = [];
+    if (f.region) parts.push(`Region: ${f.region}`);
+    if (f.confidenceMin != null) parts.push(`Confidence ≥ ${f.confidenceMin}`);
+    if (f.maxCampaigns != null) parts.push(`≤ ${f.maxCampaigns} campaigns run`);
+    if (f.cooldownDays != null) parts.push(`${f.cooldownDays}d cooldown`);
+    return parts.length ? parts.join(" · ") : "No filters (all people)";
+  }
   if (Array.isArray(f.profileStatuses) && f.profileStatuses.length) return f.profileStatuses.join(", ");
   if (f.confidenceBand) return `Confidence: ${f.confidenceBand}`;
   return null;
@@ -406,6 +418,41 @@ function RequestCard({ req, onChanged }: { req: RequestRow; onChanged: () => voi
             <div>Contacts: <span className="text-foreground">{req.contact_count}</span></div>
             {cf && <div>Filters: <span className="text-foreground">{cf}</span></div>}
           </div>
+
+          {Array.isArray(req.contacts) && req.contacts.length > 0 && (
+            <div>
+              <div className="text-xs text-muted-foreground mb-1">
+                Audience preview · {req.contact_count} contacts (de-identified)
+              </div>
+              <div className="max-h-48 overflow-auto rounded-md border">
+                <table className="w-full text-xs">
+                  <thead>
+                    <tr className="text-left text-muted-foreground">
+                      <th className="px-2 py-1 font-medium">Phone</th>
+                      <th className="px-2 py-1 font-medium">Region</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {req.contacts.slice(0, 12).map((c, i) => {
+                      const rec = c as Record<string, unknown>;
+                      const ph = String(rec.contact_phone ?? rec.phone ?? "");
+                      const masked = ph ? "•••••" + ph.slice(-4) : "—";
+                      const reg = String(rec._region ?? rec.region ?? "—");
+                      return (
+                        <tr key={i} className="border-t border-border/60">
+                          <td className="px-2 py-1 font-mono">{masked}</td>
+                          <td className="px-2 py-1">{reg}</td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+              {req.contacts.length > 12 && (
+                <div className="mt-1 text-[11px] text-muted-foreground">+{req.contacts.length - 12} more</div>
+              )}
+            </div>
+          )}
 
           <ScheduleEditor value={schedule} onChange={setSchedule} />
 
