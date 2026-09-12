@@ -419,6 +419,41 @@ function RequestCard({ req, onChanged }: { req: RequestRow; onChanged: () => voi
             {cf && <div>Filters: <span className="text-foreground">{cf}</span></div>}
           </div>
 
+          {Array.isArray(req.contacts) && req.contacts.length > 0 && (
+            <div>
+              <div className="text-xs text-muted-foreground mb-1">
+                Audience preview · {req.contact_count} contacts (de-identified)
+              </div>
+              <div className="max-h-48 overflow-auto rounded-md border">
+                <table className="w-full text-xs">
+                  <thead>
+                    <tr className="text-left text-muted-foreground">
+                      <th className="px-2 py-1 font-medium">Phone</th>
+                      <th className="px-2 py-1 font-medium">Region</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {req.contacts.slice(0, 12).map((c, i) => {
+                      const rec = c as Record<string, unknown>;
+                      const ph = String(rec.contact_phone ?? rec.phone ?? "");
+                      const masked = ph ? "•••••" + ph.slice(-4) : "—";
+                      const reg = String(rec._region ?? rec.region ?? "—");
+                      return (
+                        <tr key={i} className="border-t border-border/60">
+                          <td className="px-2 py-1 font-mono">{masked}</td>
+                          <td className="px-2 py-1">{reg}</td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+              {req.contacts.length > 12 && (
+                <div className="mt-1 text-[11px] text-muted-foreground">+{req.contacts.length - 12} more</div>
+              )}
+            </div>
+          )}
+
           <ScheduleEditor value={schedule} onChange={setSchedule} />
 
           <div className="grid gap-3 sm:grid-cols-3">
