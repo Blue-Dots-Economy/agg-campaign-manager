@@ -97,6 +97,20 @@ function applyFilters(people: Person[], f: MasterFilters): Person[] {
   return out;
 }
 
+interface PreviewSampleRow {
+  phone_masked: string;
+  region: string;
+  district: string;
+  status: string;
+  category: string;
+  confidence: number | null;
+  total_campaigns: number;
+  last_call_date: string;
+  avg_intent: number | null;
+  max_intent: number | null;
+  avg_match: number | null;
+}
+
 function cooldownCutoff(days: number): string {
   return new Date(Date.now() - days * 86400000).toISOString().slice(0, 10);
 }
@@ -113,7 +127,7 @@ export const previewMasterCohort = createServerFn({ method: "POST" })
   .inputValidator((d: MasterFilters) => d)
   .handler(async ({ data }) => {
     const client = masterClient();
-    if (!client) return { available: false, total: 0, confidenceAvailable: false, sample: [] as Array<Record<string, unknown>>, regions: [] as string[], statuses: [] as string[] };
+    if (!client) return { available: false, total: 0, confidenceAvailable: false, sample: [] as PreviewSampleRow[], regions: [] as string[], statuses: [] as string[] };
     const table = TABLE[data.program];
 
     // Count only (head:true fetches no rows).
@@ -141,7 +155,7 @@ export const previewMasterCohort = createServerFn({ method: "POST" })
       client.from(table).select(sampleCols).limit(50),
       data,
     );
-    const sample = ((sRows ?? []) as Record<string, unknown>[]).map((r) => {
+    const sample: PreviewSampleRow[] = ((sRows ?? []) as Record<string, unknown>[]).map((r) => {
       const ph = String(r.phone ?? "").replace(/\D/g, "");
       return {
         phone_masked: ph ? "•••••" + ph.slice(-4) : "",
