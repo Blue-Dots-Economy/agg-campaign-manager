@@ -1217,7 +1217,7 @@ function PickDataStep({
             try {
               const res = await resolveFn({ data: { ...filters, limit: undefined } });
               onResolved(res.contacts, regionFilter);
-              toast.success(`Audience locked in · ${res.contacts.length} contacts`);
+              toast.success(`Audience locked in · ${res.contacts.length} contacts` + (res.enrichedCount ? ` · ${res.enrichedCount} with recommendations` : ""));
             } catch (e) {
               toast.error(e instanceof Error ? e.message : "Resolve failed");
             } finally {
