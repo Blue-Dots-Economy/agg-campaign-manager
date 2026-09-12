@@ -136,21 +136,30 @@ export const resolveMasterCohort = createServerFn({ method: "POST" })
           if (p.phone) wanted.add(p.phone);
         }
         const list = Array.from(wanted);
-        for (let i = 0; i < list.length; i += 500) {
-          const chunk = list.slice(i, i + 500);
-          const { data: rows, error } = await client
-            .from("kkb_mastersheet")
-            .select("phone, phone_number, recommendations_input, jobs_recommended")
-            .in("phone", chunk);
-          if (error) break; // enrichment is best-effort
-          for (const r of (rows ?? []) as Record<string, unknown>[]) {
-            const key = norm10(String(r.phone ?? r.phone_number ?? ""));
-            if (!key) continue;
-            const rec = r.recommendations_input;
-            const jr = r.jobs_recommended;
-            const recStr = rec == null ? "" : typeof rec === "string" ? rec : JSON.stringify(rec);
-            const jrStr = jr == null ? "" : typeof jr === "string" ? jr : JSON.stringify(jr);
-            if (recStr || jrStr) recByPhone.set(key, { recommendations: recStr, jobs_recommended: jrStr });
+        const chunks: string[][] = [];
+        for (let i = 0; i < list.length; i += 500) chunks.push(list.slice(i, i + 500));
+        const CONCURRENCY = 8;
+        for (let w = 0; w < chunks.length; w += CONCURRENCY) {
+          const wave = chunks.slice(w, w + CONCURRENCY);
+          const results = await Promise.all(
+            wave.map((chunk) =>
+              client
+                .from("kkb_mastersheet")
+                .select("phone, phone_number, recommendations_input, jobs_recommended")
+                .in("phone", chunk)
+                .then((r) => (r.error ? [] : (r.data ?? [])) as Record<string, unknown>[]),
+            ),
+          );
+          for (const rows of results) {
+            for (const r of rows) {
+              const key = norm10(String(r.phone ?? r.phone_number ?? ""));
+              if (!key) continue;
+              const rec = r.recommendations_input;
+              const jr = r.jobs_recommended;
+              const recStr = rec == null ? "" : typeof rec === "string" ? rec : JSON.stringify(rec);
+              const jrStr = jr == null ? "" : typeof jr === "string" ? jr : JSON.stringify(jr);
+              if (recStr || jrStr) recByPhone.set(key, { recommendations: recStr, jobs_recommended: jrStr });
+            }
           }
         }
       } catch { /* best-effort enrichment */ }
