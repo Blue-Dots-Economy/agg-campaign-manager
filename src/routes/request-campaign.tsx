@@ -349,11 +349,11 @@ function RequestCampaignForm() {
                 </div>
                 <div className="flex items-start justify-between gap-3">
                   <dt className="text-muted-foreground">Audience</dt>
-                  <dd className="text-right font-medium">{audienceFilterLabel}</dd>
+                  <dd className="text-right font-medium">{audienceSource === "cohort" ? audienceFilterLabel : "Master record"}</dd>
                 </div>
                 <div className="flex items-start justify-between gap-3">
                   <dt className="text-muted-foreground">Seekers</dt>
-                  <dd className="text-right font-semibold tabular-nums">{loading ? "…" : cohortContacts.length.toLocaleString("en-IN")}</dd>
+                  <dd className="text-right font-semibold tabular-nums">{audienceSource === "cohort" ? (loading ? "…" : cohortContacts.length.toLocaleString("en-IN")) : (pickResult?.count ?? 0).toLocaleString("en-IN")}</dd>
                 </div>
                 <div className="flex items-start justify-between gap-3">
                   <dt className="text-muted-foreground">When</dt>
