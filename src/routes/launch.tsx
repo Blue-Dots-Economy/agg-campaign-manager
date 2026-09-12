@@ -1104,3 +1104,162 @@ function CohortStep({
     </Panel>
   );
 }
+
+function PickDataStep({
+  program, confidenceMin, setConfidenceMin, maxCampaigns, setMaxCampaigns,
+  cooldownDays, setCooldownDays, regionFilter, setRegionFilter,
+  statusFilter, setStatusFilter, onResolved,
+}: {
+  program: ProgramId;
+  confidenceMin: number | null; setConfidenceMin: (v: number | null) => void;
+  maxCampaigns: number | null; setMaxCampaigns: (v: number | null) => void;
+  cooldownDays: number | null; setCooldownDays: (v: number | null) => void;
+  regionFilter: string; setRegionFilter: (v: string) => void;
+  statusFilter: string; setStatusFilter: (v: string) => void;
+  onResolved: (contacts: Array<Record<string, string>>, region: string) => void;
+}) {
+  const previewFn = useServerFn(previewMasterCohort);
+  const resolveFn = useServerFn(resolveMasterCohort);
+  const [resolving, setResolving] = useState(false);
+
+  const filters: MasterFilters = useMemo(() => ({
+    program: program as "kkb" | "dkb",
+    confidenceMin, maxCampaigns, cooldownDays,
+    region: regionFilter || null,
+    status: statusFilter || null,
+  }), [program, confidenceMin, maxCampaigns, cooldownDays, regionFilter, statusFilter]);
+
+  const previewQuery = useQuery({
+    queryKey: ["master-cohort-preview", filters],
+    queryFn: () => previewFn({ data: filters }),
+    staleTime: 15_000,
+  });
+  const preview = previewQuery.data;
+
+  if (preview && preview.available === false) {
+    return (
+      <Panel title="Pick from master" description="Campaign-manager master record">
+        <p className="text-sm text-muted-foreground">Master record source isn't configured yet (NEW_SUPABASE_* secrets missing).</p>
+      </Panel>
+    );
+  }
+
+  const numInput = (v: number | null, set: (n: number | null) => void, placeholder: string) => (
+    <Input
+      type="number" min={0} value={v ?? ""} placeholder={placeholder}
+      onChange={(e) => set(e.target.value === "" ? null : Number(e.target.value))}
+    />
+  );
+
+  return (
+    <Panel title="Pick from master" description="Filter the campaign-manager master record into an audience">
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 max-w-4xl">
+        <div>
+          <Label className="text-xs">Region</Label>
+          <Select value={regionFilter || "__all"} onValueChange={(v) => setRegionFilter(v === "__all" ? "" : v)}>
+            <SelectTrigger className="mt-1"><SelectValue placeholder="All regions" /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="__all">All regions</SelectItem>
+              {(preview?.regions ?? []).map((r) => <SelectItem key={r} value={r}>{r}</SelectItem>)}
+            </SelectContent>
+          </Select>
+        </div>
+        <div>
+          <Label className="text-xs">Status</Label>
+          <Select value={statusFilter || "__all"} onValueChange={(v) => setStatusFilter(v === "__all" ? "" : v)}>
+            <SelectTrigger className="mt-1"><SelectValue placeholder="All statuses" /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="__all">All statuses</SelectItem>
+              {(preview?.statuses ?? []).map((s) => <SelectItem key={s} value={s}>{s}</SelectItem>)}
+            </SelectContent>
+          </Select>
+        </div>
+        <div>
+          <Label className="text-xs">Confidence threshold (0–100)</Label>
+          <div className="mt-1">
+            <Input
+              type="number" min={0} max={100}
+              disabled={preview ? !preview.confidenceAvailable : true}
+              value={confidenceMin ?? ""} placeholder="e.g. 70"
+              onChange={(e) => setConfidenceMin(e.target.value === "" ? null : Number(e.target.value))}
+            />
+          </div>
+          {preview && !preview.confidenceAvailable && (
+            <p className="mt-1 text-xs text-amber-600 dark:text-amber-400">
+              Confidence score not populated yet — filter will activate once the master table is scored.
+            </p>
+          )}
+        </div>
+        <div>
+          <Label className="text-xs">Max campaigns already run</Label>
+          <div className="mt-1">{numInput(maxCampaigns, setMaxCampaigns, "e.g. 3")}</div>
+        </div>
+        <div>
+          <Label className="text-xs">Cooldown days since last call</Label>
+          <div className="mt-1">{numInput(cooldownDays, setCooldownDays, "e.g. 14")}</div>
+        </div>
+      </div>
+
+      <div className="mt-4 flex items-center gap-3">
+        <span className="text-sm font-medium">
+          {previewQuery.isLoading ? (
+            <span className="inline-flex items-center gap-2 text-muted-foreground"><Loader2 className="h-4 w-4 animate-spin" /> Counting…</span>
+          ) : (
+            <><strong>{preview?.total ?? 0}</strong> people match — they'll be called</>
+          )}
+        </span>
+        <Button
+          size="sm"
+          className="bg-brand text-brand-foreground hover:bg-brand/90"
+          disabled={!preview || preview.total === 0 || resolving}
+          onClick={async () => {
+            setResolving(true);
+            try {
+              const res = await resolveFn({ data: { ...filters, limit: undefined } });
+              onResolved(res.contacts, regionFilter);
+              toast.success(`Audience locked in · ${res.contacts.length} contacts`);
+            } catch (e) {
+              toast.error(e instanceof Error ? e.message : "Resolve failed");
+            } finally {
+              setResolving(false);
+            }
+          }}
+        >
+          {resolving ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : <Check className="h-4 w-4 mr-1" />}
+          Use this audience
+        </Button>
+      </div>
+
+      {(preview?.sample?.length ?? 0) > 0 && (
+        <div className="mt-4 max-h-72 overflow-auto rounded-md border">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Phone</TableHead>
+                <TableHead>Region</TableHead>
+                <TableHead>Status</TableHead>
+                <TableHead>Category</TableHead>
+                <TableHead>Confidence</TableHead>
+                <TableHead>Campaigns</TableHead>
+                <TableHead>Last call</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {preview!.sample.map((p, i) => (
+                <TableRow key={i}>
+                  <TableCell className="font-mono text-xs">{p.phone_masked}</TableCell>
+                  <TableCell>{p.region || "—"}</TableCell>
+                  <TableCell>{p.status || "—"}</TableCell>
+                  <TableCell>{p.category || "—"}</TableCell>
+                  <TableCell>{p.confidence ?? "—"}</TableCell>
+                  <TableCell>{p.total_campaigns}</TableCell>
+                  <TableCell className="text-xs">{p.last_call_date || "—"}</TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </div>
+      )}
+    </Panel>
+  );
+}
