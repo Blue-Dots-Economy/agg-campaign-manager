@@ -97,23 +97,74 @@ function applyFilters(people: Person[], f: MasterFilters): Person[] {
   return out;
 }
 
+function cooldownCutoff(days: number): string {
+  return new Date(Date.now() - days * 86400000).toISOString().slice(0, 10);
+}
+// Apply the Pick filters to a supabase query builder (server-side filtering).
+function applyQueryFilters(q: any, f: MasterFilters): any {
+  if (f.confidenceMin != null && f.program === "kkb") q = q.gte("call_confidence_score", f.confidenceMin);
+  if (f.maxCampaigns != null) q = q.lte("total_campaigns", f.maxCampaigns);
+  if (f.cooldownDays != null) q = q.or(`last_call_date.is.null,last_call_date.lt.${cooldownCutoff(f.cooldownDays)}`);
+  if (f.region) q = q.eq("jfc_campaign", f.region);
+  return q;
+}
+
 export const previewMasterCohort = createServerFn({ method: "POST" })
   .inputValidator((d: MasterFilters) => d)
   .handler(async ({ data }) => {
     const client = masterClient();
-    if (!client) return { available: false, total: 0, confidenceAvailable: false, sample: [], regions: [], statuses: [] };
-    const people = await loadPeople(client, data.program);
-    const confidenceAvailable = people.some((p) => p.confidence != null);
-    const filtered = applyFilters(people, data);
-    const sample = filtered.slice(0, 50).map((p) => ({
-      phone_masked: p.phone ? "•••••" + p.phone.slice(-4) : "",
-      region: p.region, district: p.district, status: p.status, category: p.category,
-      confidence: p.confidence, total_campaigns: p.total_campaigns, last_call_date: p.last_call_date,
-      avg_intent: p.avg_intent, max_intent: p.max_intent, avg_match: p.avg_match,
-    }));
-    const regions = Array.from(new Set(people.map((p) => p.region).filter(Boolean))).sort();
-    const statuses = Array.from(new Set(people.map((p) => p.status).filter(Boolean))).sort();
-    return { available: true, total: filtered.length, confidenceAvailable, sample, regions, statuses };
+    if (!client) return { available: false, total: 0, confidenceAvailable: false, sample: [] as Array<Record<string, unknown>>, regions: [] as string[], statuses: [] as string[] };
+    const table = TABLE[data.program];
+
+    // Count only (head:true fetches no rows).
+    const { count } = await applyQueryFilters(
+      client.from(table).select("*", { count: "exact", head: true }),
+      data,
+    );
+
+    // Confidence availability (KKB only) — cheap count of non-null scores.
+    let confidenceAvailable = false;
+    if (data.program === "kkb") {
+      const { count: cAvail } = await client
+        .from(table)
+        .select("*", { count: "exact", head: true })
+        .not("call_confidence_score", "is", null);
+      confidenceAvailable = (cAvail ?? 0) > 0;
+    }
+
+    // De-identified sample (filtered, capped at 50).
+    const sampleCols =
+      data.program === "kkb"
+        ? "phone, jfc_campaign, total_campaigns, last_call_date, call_confidence_score, avg_intent_score, max_intent_score, avg_match_score"
+        : "phone, jfc_campaign, total_campaigns, last_call_date, avg_intent_score, max_intent_score";
+    const { data: sRows } = await applyQueryFilters(
+      client.from(table).select(sampleCols).limit(50),
+      data,
+    );
+    const sample = ((sRows ?? []) as Record<string, unknown>[]).map((r) => {
+      const ph = String(r.phone ?? "").replace(/\D/g, "");
+      return {
+        phone_masked: ph ? "•••••" + ph.slice(-4) : "",
+        region: String(r.jfc_campaign ?? ""),
+        district: "",
+        status: "",
+        category: "",
+        confidence: r.call_confidence_score != null ? Number(r.call_confidence_score) : null,
+        total_campaigns: Number(r.total_campaigns ?? 0),
+        last_call_date: String(r.last_call_date ?? ""),
+        avg_intent: r.avg_intent_score != null ? Number(r.avg_intent_score) : null,
+        max_intent: r.max_intent_score != null ? Number(r.max_intent_score) : null,
+        avg_match: r.avg_match_score != null ? Number(r.avg_match_score) : null,
+      };
+    });
+
+    // Region facets = distinct jfc_campaign (one small column).
+    const { data: fRows } = await client.from(table).select("jfc_campaign").limit(50000);
+    const regions = Array.from(
+      new Set(((fRows ?? []) as Record<string, unknown>[]).map((r) => String(r.jfc_campaign ?? "")).filter(Boolean)),
+    ).sort();
+
+    return { available: true, total: count ?? 0, confidenceAvailable, sample, regions, statuses: [] as string[] };
   });
 
 export const resolveMasterCohort = createServerFn({ method: "POST" })
