@@ -47,6 +47,7 @@ import {
   Loader2,
   X,
   Gauge,
+  Layers,
 } from "lucide-react";
 import { toast } from "sonner";
 import { ScheduleEditor, type ScheduleState, makeDefaultSchedule } from "@/components/ScheduleEditor";
@@ -54,6 +55,7 @@ import { appendLaunchLog } from "@/lib/launch-log";
 import { cn } from "@/lib/utils";
 import { loadSeekersAsync, type Seeker } from "@/lib/upSeekersCsv";
 import { buildCohort, type CohortIntent, type ConfidenceBand } from "@/lib/cohort";
+import { previewMasterCohort, resolveMasterCohort, type MasterFilters } from "@/lib/master-cohort.functions";
 
 export const Route = createFileRoute("/launch")({
   component: LaunchWizard,
@@ -114,7 +116,13 @@ function LaunchWizard() {
   const [validating, setValidating] = useState(false);
   const [proceedInvalid, setProceedInvalid] = useState(false);
 
-  const [source, setSource] = useState<"upload" | "cohort">("upload");
+  const [source, setSource] = useState<"upload" | "cohort" | "pick">("upload");
+  const [pickConfidenceMin, setPickConfidenceMin] = useState<number | null>(null);
+  const [pickMaxCampaigns, setPickMaxCampaigns] = useState<number | null>(null);
+  const [pickCooldownDays, setPickCooldownDays] = useState<number | null>(null);
+  const [pickRegion, setPickRegion] = useState<string>("");
+  const [pickStatus, setPickStatus] = useState<string>("");
+  const [pickContacts, setPickContacts] = useState<Array<Record<string, string>>>([]);
   const [cohortIntent, setCohortIntent] = useState<CohortIntent>("drive");
   const [profileStatuses, setProfileStatuses] = useState<string[]>(["Active", "At Risk"]);
   const [confidenceBand, setConfidenceBand] = useState<ConfidenceBand>("low");
@@ -223,6 +231,7 @@ function LaunchWizard() {
     if (step === 1) return !!agentId;
     if (step === 2) {
       if (source === "cohort") return cohortContacts.length > 0;
+      if (source === "pick") return pickContacts.length > 0;
       if (!report) return false;
       if (report.missingCols.length > 0) return false;
       if (report.invalid === 0) return true;
@@ -235,7 +244,7 @@ function LaunchWizard() {
       return true;
     }
     return true;
-  }, [step, program, agentId, report, proceedInvalid, schedule, concurrency, maxRetries, retryAfterHrs, available, source, cohortContacts.length]);
+  }, [step, program, agentId, report, proceedInvalid, schedule, concurrency, maxRetries, retryAfterHrs, available, source, cohortContacts.length, pickContacts.length]);
 
   const onFile = useCallback(async (f: File) => {
     setFile(f);
