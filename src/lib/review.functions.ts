@@ -10,9 +10,9 @@ import {
 
 export type ReviewDataset = "kkb" | "dkb";
 
-async function sb() {
+async function sb(program?: ReviewDataset) {
   const { sbFor } = await import("@/lib/db.server");
-  return sbFor();
+  return sbFor(program);
 }
 
 function normKey(h: string): string {
@@ -23,7 +23,7 @@ async function resolveSheet(
   dataset: ReviewDataset,
   channel?: string,
 ): Promise<{ sheet_id: string; tab_name: string | null }> {
-  const client = await sb();
+  const client = await sb(dataset);
   const { data, error } = await client
     .from("sheet_connections")
     .select("sheet_id, tab_name, channel")
@@ -43,7 +43,7 @@ async function resolveSheet(
 export const fetchReviewCalls = createServerFn({ method: "GET" })
   .inputValidator((data: { dataset: ReviewDataset }) => data)
   .handler(async ({ data }): Promise<Array<Record<string, string>>> => {
-    const client = await sb();
+    const client = await sb(data.dataset);
     const cols = "call_id, campaign_day, campaign_date, campaign_type, language, city_campaign, call_outcome, call_duration_seconds, intent_score, drop_reason, job_status, phone, channel, data";
     const rows: Record<string, unknown>[] = [];
     let _from = 0;
@@ -94,19 +94,42 @@ export const fetchReviewCalls = createServerFn({ method: "GET" })
 export const fetchCallDetail = createServerFn({ method: "GET" })
   .inputValidator((data: { dataset: ReviewDataset; callId: string }) => data)
   .handler(async ({ data }) => {
-    const client = await sb();
+    const client = await sb(data.dataset);
     const { data: row } = await client
       .from("call_rows")
-      .select("channel")
+      .select("channel, data")
       .eq("program", data.dataset)
       .eq("call_id", data.callId)
       .maybeSingle();
-    const channel = (row?.channel as string | undefined) ?? "outbound";
-    const { sheet_id, tab_name } = await resolveSheet(data.dataset, channel);
-    const detail = await getCallDetail(sheet_id, tab_name ?? undefined, data.callId);
-    return (
-      detail ?? { call_transcript: "", final_summary: "", call_recording_url: "", effectiveTab: "" }
-    );
+
+    // Prefer Supabase: the pipeline stores transcript/recording (and sometimes a
+    // summary) inside call_rows.data. Tolerant to key naming across sources.
+    const d = ((row as Record<string, unknown> | null)?.data ?? {}) as Record<string, unknown>;
+    const raw = (d.raw ?? {}) as Record<string, unknown>;
+    const pick = (...keys: string[]): string => {
+      for (const k of keys) {
+        const v = (d as Record<string, unknown>)[k] ?? (raw as Record<string, unknown>)[k];
+        if (v != null && String(v).trim() !== "") return String(v);
+      }
+      return "";
+    };
+    const transcript = pick("call_transcript", "transcript");
+    const recording = pick("call_recording_url", "recording_url", "call_recording", "recording");
+    const summary = pick("final_summary", "summary", "call_summary", "ai_summary");
+    if (transcript || recording) {
+      return { call_transcript: transcript, final_summary: summary, call_recording_url: recording, effectiveTab: "supabase" };
+    }
+
+    // Fallback: heavy columns still only in the sheet (older calls / summary).
+    const channel = ((row as Record<string, unknown> | null)?.channel as string | undefined) ?? "outbound";
+    try {
+      const { sheet_id, tab_name } = await resolveSheet(data.dataset, channel);
+      const detail = await getCallDetail(sheet_id, tab_name ?? undefined, data.callId);
+      if (detail) return detail;
+    } catch (e) {
+      console.error("[fetchCallDetail] sheet fallback failed:", e);
+    }
+    return { call_transcript: transcript, final_summary: summary, call_recording_url: recording, effectiveTab: "supabase" };
   });
 
 export const fetchReviewMap = createServerFn({ method: "GET" }).handler(async () => {

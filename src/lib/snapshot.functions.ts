@@ -3,9 +3,9 @@ import type { CallRow } from "@/programs/data";
 import type { ProgramId } from "@/programs/registry";
 
 
-async function sb() {
+async function sb(program?: ProgramId | string) {
   const { sbFor } = await import("@/lib/db.server");
-  return sbFor();
+  return sbFor(program);
 }
 
 function asYesNoBool(v: string | undefined): boolean {
@@ -126,14 +126,14 @@ const inflight = new Map<ProgramId, Promise<SyncResult>>();
 
 export async function performSync(program: ProgramId, opts?: { force?: boolean }): Promise<SyncResult> {
   const { usesSecondProject } = await import("@/lib/db.server");
-  if (usesSecondProject()) {
+  if (usesSecondProject(program)) {
     // Pilot user's data comes from the Raya pipeline in the second project; call_rows is a read-only view there.
     return { ok: true, skipped: true } as any;
   }
   const existing = inflight.get(program);
   if (existing && !opts?.force) return existing;
   const p = (async (): Promise<SyncResult> => {
-    const client = await sb();
+    const client = await sb(program);
 
     const runStart = new Date().toISOString();
     const staleThresholdIso = new Date(Date.now() - 4 * 60_000).toISOString();
@@ -664,7 +664,7 @@ export const fetchProgramAggregates = createServerFn({ method: "GET" })
     try {
       let payload: AggregateRpcPayload;
       try {
-        const client = await sb();
+        const client = await sb(program);
         const { data: rpcData, error } = await client.rpc("get_program_aggregate_payload", {
           _program: program,
           _state: state,
@@ -722,7 +722,7 @@ export const fetchProgramAggregates = createServerFn({ method: "GET" })
 export const fetchCampaignDayRowsFn = createServerFn({ method: "GET" })
   .inputValidator((d: { program: ProgramId; day: string }) => d)
   .handler(async ({ data }): Promise<{ rows: CallRow[] }> => {
-    const client = await sb();
+    const client = await sb(data.program);
     const { data: out, error } = await client
       .from("call_rows")
       .select("data")
@@ -752,7 +752,7 @@ export const fetchKkbDropAnalysis = createServerFn({ method: "GET" })
   .handler(async ({ data }): Promise<KkbDropAnalysisPayload> => {
     const empty: KkbDropAnalysisPayload = { stages: [], buckets: [], maxCell: 0, grandTotal: 0 };
     try {
-      const client = await sb();
+      const client = await sb("kkb");
       const { data: rpcData, error } = await client.rpc("get_kkb_drop_analysis", {
         _state: data.state && data.state !== "all" ? data.state : "all",
         _date_from: data.dateFrom ?? null,
@@ -782,7 +782,7 @@ export const fetchDkbDropAnalysis = createServerFn({ method: "GET" })
   .handler(async ({ data }): Promise<KkbDropAnalysisPayload> => {
     const empty: KkbDropAnalysisPayload = { stages: [], buckets: [], maxCell: 0, grandTotal: 0 };
     try {
-      const client = await sb();
+      const client = await sb("dkb");
       const { data: rpcData, error } = await client.rpc("get_dkb_drop_analysis", {
         _state: data.state && data.state !== "all" ? data.state : "all",
         _date_from: data.dateFrom ?? null,
@@ -823,7 +823,7 @@ export const fetchCampaignList = createServerFn({ method: "GET" })
   )
   .handler(async ({ data }): Promise<CampaignListItem[]> => {
     try {
-      const client = await sb();
+      const client = await sb(data.program);
       const { data: rpcData, error } = await client.rpc("get_campaign_list", {
         _program: data.program,
         _state: data.state && data.state !== "all" ? data.state : "all",
@@ -880,7 +880,7 @@ export const fetchCampaignDropCauses = createServerFn({ method: "GET" })
       phaseShare: [],
     };
     try {
-      const client = await sb();
+      const client = await sb("kkb");
       const { data: rpcData, error } = await client.rpc("get_campaign_drop_causes", {
         _campaign: data.campaign,
         _state: data.state && data.state !== "all" ? data.state : "all",
@@ -923,7 +923,7 @@ export const fetchDkbCampaignCauses = createServerFn({ method: "GET" })
   .handler(async ({ data }): Promise<DkbCampaignCausesPayload> => {
     const empty: DkbCampaignCausesPayload = { sampleCalls: 0, region: null, phaseShare: [] };
     try {
-      const client = await sb();
+      const client = await sb("dkb");
       const { data: rpcData, error } = await client.rpc("get_dkb_campaign_causes", {
         _campaign: data.campaign,
         _state: data.state && data.state !== "all" ? data.state : "all",
@@ -959,7 +959,7 @@ export const fetchFunnelCallIds = createServerFn({ method: "GET" })
   )
   .handler(async ({ data }): Promise<{ count: number; ids: string[] }> => {
     try {
-      const client = await sb();
+      const client = await sb(data.program);
       const { data: rpcData, error } = await client.rpc("get_funnel_call_ids", {
         _program: data.program,
         _state: data.state && data.state !== "all" ? data.state : "all",
@@ -996,7 +996,7 @@ export const fetchFunnelDurations = createServerFn({ method: "GET" })
   )
   .handler(async ({ data }): Promise<Record<string, number>> => {
     try {
-      const client = await sb();
+      const client = await sb(data.program);
       const { data: rpcData, error } = await client.rpc("get_funnel_durations", {
         _program: data.program,
         _state: data.state && data.state !== "all" ? data.state : "all",
@@ -1028,7 +1028,7 @@ export const fetchKkbCallOutcomes = createServerFn({ method: "GET" })
   )
   .handler(async ({ data }): Promise<CallOutcomeCount[]> => {
     try {
-      const client = await sb();
+      const client = await sb("kkb");
       const { data: rpcData, error } = await client.rpc("get_kkb_call_outcomes", {
         _state: data.state && data.state !== "all" ? data.state : "all",
         _date_from: data.dateFrom ?? null,
