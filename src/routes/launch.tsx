@@ -55,7 +55,7 @@ import { appendLaunchLog } from "@/lib/launch-log";
 import { cn } from "@/lib/utils";
 import { loadSeekersAsync, type Seeker } from "@/lib/upSeekersCsv";
 import { buildCohort, type CohortIntent, type ConfidenceBand } from "@/lib/cohort";
-import { previewMasterCohort, resolveMasterCohort, type MasterFilters } from "@/lib/master-cohort.functions";
+import { previewMasterCohort, createMasterBatch, type MasterFilters } from "@/lib/master-cohort.functions";
 
 export const Route = createFileRoute("/launch")({
   component: LaunchWizard,
@@ -122,7 +122,7 @@ function LaunchWizard() {
   const [pickCooldownDays, setPickCooldownDays] = useState<number | null>(null);
   const [pickRegion, setPickRegion] = useState<string>("");
   const [pickStatus, setPickStatus] = useState<string>("");
-  const [pickContacts, setPickContacts] = useState<Array<Record<string, string>>>([]);
+  const [pickCount, setPickCount] = useState(0);
   const [cohortIntent, setCohortIntent] = useState<CohortIntent>("drive");
   const [profileStatuses, setProfileStatuses] = useState<string[]>(["Active", "At Risk"]);
   const [confidenceBand, setConfidenceBand] = useState<ConfidenceBand>("low");
@@ -153,6 +153,7 @@ function LaunchWizard() {
   const startBatchFn = useServerFn(rayaStartBatch);
   const recordBatchFn = useServerFn(recordLaunchedBatch);
   const submitRequestFn = useServerFn(submitCampaignRequest);
+  const createMasterBatchFn = useServerFn(createMasterBatch);
   const nextDayFn = useServerFn(getNextCampaignDay);
   const usage = useConcurrencyUsage({ enabled: !launching });
   const refreshUsage = useRefreshConcurrency();
@@ -231,7 +232,7 @@ function LaunchWizard() {
     if (step === 1) return !!agentId;
     if (step === 2) {
       if (source === "cohort") return cohortContacts.length > 0;
-      if (source === "pick") return pickContacts.length > 0;
+      if (source === "pick") return pickCount > 0;
       if (!report) return false;
       if (report.missingCols.length > 0) return false;
       if (report.invalid === 0) return true;
@@ -244,7 +245,16 @@ function LaunchWizard() {
       return true;
     }
     return true;
-  }, [step, program, agentId, report, proceedInvalid, schedule, concurrency, maxRetries, retryAfterHrs, available, source, cohortContacts.length, pickContacts.length]);
+  }, [step, program, agentId, report, proceedInvalid, schedule, concurrency, maxRetries, retryAfterHrs, available, source, cohortContacts.length, pickCount]);
+
+  const pickFilters = (): MasterFilters => ({
+    program,
+    confidenceMin: pickConfidenceMin,
+    maxCampaigns: pickMaxCampaigns,
+    cooldownDays: pickCooldownDays,
+    region: pickRegion || null,
+    status: pickStatus || null,
+  });
 
   const onFile = useCallback(async (f: File) => {
     setFile(f);
@@ -311,9 +321,7 @@ function LaunchWizard() {
   const buildContacts = () =>
     source === "cohort"
       ? cohortContacts.map((c) => ({ ...c, _region: region }))
-      : source === "pick"
-        ? pickContacts.map((c) => ({ ...c, _region: region }))
-        : (report?.validRows ?? []).map((r) => ({
+      : (report?.validRows ?? []).map((r) => ({
             contact_name: r.name,
             contact_phone: r.phone,
             country_code: r.cc,
@@ -322,6 +330,24 @@ function LaunchWizard() {
           }));
 
   const requestCampaign = async () => {
+    if (source === "pick") {
+      try {
+        await submitRequestFn({ data: { request: {
+          program, agent_id: agentId, agent_name: agentName, batch_name: batchName,
+          campaign_day: campaignDay, campaign_date: campaignDate, campaign_type: campaignType,
+          region, language: regionInfo.language, city_campaign: regionInfo.city, channel: "outbound",
+          source: "pick", cohort_intent: null,
+          cohort_filters: pickFilters() as unknown as Record<string, unknown>,
+          contacts: [], contact_count: pickCount,
+          schedule: { timezone: schedule.timezone, start_time: schedule.startTime, end_time: schedule.endTime, days: schedule.days },
+          concurrency, max_retries: maxRetries, retry_after_hrs: retryAfterHrs,
+          selected_statuses: selectedStatuses, requested_by: session?.email ?? "",
+        } } });
+        setRequested(true);
+        toast.success("Request submitted — it'll appear in Campaign Requests for a JFC/admin to review and launch.");
+      } catch (e) { toast.error(e instanceof Error ? e.message : "Request failed"); }
+      return;
+    }
     const contacts = buildContacts();
     if (contacts.length === 0) {
       toast.error("No contacts to request.");
@@ -349,9 +375,7 @@ function LaunchWizard() {
                 ? cohortIntent === "drive"
                   ? { profileStatuses }
                   : { confidenceBand }
-                : source === "pick"
-                  ? { confidenceMin: pickConfidenceMin, maxCampaigns: pickMaxCampaigns, cooldownDays: pickCooldownDays, region: pickRegion, status: pickStatus }
-                  : null,
+                : null,
             contacts,
             schedule: {
               timezone: schedule.timezone,
@@ -383,11 +407,20 @@ function LaunchWizard() {
     }
     setLaunching(true); setLaunchError(null); setStartPending(false); setStartStatus(null);
     try {
+      if (source === "pick") {
+        if (pickCount === 0) { toast.error("Pick an audience first."); setLaunching(false); return; }
+        const created = await createMasterBatchFn({ data: { filters: pickFilters(), agentId, batchName } });
+        const id = created.batchId;
+        setBatchId(id);
+        try {
+          await recordBatchFn({ data: { batchId: id, program, agentId, agentName, batchName, campaignDay, campaignDate, campaignType, language: regionInfo.language, cityCampaign: regionInfo.city, region, inputRows: [] } });
+        } catch (e) { console.error("recordLaunchedBatch failed", e); }
+        await startCreatedBatch(id, created.count);
+        return;
+      }
       const contacts =
         source === "cohort"
           ? cohortContacts.map((c) => ({ ...c, _region: region }))
-          : source === "pick"
-            ? (pickContacts.map((c) => ({ ...c, _region: region })) as unknown as { contact_name: string; contact_phone: string; country_code: string; [k: string]: string }[])
             : (report?.validRows ?? []).map((r) => ({
                 contact_name: r.name,
                 contact_phone: r.phone,
@@ -575,7 +608,7 @@ function LaunchWizard() {
               setRegionFilter={setPickRegion}
               statusFilter={pickStatus}
               setStatusFilter={setPickStatus}
-              onResolved={(contacts, r) => { if (r) setRegion(r); setPickContacts(contacts); }}
+              onResolved={(count: number) => setPickCount(count)}
             />
           ) : (
             <CohortStep
@@ -694,7 +727,7 @@ function LaunchWizard() {
             <Field label="Campaign day" value={campaignDay} />
             <Field label="Campaign date" value={campaignDate} />
             <Field label="Campaign type" value={campaignType} />
-            <Field label="Contacts" value={source === "cohort" ? String(cohortContacts.length) : source === "pick" ? String(pickContacts.length) : `${report?.valid ?? 0} of ${report?.total ?? 0}`} />
+            <Field label="Contacts" value={source === "cohort" ? String(cohortContacts.length) : source === "pick" ? String(pickCount) : `${report?.valid ?? 0} of ${report?.total ?? 0}`} />
             <Field label="Will skip" value={String(report?.invalid ?? 0)} />
             <Field label="Days" value={dayLabels(schedule.days)} />
             <Field label="Time window" value={`${schedule.startTime}–${schedule.endTime}`} />
@@ -1116,11 +1149,9 @@ function PickDataStep({
   cooldownDays: number | null; setCooldownDays: (v: number | null) => void;
   regionFilter: string; setRegionFilter: (v: string) => void;
   statusFilter: string; setStatusFilter: (v: string) => void;
-  onResolved: (contacts: Array<Record<string, string>>, region: string) => void;
+  onResolved: (count: number) => void;
 }) {
   const previewFn = useServerFn(previewMasterCohort);
-  const resolveFn = useServerFn(resolveMasterCohort);
-  const [resolving, setResolving] = useState(false);
 
   const filters: MasterFilters = useMemo(() => ({
     program: program as "kkb" | "dkb",
@@ -1211,21 +1242,13 @@ function PickDataStep({
         <Button
           size="sm"
           className="bg-brand text-brand-foreground hover:bg-brand/90"
-          disabled={!preview || preview.total === 0 || resolving}
-          onClick={async () => {
-            setResolving(true);
-            try {
-              const res = await resolveFn({ data: { ...filters, limit: undefined } });
-              onResolved(res.contacts, regionFilter);
-              toast.success(`Audience locked in · ${res.contacts.length} contacts` + (res.enrichedCount ? ` · ${res.enrichedCount} with recommendations` : ""));
-            } catch (e) {
-              toast.error(e instanceof Error ? e.message : "Resolve failed");
-            } finally {
-              setResolving(false);
-            }
+          disabled={!preview || preview.total === 0}
+          onClick={() => {
+            onResolved(preview?.total ?? 0);
+            toast.success(`Audience locked in · ${preview?.total ?? 0} people`);
           }}
         >
-          {resolving ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : <Check className="h-4 w-4 mr-1" />}
+          <Check className="h-4 w-4 mr-1" />
           Use this audience
         </Button>
       </div>

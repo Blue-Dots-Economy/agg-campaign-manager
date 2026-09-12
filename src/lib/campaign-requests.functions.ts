@@ -21,6 +21,7 @@ export interface CampaignRequestInput {
   cohort_intent?: string | null;
   cohort_filters?: Record<string, unknown> | null;
   contacts: Array<Record<string, unknown>>;
+  contact_count?: number | null;
   schedule?: Record<string, unknown> | null;
   concurrency?: number | null;
   max_retries?: number | null;
@@ -35,7 +36,7 @@ export const submitCampaignRequest = createServerFn({ method: "POST" })
   .handler(async ({ data }): Promise<{ ok: boolean; id: string | null }> => {
     const r = data.request;
     if (!r.agent_id) throw new Error("Missing agent.");
-    if (!r.contacts?.length) throw new Error("No contacts to request.");
+    if (r.source !== "pick" && !r.contacts?.length) throw new Error("No contacts to request.");
     const client = await sb();
     const row = {
       program: r.program, agent_id: r.agent_id, agent_name: r.agent_name ?? null,
@@ -43,7 +44,7 @@ export const submitCampaignRequest = createServerFn({ method: "POST" })
       campaign_type: r.campaign_type ?? null, region: r.region ?? null, language: r.language ?? null,
       city_campaign: r.city_campaign ?? null, channel: r.channel ?? "outbound",
       source: r.source ?? null, cohort_intent: r.cohort_intent ?? null, cohort_filters: r.cohort_filters ?? null,
-      contacts: r.contacts, contact_count: r.contacts.length, schedule: r.schedule ?? null,
+      contacts: r.contacts ?? [], contact_count: r.contact_count ?? (r.contacts?.length ?? 0), schedule: r.schedule ?? null,
       concurrency: r.concurrency ?? null, max_retries: r.max_retries ?? null, retry_after_hrs: r.retry_after_hrs ?? null,
       selected_statuses: r.selected_statuses ?? null, requested_by: r.requested_by ?? null, status: "pending",
       note: r.note ?? null,
