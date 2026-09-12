@@ -21,6 +21,7 @@ import {
 } from "@/lib/campaign-requests.functions";
 import { rayaCreateBatch, rayaStartBatch } from "@/lib/raya.functions";
 import { recordLaunchedBatch } from "@/lib/launched-batches.functions";
+import { createMasterBatch, previewMasterCohort, type MasterFilters } from "@/lib/master-cohort.functions";
 import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/campaign-requests")({
@@ -208,6 +209,20 @@ function RequestCard({ req, onChanged }: { req: RequestRow; onChanged: () => voi
   const createBatchFn = useServerFn(rayaCreateBatch);
   const startBatchFn = useServerFn(rayaStartBatch);
   const recordBatchFn = useServerFn(recordLaunchedBatch);
+  const createMasterBatchFn = useServerFn(createMasterBatch);
+  const previewFn = useServerFn(previewMasterCohort);
+
+  const pickPreviewQuery = useQuery({
+    queryKey: ["pick-request-preview", req.id],
+    queryFn: () =>
+      previewFn({
+        data: { ...(req.cohort_filters as unknown as MasterFilters), program: req.program as "kkb" | "dkb" },
+      }),
+    enabled: isPending && open && req.source === "pick",
+    staleTime: 15_000,
+    retry: false,
+  });
+  const pickPreview = pickPreviewQuery.data;
 
   const rayaSchedule = useMemo(
     () => ({
@@ -294,6 +309,23 @@ function RequestCard({ req, onChanged }: { req: RequestRow; onChanged: () => voi
     setError(null);
     try {
       await persist();
+
+      if (req.source === "pick") {
+        const created = await createMasterBatchFn({
+          data: {
+            filters: { ...(req.cohort_filters as unknown as MasterFilters), program: req.program as "kkb" | "dkb" },
+            agentId: req.agent_id,
+            batchName: req.batch_name,
+          },
+        });
+        const id = created.batchId;
+        setCreatedBatchId(id);
+        try {
+          await recordBatchFn({ data: { batchId: id, program: req.program, agentId: req.agent_id, agentName: req.agent_name ?? undefined, batchName: req.batch_name, campaignDay: req.campaign_day ?? undefined, campaignDate: req.campaign_date ?? undefined, campaignType: req.campaign_type ?? undefined, language: req.language ?? undefined, cityCampaign: req.city_campaign ?? undefined, region: req.region ?? undefined, inputRows: [] } });
+        } catch { /* non-fatal */ }
+        await startAndFinish(id);
+        return;
+      }
 
       const created = (await createBatchFn({
         data: { agentId: req.agent_id, batchName: req.batch_name, contacts: req.contacts as any },
@@ -419,7 +451,35 @@ function RequestCard({ req, onChanged }: { req: RequestRow; onChanged: () => voi
             {cf && <div>Filters: <span className="text-foreground">{cf}</span></div>}
           </div>
 
-          {Array.isArray(req.contacts) && req.contacts.length > 0 && (
+          {req.source === "pick" && (
+            <div>
+              <div className="text-xs text-muted-foreground mb-1">
+                Audience preview · {pickPreview ? `${pickPreview.total} people match now` : pickPreviewQuery.isLoading ? "counting…" : `${req.contact_count} contacts`} (de-identified)
+              </div>
+              {(pickPreview?.sample?.length ?? 0) > 0 && (
+                <div className="max-h-48 overflow-auto rounded-md border">
+                  <table className="w-full text-xs">
+                    <thead>
+                      <tr className="text-left text-muted-foreground">
+                        <th className="px-2 py-1 font-medium">Phone</th>
+                        <th className="px-2 py-1 font-medium">Region</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {pickPreview!.sample.map((p, i) => (
+                        <tr key={i} className="border-t border-border/60">
+                          <td className="px-2 py-1 font-mono">{p.phone_masked}</td>
+                          <td className="px-2 py-1">{p.region || "—"}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </div>
+          )}
+
+          {req.source !== "pick" && Array.isArray(req.contacts) && req.contacts.length > 0 && (
             <div>
               <div className="text-xs text-muted-foreground mb-1">
                 Audience preview · {req.contact_count} contacts (de-identified)
