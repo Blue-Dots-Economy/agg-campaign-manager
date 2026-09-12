@@ -85,7 +85,7 @@ export function PickAudience({ program, onResolved }: { program: "kkb" | "dkb"; 
               const res = await resolveFn({ data: { ...filters } });
               setLockedCount(res.contacts.length);
               onResolved({ contacts: res.contacts, region, filters, count: res.contacts.length });
-              toast.success(`Audience locked in · ${res.contacts.length} contacts`);
+              toast.success(`Audience locked in · ${res.contacts.length} contacts` + (res.enrichedCount ? ` · ${res.enrichedCount} with recommendations` : ""));
             } catch (e) { toast.error(e instanceof Error ? e.message : "Resolve failed"); }
             finally { setResolving(false); }
           }}>
