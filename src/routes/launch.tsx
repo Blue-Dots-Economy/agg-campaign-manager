@@ -1149,11 +1149,9 @@ function PickDataStep({
   cooldownDays: number | null; setCooldownDays: (v: number | null) => void;
   regionFilter: string; setRegionFilter: (v: string) => void;
   statusFilter: string; setStatusFilter: (v: string) => void;
-  onResolved: (contacts: Array<Record<string, string>>, region: string) => void;
+  onResolved: (count: number) => void;
 }) {
   const previewFn = useServerFn(previewMasterCohort);
-  const resolveFn = useServerFn(resolveMasterCohort);
-  const [resolving, setResolving] = useState(false);
 
   const filters: MasterFilters = useMemo(() => ({
     program: program as "kkb" | "dkb",
@@ -1244,21 +1242,13 @@ function PickDataStep({
         <Button
           size="sm"
           className="bg-brand text-brand-foreground hover:bg-brand/90"
-          disabled={!preview || preview.total === 0 || resolving}
-          onClick={async () => {
-            setResolving(true);
-            try {
-              const res = await resolveFn({ data: { ...filters, limit: undefined } });
-              onResolved(res.contacts, regionFilter);
-              toast.success(`Audience locked in · ${res.contacts.length} contacts` + (res.enrichedCount ? ` · ${res.enrichedCount} with recommendations` : ""));
-            } catch (e) {
-              toast.error(e instanceof Error ? e.message : "Resolve failed");
-            } finally {
-              setResolving(false);
-            }
+          disabled={!preview || preview.total === 0}
+          onClick={() => {
+            onResolved(preview?.total ?? 0);
+            toast.success(`Audience locked in · ${preview?.total ?? 0} people`);
           }}
         >
-          {resolving ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : <Check className="h-4 w-4 mr-1" />}
+          <Check className="h-4 w-4 mr-1" />
           Use this audience
         </Button>
       </div>
