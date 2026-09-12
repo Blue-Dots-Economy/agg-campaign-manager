@@ -311,13 +311,15 @@ function LaunchWizard() {
   const buildContacts = () =>
     source === "cohort"
       ? cohortContacts.map((c) => ({ ...c, _region: region }))
-      : (report?.validRows ?? []).map((r) => ({
-          contact_name: r.name,
-          contact_phone: r.phone,
-          country_code: r.cc,
-          ...r.extras,
-          _region: region,
-        }));
+      : source === "pick"
+        ? pickContacts.map((c) => ({ ...c, _region: region }))
+        : (report?.validRows ?? []).map((r) => ({
+            contact_name: r.name,
+            contact_phone: r.phone,
+            country_code: r.cc,
+            ...r.extras,
+            _region: region,
+          }));
 
   const requestCampaign = async () => {
     const contacts = buildContacts();
@@ -347,7 +349,9 @@ function LaunchWizard() {
                 ? cohortIntent === "drive"
                   ? { profileStatuses }
                   : { confidenceBand }
-                : null,
+                : source === "pick"
+                  ? { confidenceMin: pickConfidenceMin, maxCampaigns: pickMaxCampaigns, cooldownDays: pickCooldownDays, region: pickRegion, status: pickStatus }
+                  : null,
             contacts,
             schedule: {
               timezone: schedule.timezone,
