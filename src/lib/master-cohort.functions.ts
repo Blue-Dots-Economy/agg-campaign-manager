@@ -127,7 +127,8 @@ export const resolveMasterCohort = createServerFn({ method: "POST" })
 
     // Enrichment (KKB only): attach each person's recommendations from kkb_mastersheet, joined by phone.
     const recByPhone = new Map<string, { recommendations: string; jobs_recommended: string }>();
-    if (data.program === "kkb" && filtered.length > 0) {
+    const ENRICH_CAP = 2000;
+    if (data.program === "kkb" && filtered.length > 0 && filtered.length <= ENRICH_CAP) {
       try {
         // Query only the picked people's rows. Match on either raw or 10-digit phone.
         const wanted = new Set<string>();
@@ -181,5 +182,5 @@ export const resolveMasterCohort = createServerFn({ method: "POST" })
       }
       return base;
     });
-    return { contacts, enrichedCount };
+    return { contacts, enrichedCount, enrichmentSkipped: filtered.length > 2000 };
   });
