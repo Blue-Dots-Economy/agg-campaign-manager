@@ -58,6 +58,8 @@ function RequestCampaignForm() {
   const [loading, setLoading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
+  const [audienceSource, setAudienceSource] = useState<"cohort" | "pick">("cohort");
+  const [pickResult, setPickResult] = useState<PickResolved | null>(null);
 
   const submitFn = useServerFn(submitCampaignRequest);
   const listAgentsFn = useServerFn(listProgramAgents);
