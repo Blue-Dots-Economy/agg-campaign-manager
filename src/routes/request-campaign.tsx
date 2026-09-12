@@ -12,6 +12,7 @@ import { listProgramAgents } from "@/lib/agents.functions";
 import { buildCohort, type CohortIntent, type ConfidenceBand } from "@/lib/cohort";
 import { loadSeekersAsync, type Seeker } from "@/lib/upSeekersCsv";
 import { ScheduleEditor, type ScheduleState, makeDefaultSchedule } from "@/components/ScheduleEditor";
+import { PickAudience, type PickResolved } from "@/components/PickAudience";
 import { Panel } from "@/components/Panel";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
