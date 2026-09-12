@@ -108,42 +108,83 @@ function RequestCampaignForm() {
 
   const submit = async () => {
     if (!agentId) { toast.error("No agent configured for this program — ask an admin to add one in Settings."); return; }
-    if (cohortContacts.length === 0) { toast.error("No seekers match — widen the filter."); return; }
     setSubmitting(true);
     try {
-      await submitFn({
-        data: {
-          request: {
-            program,
-            agent_id: agentId,
-            agent_name: agentName,
-            batch_name: campaignName.trim(),
-            campaign_day: "Day 1",
-            campaign_date: new Date().toISOString().slice(0, 10),
-            campaign_type: campaignType,
-            region: "GZB",
-            language: "Hindi",
-            city_campaign: "Ghaziabad",
-            channel: "outbound",
-            source: "cohort",
-            cohort_intent: intent,
-            cohort_filters: intent === "drive" ? { profileStatuses } : { confidenceBand },
-            contacts: cohortContacts.map((c) => ({ ...c, _region: "GZB" })),
-            schedule: {
-              timezone: schedule.timezone,
-              start_time: schedule.startTime,
-              end_time: schedule.endTime,
-              days: schedule.days,
+      if (audienceSource === "cohort") {
+        if (cohortContacts.length === 0) { toast.error("No seekers match — widen the filter."); return; }
+        await submitFn({
+          data: {
+            request: {
+              program,
+              agent_id: agentId,
+              agent_name: agentName,
+              batch_name: campaignName.trim(),
+              campaign_day: "Day 1",
+              campaign_date: new Date().toISOString().slice(0, 10),
+              campaign_type: campaignType,
+              region: "GZB",
+              language: "Hindi",
+              city_campaign: "Ghaziabad",
+              channel: "outbound",
+              source: "cohort",
+              cohort_intent: intent,
+              cohort_filters: intent === "drive" ? { profileStatuses } : { confidenceBand },
+              contacts: cohortContacts.map((c) => ({ ...c, _region: "GZB" })),
+              schedule: {
+                timezone: schedule.timezone,
+                start_time: schedule.startTime,
+                end_time: schedule.endTime,
+                days: schedule.days,
+              },
+              concurrency: null,
+              max_retries: null,
+              retry_after_hrs: null,
+              selected_statuses: ["Pending"],
+              requested_by: session?.email ?? "",
+              note: note.trim() || null,
             },
-            concurrency: null,
-            max_retries: null,
-            retry_after_hrs: null,
-            selected_statuses: ["Pending"],
-            requested_by: session?.email ?? "",
-            note: note.trim() || null,
           },
-        },
-      });
+        });
+      } else {
+        if (!pickResult || pickResult.count === 0) { toast.error("Pick an audience first — click Use this audience."); return; }
+        const isKA = /hubli|dharwad|kannada|(^|_)ka(_|$)/i.test(pickResult.region || "");
+        const region = isKA ? "KA" : "GZB";
+        const language = isKA ? "Kannada" : "Hindi";
+        const city = isKA ? "Hubli-Dharwad" : "Ghaziabad";
+        await submitFn({
+          data: {
+            request: {
+              program,
+              agent_id: agentId,
+              agent_name: agentName,
+              batch_name: campaignName.trim(),
+              campaign_day: "Day 1",
+              campaign_date: new Date().toISOString().slice(0, 10),
+              campaign_type: `${program.toUpperCase()}_${language}_Pick_Day1`,
+              region,
+              language,
+              city_campaign: city,
+              channel: "outbound",
+              source: "pick",
+              cohort_intent: null,
+              cohort_filters: pickResult.filters as unknown as Record<string, unknown>,
+              contacts: pickResult.contacts.map((c) => ({ ...c, _region: region })),
+              schedule: {
+                timezone: schedule.timezone,
+                start_time: schedule.startTime,
+                end_time: schedule.endTime,
+                days: schedule.days,
+              },
+              concurrency: null,
+              max_retries: null,
+              retry_after_hrs: null,
+              selected_statuses: ["Pending"],
+              requested_by: session?.email ?? "",
+              note: note.trim() || null,
+            },
+          },
+        });
+      }
       setSubmitted(true);
       toast.success("Request submitted — it'll appear in Campaign Requests for a JFC/admin to review and launch.");
     } catch (e) {
