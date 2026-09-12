@@ -27,6 +27,9 @@ function numOrNull(v: string): number | null {
   const n = Number(v);
   return Number.isFinite(n) ? n : null;
 }
+function norm10(s: string): string {
+  return String(s ?? "").replace(/\D/g, "").slice(-10);
+}
 
 export interface MasterFilters {
   program: "kkb" | "dkb";
@@ -39,7 +42,7 @@ export interface MasterFilters {
 }
 
 interface Person {
-  person_id: string; name: string; phone: string;
+  person_id: string; name: string; phone: string; phoneRaw: string;
   region: string; district: string; status: string; category: string;
   confidence: number | null; total_campaigns: number;
   last_call_date: string; avg_intent: number | null; max_intent: number | null; avg_match: number | null;
@@ -65,6 +68,7 @@ async function loadPeople(client: SupabaseClient, program: string): Promise<Pers
       person_id: g("id", "seeker_id", "provider_id", "user_id", "person_id"),
       name: g("name", "seeker_name", "provider_name", "company_name", "full_name"),
       phone,
+      phoneRaw: phoneRaw,
       region: g("region", "state", "instance", "location_state", "jfc_campaign"),
       district: g("district", "city", "location_district", "city_campaign"),
       status: g("status", "profile_status", "seeker_status", "provider_status"),
@@ -116,15 +120,57 @@ export const resolveMasterCohort = createServerFn({ method: "POST" })
   .inputValidator((d: MasterFilters) => d)
   .handler(async ({ data }) => {
     const client = masterClient();
-    if (!client) return { contacts: [] as Array<Record<string, string>> };
+    if (!client) return { contacts: [] as Array<Record<string, string>>, enrichedCount: 0 };
     const people = await loadPeople(client, data.program);
     let filtered = applyFilters(people, data);
     if (data.limit && data.limit > 0) filtered = filtered.slice(0, data.limit);
-    const contacts = filtered.map((p) => ({
-      contact_name: p.name || (data.program === "dkb" ? "Provider" : "Seeker"),
-      contact_phone: p.phone,
-      country_code: "91",
-      person_id: p.person_id,
-    }));
-    return { contacts };
+
+    // Enrichment (KKB only): attach each person's recommendations from kkb_mastersheet, joined by phone.
+    const recByPhone = new Map<string, { recommendations: string; jobs_recommended: string }>();
+    if (data.program === "kkb" && filtered.length > 0) {
+      try {
+        // Query only the picked people's rows. Match on either raw or 10-digit phone.
+        const wanted = new Set<string>();
+        for (const p of filtered) {
+          if (p.phoneRaw) wanted.add(p.phoneRaw);
+          if (p.phone) wanted.add(p.phone);
+        }
+        const list = Array.from(wanted);
+        for (let i = 0; i < list.length; i += 500) {
+          const chunk = list.slice(i, i + 500);
+          const { data: rows, error } = await client
+            .from("kkb_mastersheet")
+            .select("phone, phone_number, recommendations_input, jobs_recommended")
+            .in("phone", chunk);
+          if (error) break; // enrichment is best-effort
+          for (const r of (rows ?? []) as Record<string, unknown>[]) {
+            const key = norm10(String(r.phone ?? r.phone_number ?? ""));
+            if (!key) continue;
+            const rec = r.recommendations_input;
+            const jr = r.jobs_recommended;
+            const recStr = rec == null ? "" : typeof rec === "string" ? rec : JSON.stringify(rec);
+            const jrStr = jr == null ? "" : typeof jr === "string" ? jr : JSON.stringify(jr);
+            if (recStr || jrStr) recByPhone.set(key, { recommendations: recStr, jobs_recommended: jrStr });
+          }
+        }
+      } catch { /* best-effort enrichment */ }
+    }
+
+    let enrichedCount = 0;
+    const contacts = filtered.map((p) => {
+      const base: Record<string, string> = {
+        contact_name: p.name || (data.program === "dkb" ? "Provider" : "Seeker"),
+        contact_phone: p.phone,
+        country_code: "91",
+        person_id: p.person_id,
+      };
+      const enr = recByPhone.get(p.phone);
+      if (enr) {
+        if (enr.recommendations) base.recommendations = enr.recommendations;
+        if (enr.jobs_recommended) base.jobs_recommended = enr.jobs_recommended;
+        enrichedCount++;
+      }
+      return base;
+    });
+    return { contacts, enrichedCount };
   });
