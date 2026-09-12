@@ -168,7 +168,7 @@ function RequestCampaignForm() {
               source: "pick",
               cohort_intent: null,
               cohort_filters: pickResult.filters as unknown as Record<string, unknown>,
-              contacts: pickResult.contacts.map((c) => ({ ...c, _region: region })),
+              contacts: [], contact_count: pickResult.count,
               schedule: {
                 timezone: schedule.timezone,
                 start_time: schedule.startTime,

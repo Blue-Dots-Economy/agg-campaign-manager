@@ -8,23 +8,20 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { previewMasterCohort, resolveMasterCohort, type MasterFilters } from "@/lib/master-cohort.functions";
+import { previewMasterCohort, type MasterFilters } from "@/lib/master-cohort.functions";
 
 export interface PickResolved {
-  contacts: Array<Record<string, string>>;
-  region: string;
   filters: MasterFilters;
+  region: string;
   count: number;
 }
 
 export function PickAudience({ program, onResolved }: { program: "kkb" | "dkb"; onResolved: (r: PickResolved) => void }) {
   const previewFn = useServerFn(previewMasterCohort);
-  const resolveFn = useServerFn(resolveMasterCohort);
   const [region, setRegion] = useState("");
   const [confidenceMin, setConfidenceMin] = useState<number | null>(null);
   const [maxCampaigns, setMaxCampaigns] = useState<number | null>(null);
   const [cooldownDays, setCooldownDays] = useState<number | null>(null);
-  const [resolving, setResolving] = useState(false);
   const [lockedCount, setLockedCount] = useState<number | null>(null);
 
   const filters: MasterFilters = useMemo(() => ({
@@ -78,18 +75,14 @@ export function PickAudience({ program, onResolved }: { program: "kkb" | "dkb"; 
             : <><strong className="text-2xl tabular-nums">{(preview?.total ?? 0).toLocaleString("en-IN")}</strong> people match</>}
         </span>
         <Button size="sm" className="bg-brand text-brand-foreground hover:bg-brand/90"
-          disabled={!preview || preview.total === 0 || resolving}
-          onClick={async () => {
-            setResolving(true);
-            try {
-              const res = await resolveFn({ data: { ...filters } });
-              setLockedCount(res.contacts.length);
-              onResolved({ contacts: res.contacts, region, filters, count: res.contacts.length });
-              toast.success(`Audience locked in · ${res.contacts.length} contacts` + (res.enrichedCount ? ` · ${res.enrichedCount} with recommendations` : ""));
-            } catch (e) { toast.error(e instanceof Error ? e.message : "Resolve failed"); }
-            finally { setResolving(false); }
+          disabled={!preview || preview.total === 0}
+          onClick={() => {
+            const count = preview?.total ?? 0;
+            setLockedCount(count);
+            onResolved({ filters, region, count });
+            toast.success(`Audience locked in · ${count} people`);
           }}>
-          {resolving ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : <Check className="h-4 w-4 mr-1" />} Use this audience
+          <Check className="h-4 w-4 mr-1" /> Use this audience
         </Button>
         {lockedCount != null && <span className="text-xs text-brand">Locked in · {lockedCount} contacts</span>}
       </div>
