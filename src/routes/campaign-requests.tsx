@@ -100,12 +100,24 @@ function toScheduleState(s: RequestRow["schedule"]): ScheduleState {
 
 function sourceLine(r: RequestRow) {
   if (r.source === "upload") return "Bulk upload";
+  if (r.source === "pick") return "Master record · Pick";
   return `Cohort · ${r.cohort_intent === "drive" ? "Drive Applications" : "Fill Missing Information"}`;
 }
 
 function filtersLine(r: RequestRow): string | null {
-  const f = r.cohort_filters as { profileStatuses?: string[]; confidenceBand?: string } | null;
+  const f = r.cohort_filters as {
+    profileStatuses?: string[]; confidenceBand?: string;
+    confidenceMin?: number | null; maxCampaigns?: number | null; cooldownDays?: number | null; region?: string | null;
+  } | null;
   if (!f) return null;
+  if (r.source === "pick") {
+    const parts: string[] = [];
+    if (f.region) parts.push(`Region: ${f.region}`);
+    if (f.confidenceMin != null) parts.push(`Confidence ≥ ${f.confidenceMin}`);
+    if (f.maxCampaigns != null) parts.push(`≤ ${f.maxCampaigns} campaigns run`);
+    if (f.cooldownDays != null) parts.push(`${f.cooldownDays}d cooldown`);
+    return parts.length ? parts.join(" · ") : "No filters (all people)";
+  }
   if (Array.isArray(f.profileStatuses) && f.profileStatuses.length) return f.profileStatuses.join(", ");
   if (f.confidenceBand) return `Confidence: ${f.confidenceBand}`;
   return null;
