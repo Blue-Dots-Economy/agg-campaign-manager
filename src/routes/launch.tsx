@@ -562,6 +562,21 @@ function LaunchWizard() {
               onFile={onFile}
               onReset={() => { setFile(null); setParsed(null); setReport(null); setProceedInvalid(false); }}
             />
+          ) : source === "pick" ? (
+            <PickDataStep
+              program={program}
+              confidenceMin={pickConfidenceMin}
+              setConfidenceMin={setPickConfidenceMin}
+              maxCampaigns={pickMaxCampaigns}
+              setMaxCampaigns={setPickMaxCampaigns}
+              cooldownDays={pickCooldownDays}
+              setCooldownDays={setPickCooldownDays}
+              regionFilter={pickRegion}
+              setRegionFilter={setPickRegion}
+              statusFilter={pickStatus}
+              setStatusFilter={setPickStatus}
+              onResolved={(contacts, r) => { if (r) setRegion(r); setPickContacts(contacts); }}
+            />
           ) : (
             <CohortStep
               intent={cohortIntent}
@@ -664,7 +679,7 @@ function LaunchWizard() {
             <Field label="Agent" value={agentName || agentId} mono />
             <Field label="Agent id" value={agentId} mono />
             <Field label="Batch name" value={batchName} />
-            <Field label="Audience" value={source === "cohort" ? "Cohort · My Blue Dots" : "Bulk upload"} />
+            <Field label="Audience" value={source === "cohort" ? "Cohort · My Blue Dots" : source === "pick" ? "Master record · Pick" : "Bulk upload"} />
             {source === "cohort" ? (
               <>
                 <Field label="Cohort intent" value={cohortIntent === "drive" ? "Drive Applications" : "Fill Missing Information"} />
@@ -679,7 +694,7 @@ function LaunchWizard() {
             <Field label="Campaign day" value={campaignDay} />
             <Field label="Campaign date" value={campaignDate} />
             <Field label="Campaign type" value={campaignType} />
-            <Field label="Contacts" value={source === "cohort" ? String(cohortContacts.length) : `${report?.valid ?? 0} of ${report?.total ?? 0}`} />
+            <Field label="Contacts" value={source === "cohort" ? String(cohortContacts.length) : source === "pick" ? String(pickContacts.length) : `${report?.valid ?? 0} of ${report?.total ?? 0}`} />
             <Field label="Will skip" value={String(report?.invalid ?? 0)} />
             <Field label="Days" value={dayLabels(schedule.days)} />
             <Field label="Time window" value={`${schedule.startTime}–${schedule.endTime}`} />
