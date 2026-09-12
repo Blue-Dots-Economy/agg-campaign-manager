@@ -14,6 +14,12 @@ function cutoverOn(): boolean {
   const v = (process.env.ROZGAR_CUTOVER || "").trim().toLowerCase();
   return v === "1" || v === "true" || v === "yes" || v === "on";
 }
+function programCutoverOn(program?: string): boolean {
+  if (!program) return false;
+  const key = `ROZGAR_CUTOVER_${program.toUpperCase()}`;
+  const v = (process.env[key] || "").trim().toLowerCase();
+  return v === "1" || v === "true" || v === "yes" || v === "on";
+}
 function newEnvPresent(): boolean {
   return !!(process.env.NEW_SUPABASE_URL && process.env.NEW_SUPABASE_SERVICE_ROLE_KEY);
 }
@@ -40,18 +46,19 @@ function actorEmail(): string | null {
 }
 /** True when the current actor should read/write the second project:
  *  cutover ON (everyone) OR a pilot email — and only if the new env is present. */
-export function usesSecondProject(): boolean {
+export function usesSecondProject(program?: string): boolean {
   try {
     if (!newEnvPresent()) return false;
-    if (cutoverOn()) return true;
+    if (cutoverOn()) return true;                 // global cutover (all programs)
+    if (programCutoverOn(program)) return true;   // per-program cutover
     const email = actorEmail();
-    return !!(email && SWITCH_EMAILS.has(email));
+    return !!(email && SWITCH_EMAILS.has(email)); // pilot emails (vineela)
   } catch { return false; }
 }
 /** Admin Supabase client for the current actor. Default = CURRENT project. */
-export function sbFor(): SupabaseClient {
+export function sbFor(program?: string): SupabaseClient {
   try {
-    if (usesSecondProject()) {
+    if (usesSecondProject(program)) {
       const second = secondClient();
       if (second) return second;
     }
