@@ -47,6 +47,7 @@ import {
   Loader2,
   X,
   Gauge,
+  Layers,
 } from "lucide-react";
 import { toast } from "sonner";
 import { ScheduleEditor, type ScheduleState, makeDefaultSchedule } from "@/components/ScheduleEditor";
@@ -54,6 +55,7 @@ import { appendLaunchLog } from "@/lib/launch-log";
 import { cn } from "@/lib/utils";
 import { loadSeekersAsync, type Seeker } from "@/lib/upSeekersCsv";
 import { buildCohort, type CohortIntent, type ConfidenceBand } from "@/lib/cohort";
+import { previewMasterCohort, resolveMasterCohort, type MasterFilters } from "@/lib/master-cohort.functions";
 
 export const Route = createFileRoute("/launch")({
   component: LaunchWizard,
@@ -114,7 +116,13 @@ function LaunchWizard() {
   const [validating, setValidating] = useState(false);
   const [proceedInvalid, setProceedInvalid] = useState(false);
 
-  const [source, setSource] = useState<"upload" | "cohort">("upload");
+  const [source, setSource] = useState<"upload" | "cohort" | "pick">("upload");
+  const [pickConfidenceMin, setPickConfidenceMin] = useState<number | null>(null);
+  const [pickMaxCampaigns, setPickMaxCampaigns] = useState<number | null>(null);
+  const [pickCooldownDays, setPickCooldownDays] = useState<number | null>(null);
+  const [pickRegion, setPickRegion] = useState<string>("");
+  const [pickStatus, setPickStatus] = useState<string>("");
+  const [pickContacts, setPickContacts] = useState<Array<Record<string, string>>>([]);
   const [cohortIntent, setCohortIntent] = useState<CohortIntent>("drive");
   const [profileStatuses, setProfileStatuses] = useState<string[]>(["Active", "At Risk"]);
   const [confidenceBand, setConfidenceBand] = useState<ConfidenceBand>("low");
@@ -223,6 +231,7 @@ function LaunchWizard() {
     if (step === 1) return !!agentId;
     if (step === 2) {
       if (source === "cohort") return cohortContacts.length > 0;
+      if (source === "pick") return pickContacts.length > 0;
       if (!report) return false;
       if (report.missingCols.length > 0) return false;
       if (report.invalid === 0) return true;
@@ -235,7 +244,7 @@ function LaunchWizard() {
       return true;
     }
     return true;
-  }, [step, program, agentId, report, proceedInvalid, schedule, concurrency, maxRetries, retryAfterHrs, available, source, cohortContacts.length]);
+  }, [step, program, agentId, report, proceedInvalid, schedule, concurrency, maxRetries, retryAfterHrs, available, source, cohortContacts.length, pickContacts.length]);
 
   const onFile = useCallback(async (f: File) => {
     setFile(f);
@@ -302,13 +311,15 @@ function LaunchWizard() {
   const buildContacts = () =>
     source === "cohort"
       ? cohortContacts.map((c) => ({ ...c, _region: region }))
-      : (report?.validRows ?? []).map((r) => ({
-          contact_name: r.name,
-          contact_phone: r.phone,
-          country_code: r.cc,
-          ...r.extras,
-          _region: region,
-        }));
+      : source === "pick"
+        ? pickContacts.map((c) => ({ ...c, _region: region }))
+        : (report?.validRows ?? []).map((r) => ({
+            contact_name: r.name,
+            contact_phone: r.phone,
+            country_code: r.cc,
+            ...r.extras,
+            _region: region,
+          }));
 
   const requestCampaign = async () => {
     const contacts = buildContacts();
@@ -338,7 +349,9 @@ function LaunchWizard() {
                 ? cohortIntent === "drive"
                   ? { profileStatuses }
                   : { confidenceBand }
-                : null,
+                : source === "pick"
+                  ? { confidenceMin: pickConfidenceMin, maxCampaigns: pickMaxCampaigns, cooldownDays: pickCooldownDays, region: pickRegion, status: pickStatus }
+                  : null,
             contacts,
             schedule: {
               timezone: schedule.timezone,
@@ -373,13 +386,15 @@ function LaunchWizard() {
       const contacts =
         source === "cohort"
           ? cohortContacts.map((c) => ({ ...c, _region: region }))
-          : (report?.validRows ?? []).map((r) => ({
-              contact_name: r.name,
-              contact_phone: r.phone,
-              country_code: r.cc,
-              ...r.extras,
-              _region: region,
-            }));
+          : source === "pick"
+            ? (pickContacts.map((c) => ({ ...c, _region: region })) as unknown as { contact_name: string; contact_phone: string; country_code: string; [k: string]: string }[])
+            : (report?.validRows ?? []).map((r) => ({
+                contact_name: r.name,
+                contact_phone: r.phone,
+                country_code: r.cc,
+                ...r.extras,
+                _region: region,
+              }));
       if (contacts.length === 0) {
         toast.error("No contacts to launch.");
         setLaunching(false);
@@ -512,10 +527,11 @@ function LaunchWizard() {
 
       {step === 2 && (
         <div className="space-y-4">
-          <div className="grid gap-3 sm:grid-cols-2 max-w-xl">
+          <div className="grid gap-3 sm:grid-cols-3 max-w-3xl">
             {([
               { id: "upload", icon: Upload, title: "Bulk upload", desc: "Dial a CSV of contacts you provide." },
               { id: "cohort", icon: Gauge, title: "Create cohort", desc: "Build an audience from My Blue Dots." },
+              { id: "pick", icon: Layers, title: "Pick from master", desc: "Auto-build from the campaign-manager master record." },
             ] as const).map((o) => (
               <button
                 key={o.id}
@@ -545,6 +561,21 @@ function LaunchWizard() {
               setProceedInvalid={setProceedInvalid}
               onFile={onFile}
               onReset={() => { setFile(null); setParsed(null); setReport(null); setProceedInvalid(false); }}
+            />
+          ) : source === "pick" ? (
+            <PickDataStep
+              program={program}
+              confidenceMin={pickConfidenceMin}
+              setConfidenceMin={setPickConfidenceMin}
+              maxCampaigns={pickMaxCampaigns}
+              setMaxCampaigns={setPickMaxCampaigns}
+              cooldownDays={pickCooldownDays}
+              setCooldownDays={setPickCooldownDays}
+              regionFilter={pickRegion}
+              setRegionFilter={setPickRegion}
+              statusFilter={pickStatus}
+              setStatusFilter={setPickStatus}
+              onResolved={(contacts, r) => { if (r) setRegion(r); setPickContacts(contacts); }}
             />
           ) : (
             <CohortStep
@@ -648,7 +679,7 @@ function LaunchWizard() {
             <Field label="Agent" value={agentName || agentId} mono />
             <Field label="Agent id" value={agentId} mono />
             <Field label="Batch name" value={batchName} />
-            <Field label="Audience" value={source === "cohort" ? "Cohort · My Blue Dots" : "Bulk upload"} />
+            <Field label="Audience" value={source === "cohort" ? "Cohort · My Blue Dots" : source === "pick" ? "Master record · Pick" : "Bulk upload"} />
             {source === "cohort" ? (
               <>
                 <Field label="Cohort intent" value={cohortIntent === "drive" ? "Drive Applications" : "Fill Missing Information"} />
@@ -663,7 +694,7 @@ function LaunchWizard() {
             <Field label="Campaign day" value={campaignDay} />
             <Field label="Campaign date" value={campaignDate} />
             <Field label="Campaign type" value={campaignType} />
-            <Field label="Contacts" value={source === "cohort" ? String(cohortContacts.length) : `${report?.valid ?? 0} of ${report?.total ?? 0}`} />
+            <Field label="Contacts" value={source === "cohort" ? String(cohortContacts.length) : source === "pick" ? String(pickContacts.length) : `${report?.valid ?? 0} of ${report?.total ?? 0}`} />
             <Field label="Will skip" value={String(report?.invalid ?? 0)} />
             <Field label="Days" value={dayLabels(schedule.days)} />
             <Field label="Time window" value={`${schedule.startTime}–${schedule.endTime}`} />
@@ -1070,6 +1101,165 @@ function CohortStep({
           </>
         )}
       </div>
+    </Panel>
+  );
+}
+
+function PickDataStep({
+  program, confidenceMin, setConfidenceMin, maxCampaigns, setMaxCampaigns,
+  cooldownDays, setCooldownDays, regionFilter, setRegionFilter,
+  statusFilter, setStatusFilter, onResolved,
+}: {
+  program: ProgramId;
+  confidenceMin: number | null; setConfidenceMin: (v: number | null) => void;
+  maxCampaigns: number | null; setMaxCampaigns: (v: number | null) => void;
+  cooldownDays: number | null; setCooldownDays: (v: number | null) => void;
+  regionFilter: string; setRegionFilter: (v: string) => void;
+  statusFilter: string; setStatusFilter: (v: string) => void;
+  onResolved: (contacts: Array<Record<string, string>>, region: string) => void;
+}) {
+  const previewFn = useServerFn(previewMasterCohort);
+  const resolveFn = useServerFn(resolveMasterCohort);
+  const [resolving, setResolving] = useState(false);
+
+  const filters: MasterFilters = useMemo(() => ({
+    program: program as "kkb" | "dkb",
+    confidenceMin, maxCampaigns, cooldownDays,
+    region: regionFilter || null,
+    status: statusFilter || null,
+  }), [program, confidenceMin, maxCampaigns, cooldownDays, regionFilter, statusFilter]);
+
+  const previewQuery = useQuery({
+    queryKey: ["master-cohort-preview", filters],
+    queryFn: () => previewFn({ data: filters }),
+    staleTime: 15_000,
+  });
+  const preview = previewQuery.data;
+
+  if (preview && preview.available === false) {
+    return (
+      <Panel title="Pick from master" description="Campaign-manager master record">
+        <p className="text-sm text-muted-foreground">Master record source isn't configured yet (NEW_SUPABASE_* secrets missing).</p>
+      </Panel>
+    );
+  }
+
+  const numInput = (v: number | null, set: (n: number | null) => void, placeholder: string) => (
+    <Input
+      type="number" min={0} value={v ?? ""} placeholder={placeholder}
+      onChange={(e) => set(e.target.value === "" ? null : Number(e.target.value))}
+    />
+  );
+
+  return (
+    <Panel title="Pick from master" description="Filter the campaign-manager master record into an audience">
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 max-w-4xl">
+        <div>
+          <Label className="text-xs">Region</Label>
+          <Select value={regionFilter || "__all"} onValueChange={(v) => setRegionFilter(v === "__all" ? "" : v)}>
+            <SelectTrigger className="mt-1"><SelectValue placeholder="All regions" /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="__all">All regions</SelectItem>
+              {(preview?.regions ?? []).map((r) => <SelectItem key={r} value={r}>{r}</SelectItem>)}
+            </SelectContent>
+          </Select>
+        </div>
+        <div>
+          <Label className="text-xs">Status</Label>
+          <Select value={statusFilter || "__all"} onValueChange={(v) => setStatusFilter(v === "__all" ? "" : v)}>
+            <SelectTrigger className="mt-1"><SelectValue placeholder="All statuses" /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="__all">All statuses</SelectItem>
+              {(preview?.statuses ?? []).map((s) => <SelectItem key={s} value={s}>{s}</SelectItem>)}
+            </SelectContent>
+          </Select>
+        </div>
+        <div>
+          <Label className="text-xs">Confidence threshold (0–100)</Label>
+          <div className="mt-1">
+            <Input
+              type="number" min={0} max={100}
+              disabled={preview ? !preview.confidenceAvailable : true}
+              value={confidenceMin ?? ""} placeholder="e.g. 70"
+              onChange={(e) => setConfidenceMin(e.target.value === "" ? null : Number(e.target.value))}
+            />
+          </div>
+          {preview && !preview.confidenceAvailable && (
+            <p className="mt-1 text-xs text-amber-600 dark:text-amber-400">
+              Confidence score not populated yet — filter will activate once the master table is scored.
+            </p>
+          )}
+        </div>
+        <div>
+          <Label className="text-xs">Max campaigns already run</Label>
+          <div className="mt-1">{numInput(maxCampaigns, setMaxCampaigns, "e.g. 3")}</div>
+        </div>
+        <div>
+          <Label className="text-xs">Cooldown days since last call</Label>
+          <div className="mt-1">{numInput(cooldownDays, setCooldownDays, "e.g. 14")}</div>
+        </div>
+      </div>
+
+      <div className="mt-4 flex items-center gap-3">
+        <span className="text-sm font-medium">
+          {previewQuery.isLoading ? (
+            <span className="inline-flex items-center gap-2 text-muted-foreground"><Loader2 className="h-4 w-4 animate-spin" /> Counting…</span>
+          ) : (
+            <><strong>{preview?.total ?? 0}</strong> people match — they'll be called</>
+          )}
+        </span>
+        <Button
+          size="sm"
+          className="bg-brand text-brand-foreground hover:bg-brand/90"
+          disabled={!preview || preview.total === 0 || resolving}
+          onClick={async () => {
+            setResolving(true);
+            try {
+              const res = await resolveFn({ data: { ...filters, limit: undefined } });
+              onResolved(res.contacts, regionFilter);
+              toast.success(`Audience locked in · ${res.contacts.length} contacts`);
+            } catch (e) {
+              toast.error(e instanceof Error ? e.message : "Resolve failed");
+            } finally {
+              setResolving(false);
+            }
+          }}
+        >
+          {resolving ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : <Check className="h-4 w-4 mr-1" />}
+          Use this audience
+        </Button>
+      </div>
+
+      {(preview?.sample?.length ?? 0) > 0 && (
+        <div className="mt-4 max-h-72 overflow-auto rounded-md border">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Phone</TableHead>
+                <TableHead>Region</TableHead>
+                <TableHead>Status</TableHead>
+                <TableHead>Category</TableHead>
+                <TableHead>Confidence</TableHead>
+                <TableHead>Campaigns</TableHead>
+                <TableHead>Last call</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {preview!.sample.map((p, i) => (
+                <TableRow key={i}>
+                  <TableCell className="font-mono text-xs">{p.phone_masked}</TableCell>
+                  <TableCell>{p.region || "—"}</TableCell>
+                  <TableCell>{p.status || "—"}</TableCell>
+                  <TableCell>{p.category || "—"}</TableCell>
+                  <TableCell>{p.confidence ?? "—"}</TableCell>
+                  <TableCell>{p.total_campaigns}</TableCell>
+                  <TableCell className="text-xs">{p.last_call_date || "—"}</TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </div>
+      )}
     </Panel>
   );
 }
