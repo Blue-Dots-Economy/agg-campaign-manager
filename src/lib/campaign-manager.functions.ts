@@ -1,4 +1,5 @@
 import { createServerFn } from "@tanstack/react-start";
+import { setCookie } from "@tanstack/react-start/server";
 
 // Sanketika Campaign Manager API — UAT (bluedots) instance config. Non-secret URLs;
 // only the client_secret is a secret (env CM_UAT_CLIENT_SECRET).
@@ -61,3 +62,57 @@ export const testCampaignDump = createServerFn({ method: "POST" }).handler(async
     return { ok: false as const, step: "exception", error: e instanceof Error ? e.message : String(e) };
   }
 });
+
+const UAT_TOKEN_URL = "https://auth-bluedots.bluedotseconomy.org/auth/realms/bluedots/protocol/openid-connect/token";
+const CM_CLIENT_ID = "campaign-manager";
+
+function decodeJwtPayload(jwt: string): Record<string, unknown> {
+  try {
+    const part = jwt.split(".")[1] ?? "";
+    const b64 = part.replace(/-/g, "+").replace(/_/g, "/");
+    const json = Buffer.from(b64, "base64").toString("utf8");
+    return JSON.parse(json) as Record<string, unknown>;
+  } catch { return {}; }
+}
+
+// Exchanges the OTP-login authorization code for tokens (server-side, uses the client_secret),
+// stores the tokens in an httpOnly cookie, and returns ONLY the coordinator's identity.
+export const exchangeCoordinatorCode = createServerFn({ method: "POST" })
+  .inputValidator((d: { code: string; codeVerifier: string; redirectUri: string }) => d)
+  .handler(async ({ data }) => {
+    const secret = process.env.CM_UAT_CLIENT_SECRET;
+    if (!secret) throw new Error("CM_UAT_CLIENT_SECRET not set");
+    const body = new URLSearchParams({
+      grant_type: "authorization_code",
+      client_id: CM_CLIENT_ID,
+      client_secret: secret,
+      code: data.code,
+      redirect_uri: data.redirectUri,
+      code_verifier: data.codeVerifier,
+    });
+    const res = await fetch(UAT_TOKEN_URL, {
+      method: "POST",
+      headers: { "content-type": "application/x-www-form-urlencoded" },
+      body,
+    });
+    if (!res.ok) throw new Error(`token exchange ${res.status}: ${(await res.text()).slice(0, 300)}`);
+    const tok = (await res.json()) as { access_token: string; refresh_token?: string; expires_in?: number };
+    const claims = decodeJwtPayload(tok.access_token);
+    const email = String(claims.email ?? claims.preferred_username ?? "").toLowerCase();
+    const orgId = String(claims.signalstack_org_id ?? "");
+    const aggregatorId = String(claims.aggregator_id ?? "");
+    const name = (claims.name as string) ?? (claims.given_name as string) ?? null;
+
+    const sessionVal = JSON.stringify({
+      access_token: tok.access_token,
+      refresh_token: tok.refresh_token ?? null,
+      expires_at: Date.now() + (tok.expires_in ?? 300) * 1000,
+      org_id: orgId,
+      aggregator_id: aggregatorId,
+    });
+    try {
+      setCookie("cm_tokens", sessionVal, { httpOnly: true, secure: true, sameSite: "lax", path: "/", maxAge: 60 * 60 * 8 });
+    } catch (e) { console.error("setCookie cm_tokens failed", e); }
+
+    return { ok: true as const, email, org_id: orgId, aggregator_id: aggregatorId, name };
+  });

@@ -32,6 +32,7 @@ type AuthContextValue = {
   isAdmin: boolean;
   hydrated: boolean;
   login: (email: string, password: string) => Promise<Role | null>;
+  loginCoordinator: (identity: { email: string; name?: string | null; org_id?: string | null; aggregator_id?: string | null }) => Session;
   logout: () => void;
 };
 
@@ -50,7 +51,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         if (!raw) raw = readCookie(COOKIE_KEY);
         if (raw) {
           const parsed = JSON.parse(raw);
-          if (parsed?.email && parsed.role === "user") {
+          if (parsed?.email && (parsed.role === "user" || parsed.role === "coordinator")) {
             // Only reviewer sessions auto-restore (their own email, low risk).
             setSession(parsed);
             // Re-sync both stores so whichever was missing gets refilled.
@@ -86,6 +87,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return null;
   };
 
+  const loginCoordinator = (identity: { email: string; name?: string | null; org_id?: string | null; aggregator_id?: string | null }) => {
+    const s: Session = { email: identity.email.trim().toLowerCase(), role: "coordinator", name: identity.name ?? null, district: null, program: null, nodeType: "org", nodeName: identity.org_id ?? null };
+    const raw = JSON.stringify(s);
+    if (typeof window !== "undefined") {
+      try { window.localStorage.setItem(STORAGE_KEY, raw); } catch { /* ignore */ }
+      writeCookie(COOKIE_KEY, raw);
+    }
+    setSession(s);
+    queryClient.clear();
+    return s;
+  };
+
   const logout = () => {
     if (typeof window !== "undefined") {
       try { window.localStorage.removeItem(STORAGE_KEY); } catch { /* ignore */ }
@@ -97,7 +110,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
 
   return (
-    <AuthContext.Provider value={{ session, isAuthenticated: !!session, isAdmin: session?.role === "admin", hydrated, login, logout }}>
+    <AuthContext.Provider value={{ session, isAuthenticated: !!session, isAdmin: session?.role === "admin", hydrated, login, loginCoordinator, logout }}>
       {children}
     </AuthContext.Provider>
   );
