@@ -19,6 +19,19 @@ function LoginPage() {
   const [password, setPassword] = useState("");
   const [error, setError] = useState(false);
 
+  const startCoordinatorLogin = async () => {
+    const b64url = (buf: ArrayBuffer) => btoa(String.fromCharCode(...new Uint8Array(buf))).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+    const verifier = b64url(crypto.getRandomValues(new Uint8Array(32)).buffer);
+    const challenge = b64url(await crypto.subtle.digest("SHA-256", new TextEncoder().encode(verifier)));
+    const state = b64url(crypto.getRandomValues(new Uint8Array(16)).buffer);
+    try {
+      sessionStorage.setItem("cm_pkce_verifier", verifier);
+      sessionStorage.setItem("cm_pkce_state", state);
+    } catch { /* ignore */ }
+    const { buildAuthorizeUrl } = await import("@/lib/campaign-manager.config");
+    window.location.href = buildAuthorizeUrl({ origin: window.location.origin, challenge, state });
+  };
+
   const onSubmit = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     const role = await login(email, password);
@@ -77,6 +90,19 @@ function LoginPage() {
           <Button type="submit" className="w-full">Sign in</Button>
           <p className="text-xs text-muted-foreground text-center">Reviewers: sign in with your own email and leave the password blank. The password is only for the admin account — please don't use it to review calls.</p>
         </form>
+
+        <div className="mt-6 flex items-center gap-3">
+          <div className="h-px flex-1 bg-border" />
+          <span className="text-[11px] uppercase tracking-wide text-muted-foreground">or</span>
+          <div className="h-px flex-1 bg-border" />
+        </div>
+
+        <div className="mt-4 space-y-2">
+          <Button type="button" variant="outline" className="w-full" onClick={startCoordinatorLogin}>
+            Coordinator sign-in (email code)
+          </Button>
+          <p className="text-xs text-muted-foreground text-center">Coordinators sign in with a one-time code sent to their email.</p>
+        </div>
       </div>
     </div>
   );
