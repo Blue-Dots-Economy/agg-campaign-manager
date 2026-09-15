@@ -16,6 +16,7 @@ import { Route as RequestCampaignRouteImport } from './routes/request-campaign'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as LaunchRouteImport } from './routes/launch'
 import { Route as EcosystemViewRouteImport } from './routes/ecosystem-view'
+import { Route as CmTestRouteImport } from './routes/cm-test'
 import { Route as CampaignsRouteImport } from './routes/campaigns'
 import { Route as CampaignRequestsRouteImport } from './routes/campaign-requests'
 import { Route as IndexRouteImport } from './routes/index'
@@ -58,6 +59,11 @@ const EcosystemViewRoute = EcosystemViewRouteImport.update({
   path: '/ecosystem-view',
   getParentRoute: () => rootRouteImport,
 } as any)
+const CmTestRoute = CmTestRouteImport.update({
+  id: '/cm-test',
+  path: '/cm-test',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const CampaignsRoute = CampaignsRouteImport.update({
   id: '/campaigns',
   path: '/campaigns',
@@ -94,6 +100,7 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/campaign-requests': typeof CampaignRequestsRoute
   '/campaigns': typeof CampaignsRoute
+  '/cm-test': typeof CmTestRoute
   '/ecosystem-view': typeof EcosystemViewRoute
   '/launch': typeof LaunchRoute
   '/login': typeof LoginRoute
@@ -109,6 +116,7 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/campaign-requests': typeof CampaignRequestsRoute
   '/campaigns': typeof CampaignsRoute
+  '/cm-test': typeof CmTestRoute
   '/ecosystem-view': typeof EcosystemViewRoute
   '/launch': typeof LaunchRoute
   '/login': typeof LoginRoute
@@ -125,6 +133,7 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/campaign-requests': typeof CampaignRequestsRoute
   '/campaigns': typeof CampaignsRoute
+  '/cm-test': typeof CmTestRoute
   '/ecosystem-view': typeof EcosystemViewRoute
   '/launch': typeof LaunchRoute
   '/login': typeof LoginRoute
@@ -142,6 +151,7 @@ export interface FileRouteTypes {
     | '/'
     | '/campaign-requests'
     | '/campaigns'
+    | '/cm-test'
     | '/ecosystem-view'
     | '/launch'
     | '/login'
@@ -157,6 +167,7 @@ export interface FileRouteTypes {
     | '/'
     | '/campaign-requests'
     | '/campaigns'
+    | '/cm-test'
     | '/ecosystem-view'
     | '/launch'
     | '/login'
@@ -172,6 +183,7 @@ export interface FileRouteTypes {
     | '/'
     | '/campaign-requests'
     | '/campaigns'
+    | '/cm-test'
     | '/ecosystem-view'
     | '/launch'
     | '/login'
@@ -188,6 +200,7 @@ export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   CampaignRequestsRoute: typeof CampaignRequestsRoute
   CampaignsRoute: typeof CampaignsRoute
+  CmTestRoute: typeof CmTestRoute
   EcosystemViewRoute: typeof EcosystemViewRoute
   LaunchRoute: typeof LaunchRoute
   LoginRoute: typeof LoginRoute
@@ -251,6 +264,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof EcosystemViewRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/cm-test': {
+      id: '/cm-test'
+      path: '/cm-test'
+      fullPath: '/cm-test'
+      preLoaderRoute: typeof CmTestRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/campaigns': {
       id: '/campaigns'
       path: '/campaigns'
@@ -300,6 +320,7 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   CampaignRequestsRoute: CampaignRequestsRoute,
   CampaignsRoute: CampaignsRoute,
+  CmTestRoute: CmTestRoute,
   EcosystemViewRoute: EcosystemViewRoute,
   LaunchRoute: LaunchRoute,
   LoginRoute: LoginRoute,
