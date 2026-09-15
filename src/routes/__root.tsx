@@ -139,7 +139,7 @@ function AuthGate({ children }: { children: ReactNode }) {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const { isAuthenticated, hydrated, session } = useAuth();
   const navigate = useNavigate();
-  const isLogin = pathname === "/login" || pathname === "/auth/callback";
+  const isLogin = pathname === "/login" || pathname === "/auth/callback" || pathname === "/coordinator-login";
   const role = session?.role;
   const allowed = isLogin || canAccess(role, pathname);
 
