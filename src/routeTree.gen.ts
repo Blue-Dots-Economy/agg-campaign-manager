@@ -22,6 +22,7 @@ import { Route as CampaignRequestsRouteImport } from './routes/campaign-requests
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as ReviewCallIdRouteImport } from './routes/review_.$callId'
 import { Route as CampaignsCampaignRouteImport } from './routes/campaigns_.$campaign'
+import { Route as AuthCallbackRouteImport } from './routes/auth.callback'
 import { Route as ApiPublicHooksSyncSnapshotsRouteImport } from './routes/api/public/hooks/sync-snapshots'
 
 const UserLevelAnalysisRoute = UserLevelAnalysisRouteImport.update({
@@ -89,6 +90,11 @@ const CampaignsCampaignRoute = CampaignsCampaignRouteImport.update({
   path: '/campaigns/$campaign',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AuthCallbackRoute = AuthCallbackRouteImport.update({
+  id: '/auth/callback',
+  path: '/auth/callback',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiPublicHooksSyncSnapshotsRoute =
   ApiPublicHooksSyncSnapshotsRouteImport.update({
     id: '/api/public/hooks/sync-snapshots',
@@ -108,6 +114,7 @@ export interface FileRoutesByFullPath {
   '/review': typeof ReviewRoute
   '/settings': typeof SettingsRoute
   '/user-level-analysis': typeof UserLevelAnalysisRoute
+  '/auth/callback': typeof AuthCallbackRoute
   '/campaigns/$campaign': typeof CampaignsCampaignRoute
   '/review/$callId': typeof ReviewCallIdRoute
   '/api/public/hooks/sync-snapshots': typeof ApiPublicHooksSyncSnapshotsRoute
@@ -124,6 +131,7 @@ export interface FileRoutesByTo {
   '/review': typeof ReviewRoute
   '/settings': typeof SettingsRoute
   '/user-level-analysis': typeof UserLevelAnalysisRoute
+  '/auth/callback': typeof AuthCallbackRoute
   '/campaigns/$campaign': typeof CampaignsCampaignRoute
   '/review/$callId': typeof ReviewCallIdRoute
   '/api/public/hooks/sync-snapshots': typeof ApiPublicHooksSyncSnapshotsRoute
@@ -141,6 +149,7 @@ export interface FileRoutesById {
   '/review': typeof ReviewRoute
   '/settings': typeof SettingsRoute
   '/user-level-analysis': typeof UserLevelAnalysisRoute
+  '/auth/callback': typeof AuthCallbackRoute
   '/campaigns_/$campaign': typeof CampaignsCampaignRoute
   '/review_/$callId': typeof ReviewCallIdRoute
   '/api/public/hooks/sync-snapshots': typeof ApiPublicHooksSyncSnapshotsRoute
@@ -159,6 +168,7 @@ export interface FileRouteTypes {
     | '/review'
     | '/settings'
     | '/user-level-analysis'
+    | '/auth/callback'
     | '/campaigns/$campaign'
     | '/review/$callId'
     | '/api/public/hooks/sync-snapshots'
@@ -175,6 +185,7 @@ export interface FileRouteTypes {
     | '/review'
     | '/settings'
     | '/user-level-analysis'
+    | '/auth/callback'
     | '/campaigns/$campaign'
     | '/review/$callId'
     | '/api/public/hooks/sync-snapshots'
@@ -191,6 +202,7 @@ export interface FileRouteTypes {
     | '/review'
     | '/settings'
     | '/user-level-analysis'
+    | '/auth/callback'
     | '/campaigns_/$campaign'
     | '/review_/$callId'
     | '/api/public/hooks/sync-snapshots'
@@ -208,6 +220,7 @@ export interface RootRouteChildren {
   ReviewRoute: typeof ReviewRoute
   SettingsRoute: typeof SettingsRoute
   UserLevelAnalysisRoute: typeof UserLevelAnalysisRoute
+  AuthCallbackRoute: typeof AuthCallbackRoute
   CampaignsCampaignRoute: typeof CampaignsCampaignRoute
   ReviewCallIdRoute: typeof ReviewCallIdRoute
   ApiPublicHooksSyncSnapshotsRoute: typeof ApiPublicHooksSyncSnapshotsRoute
@@ -306,6 +319,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof CampaignsCampaignRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/auth/callback': {
+      id: '/auth/callback'
+      path: '/auth/callback'
+      fullPath: '/auth/callback'
+      preLoaderRoute: typeof AuthCallbackRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/public/hooks/sync-snapshots': {
       id: '/api/public/hooks/sync-snapshots'
       path: '/api/public/hooks/sync-snapshots'
@@ -328,6 +348,7 @@ const rootRouteChildren: RootRouteChildren = {
   ReviewRoute: ReviewRoute,
   SettingsRoute: SettingsRoute,
   UserLevelAnalysisRoute: UserLevelAnalysisRoute,
+  AuthCallbackRoute: AuthCallbackRoute,
   CampaignsCampaignRoute: CampaignsCampaignRoute,
   ReviewCallIdRoute: ReviewCallIdRoute,
   ApiPublicHooksSyncSnapshotsRoute: ApiPublicHooksSyncSnapshotsRoute,
