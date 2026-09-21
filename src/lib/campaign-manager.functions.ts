@@ -218,5 +218,5 @@ export const listCampaignJobs = createServerFn({ method: "GET" })
     const res = await fetch(`${UAT_API_BASE}/v1/campaign/${data.channel}${q ? `?${q}` : ""}`, { headers: { authorization: `Bearer ${token}` } });
     const text = await res.text();
     if (!res.ok) throw new Error(`list ${res.status}: ${text.slice(0, 400)}`);
-    return text ? (JSON.parse(text) as Record<string, unknown>) : null;
+    return text ? (JSON.parse(text) as any) : null;
   });
