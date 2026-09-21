@@ -1,8 +1,8 @@
 import { createServerFn } from "@tanstack/react-start";
 
 async function sb() {
-  const { sbFor } = await import("@/lib/db.server");
-  return sbFor();
+  const { sbForAuth } = await import("@/lib/db.server");
+  return sbForAuth();
 }
 
 export interface CampaignRequestInput {
