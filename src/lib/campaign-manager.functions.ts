@@ -150,7 +150,7 @@ async function getCoordinatorAccessToken(): Promise<string> {
   return tok.access_token;
 }
 
-async function cmCampaignPost(path: string, jsonBody: unknown, idempotencyKey: string): Promise<unknown> {
+async function cmCampaignPost(path: string, jsonBody: unknown, idempotencyKey: string): Promise<Record<string, unknown> | null> {
   const token = await getCoordinatorAccessToken();
   const res = await fetch(`${UAT_API_BASE}${path}`, {
     method: "POST",
@@ -161,7 +161,7 @@ async function cmCampaignPost(path: string, jsonBody: unknown, idempotencyKey: s
   let data: unknown = null;
   try { data = text ? JSON.parse(text) : null; } catch { data = { raw: text }; }
   if (!res.ok) throw new Error(`${path} ${res.status}: ${text.slice(0, 400)}`);
-  return data;
+  return (data ?? null) as Record<string, unknown> | null;
 }
 
 type CmMetadata = Array<{ key: string; value: string }>;
