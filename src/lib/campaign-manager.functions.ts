@@ -1,5 +1,5 @@
 import { createServerFn } from "@tanstack/react-start";
-import { setCookie } from "@tanstack/react-start/server";
+import { setCookie, getCookie } from "@tanstack/react-start/server";
 
 // Sanketika Campaign Manager API — UAT (bluedots) instance config. Non-secret URLs;
 // only the client_secret is a secret (env CM_UAT_CLIENT_SECRET).
