@@ -55,10 +55,10 @@ export function PickAudience({ program, onResolved }: { program: "kkb" | "dkb"; 
           </Select>
         </div>
         <div>
-          <Label className="text-xs">Confidence ≥ (0–100)</Label>
-          <Input className="mt-1" type="number" min={0} max={100}
+          <Label className="text-xs">Confidence ≥ (0–10)</Label>
+          <Input className="mt-1" type="number" min={0} max={10} step={0.5}
             disabled={preview ? !preview.confidenceAvailable : true}
-            value={confidenceMin ?? ""} placeholder="e.g. 70"
+            value={confidenceMin ?? ""} placeholder="e.g. 6"
             onChange={(e) => setConfidenceMin(e.target.value === "" ? null : Number(e.target.value))} />
           {preview && !preview.confidenceAvailable && (
             <p className="mt-1 text-xs text-amber-600 dark:text-amber-400">Confidence not scored yet — activates once populated.</p>

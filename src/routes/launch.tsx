@@ -1206,12 +1206,12 @@ function PickDataStep({
           </Select>
         </div>
         <div>
-          <Label className="text-xs">Confidence threshold (0–100)</Label>
+          <Label className="text-xs">Confidence threshold (0–10)</Label>
           <div className="mt-1">
             <Input
-              type="number" min={0} max={100}
+              type="number" min={0} max={10} step={0.5}
               disabled={preview ? !preview.confidenceAvailable : true}
-              value={confidenceMin ?? ""} placeholder="e.g. 70"
+              value={confidenceMin ?? ""} placeholder="e.g. 6"
               onChange={(e) => setConfidenceMin(e.target.value === "" ? null : Number(e.target.value))}
             />
           </div>
