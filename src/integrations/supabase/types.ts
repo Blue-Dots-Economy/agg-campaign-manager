@@ -59,6 +59,146 @@ export type Database = {
         }
         Relationships: []
       }
+      atlas_cohort_members: {
+        Row: {
+          category: string | null
+          cohort_id: string | null
+          confidence: number | null
+          district: string | null
+          id: string
+          intent: number | null
+          is_exploration: boolean | null
+          last_call_date: string | null
+          match: number | null
+          phone_masked: string | null
+          priority_score: number | null
+          reason: string | null
+          region: string | null
+          total_campaigns: number | null
+        }
+        Insert: {
+          category?: string | null
+          cohort_id?: string | null
+          confidence?: number | null
+          district?: string | null
+          id?: string
+          intent?: number | null
+          is_exploration?: boolean | null
+          last_call_date?: string | null
+          match?: number | null
+          phone_masked?: string | null
+          priority_score?: number | null
+          reason?: string | null
+          region?: string | null
+          total_campaigns?: number | null
+        }
+        Update: {
+          category?: string | null
+          cohort_id?: string | null
+          confidence?: number | null
+          district?: string | null
+          id?: string
+          intent?: number | null
+          is_exploration?: boolean | null
+          last_call_date?: string | null
+          match?: number | null
+          phone_masked?: string | null
+          priority_score?: number | null
+          reason?: string | null
+          region?: string | null
+          total_campaigns?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "atlas_cohort_members_cohort_id_fkey"
+            columns: ["cohort_id"]
+            isOneToOne: false
+            referencedRelation: "atlas_cohorts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      atlas_cohorts: {
+        Row: {
+          budget: number | null
+          confidence_min: number | null
+          cooldown_days: number | null
+          created_at: string | null
+          created_by: string | null
+          explore_pct: number | null
+          fairness: Json | null
+          id: string
+          max_campaigns: number | null
+          model_mark: string | null
+          narration: string | null
+          params: Json | null
+          program: string | null
+          region: string | null
+          run_date: string | null
+          status: string
+          total_count: number | null
+        }
+        Insert: {
+          budget?: number | null
+          confidence_min?: number | null
+          cooldown_days?: number | null
+          created_at?: string | null
+          created_by?: string | null
+          explore_pct?: number | null
+          fairness?: Json | null
+          id?: string
+          max_campaigns?: number | null
+          model_mark?: string | null
+          narration?: string | null
+          params?: Json | null
+          program?: string | null
+          region?: string | null
+          run_date?: string | null
+          status?: string
+          total_count?: number | null
+        }
+        Update: {
+          budget?: number | null
+          confidence_min?: number | null
+          cooldown_days?: number | null
+          created_at?: string | null
+          created_by?: string | null
+          explore_pct?: number | null
+          fairness?: Json | null
+          id?: string
+          max_campaigns?: number | null
+          model_mark?: string | null
+          narration?: string | null
+          params?: Json | null
+          program?: string | null
+          region?: string | null
+          run_date?: string | null
+          status?: string
+          total_count?: number | null
+        }
+        Relationships: []
+      }
+      atlas_control: {
+        Row: {
+          dispatch_enabled: boolean
+          id: boolean
+          killed: boolean
+          updated_at: string | null
+        }
+        Insert: {
+          dispatch_enabled?: boolean
+          id?: boolean
+          killed?: boolean
+          updated_at?: string | null
+        }
+        Update: {
+          dispatch_enabled?: boolean
+          id?: boolean
+          killed?: boolean
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
       call_rows: {
         Row: {
           applications_count: number | null
