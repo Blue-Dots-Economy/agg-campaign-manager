@@ -32,3 +32,11 @@ export function canAccess(role: Role | undefined, pathname: string): boolean {
     r === "/" ? pathname === "/" : pathname === r || pathname.startsWith(r + "/")
   );
 }
+
+export const ATLAS_PILOT_EMAILS = new Set(["aryan@bluedots.com"]);
+export function isAtlasPilot(email?: string | null) {
+  return !!email && ATLAS_PILOT_EMAILS.has(email.trim().toLowerCase());
+}
+export function canAccessAtlas(role: Role | undefined, email?: string | null) {
+  return role === "admin" || isAtlasPilot(email);
+}
