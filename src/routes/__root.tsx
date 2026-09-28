@@ -132,7 +132,7 @@ import { AppShell } from "../components/layout/AppShell";
 import { AuthProvider, useAuth } from "../auth/context";
 import { ThemeProvider } from "../lib/theme";
 import { useNavigate, useRouterState } from "@tanstack/react-router";
-import { canAccess, landingFor } from "../auth/permissions";
+import { canAccess, landingFor, canAccessAtlas } from "../auth/permissions";
 
 
 function AuthGate({ children }: { children: ReactNode }) {
@@ -141,7 +141,8 @@ function AuthGate({ children }: { children: ReactNode }) {
   const navigate = useNavigate();
   const isLogin = pathname === "/login" || pathname === "/auth/callback" || pathname === "/coordinator-login";
   const role = session?.role;
-  const allowed = isLogin || canAccess(role, pathname);
+  const isAtlas = pathname === "/atlas" || pathname.startsWith("/atlas/");
+  const allowed = isLogin || (isAtlas ? canAccessAtlas(role, session?.email) : canAccess(role, pathname));
 
   useEffect(() => {
     if (!hydrated) return;

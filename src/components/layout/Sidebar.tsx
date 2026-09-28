@@ -12,12 +12,13 @@ import {
   Inbox,
   ChevronDown,
   ChevronRight,
+  Radar,
 } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { useProgram } from "@/programs/context";
 import { useAuth } from "@/auth/context";
-import { canAccess } from "@/auth/permissions";
+import { canAccess, canAccessAtlas } from "@/auth/permissions";
 import { listConnections } from "@/lib/connections.functions";
 import { cn } from "@/lib/utils";
 import { BlueDotsMark } from "./BlueDotsMark";
@@ -242,6 +243,25 @@ export function Sidebar() {
           </div>
         ))}
       </nav>
+
+      {canAccessAtlas(role, session?.email) && (
+        <div className="border-t border-sidebar-border px-3 py-2">
+          <Link
+            to="/atlas"
+            aria-current={pathname.startsWith("/atlas") ? "page" : undefined}
+            className={cn(
+              "flex items-center gap-3 px-3 py-2 rounded-md text-sm transition-colors",
+              pathname.startsWith("/atlas")
+                ? "bg-sidebar-accent text-sidebar-foreground"
+                : "text-sidebar-foreground/85 hover:bg-sidebar-accent/70 hover:text-sidebar-foreground"
+            )}
+          >
+            <Radar className="h-4 w-4 shrink-0" />
+            <span className="font-semibold tracking-wider">ATLAS</span>
+            <span className="ml-auto rounded border border-sidebar-foreground/40 px-1.5 py-0.5 text-[10px] uppercase tracking-wide opacity-80">shadow</span>
+          </Link>
+        </div>
+      )}
 
       {showSettings && (
         <div className="border-t border-sidebar-border px-3 py-2">
