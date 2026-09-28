@@ -20,6 +20,7 @@ import { Route as CoordinatorLoginRouteImport } from './routes/coordinator-login
 import { Route as CmTestRouteImport } from './routes/cm-test'
 import { Route as CampaignsRouteImport } from './routes/campaigns'
 import { Route as CampaignRequestsRouteImport } from './routes/campaign-requests'
+import { Route as AtlasRouteImport } from './routes/atlas'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as ReviewCallIdRouteImport } from './routes/review_.$callId'
 import { Route as CampaignsCampaignRouteImport } from './routes/campaigns_.$campaign'
@@ -81,6 +82,11 @@ const CampaignRequestsRoute = CampaignRequestsRouteImport.update({
   path: '/campaign-requests',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AtlasRoute = AtlasRouteImport.update({
+  id: '/atlas',
+  path: '/atlas',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
@@ -110,6 +116,7 @@ const ApiPublicHooksSyncSnapshotsRoute =
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/atlas': typeof AtlasRoute
   '/campaign-requests': typeof CampaignRequestsRoute
   '/campaigns': typeof CampaignsRoute
   '/cm-test': typeof CmTestRoute
@@ -128,6 +135,7 @@ export interface FileRoutesByFullPath {
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/atlas': typeof AtlasRoute
   '/campaign-requests': typeof CampaignRequestsRoute
   '/campaigns': typeof CampaignsRoute
   '/cm-test': typeof CmTestRoute
@@ -147,6 +155,7 @@ export interface FileRoutesByTo {
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/atlas': typeof AtlasRoute
   '/campaign-requests': typeof CampaignRequestsRoute
   '/campaigns': typeof CampaignsRoute
   '/cm-test': typeof CmTestRoute
@@ -167,6 +176,7 @@ export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
+    | '/atlas'
     | '/campaign-requests'
     | '/campaigns'
     | '/cm-test'
@@ -185,6 +195,7 @@ export interface FileRouteTypes {
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
+    | '/atlas'
     | '/campaign-requests'
     | '/campaigns'
     | '/cm-test'
@@ -203,6 +214,7 @@ export interface FileRouteTypes {
   id:
     | '__root__'
     | '/'
+    | '/atlas'
     | '/campaign-requests'
     | '/campaigns'
     | '/cm-test'
@@ -222,6 +234,7 @@ export interface FileRouteTypes {
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  AtlasRoute: typeof AtlasRoute
   CampaignRequestsRoute: typeof CampaignRequestsRoute
   CampaignsRoute: typeof CampaignsRoute
   CmTestRoute: typeof CmTestRoute
@@ -318,6 +331,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof CampaignRequestsRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/atlas': {
+      id: '/atlas'
+      path: '/atlas'
+      fullPath: '/atlas'
+      preLoaderRoute: typeof AtlasRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/': {
       id: '/'
       path: '/'
@@ -358,6 +378,7 @@ declare module '@tanstack/react-router' {
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  AtlasRoute: AtlasRoute,
   CampaignRequestsRoute: CampaignRequestsRoute,
   CampaignsRoute: CampaignsRoute,
   CmTestRoute: CmTestRoute,
