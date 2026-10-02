@@ -33,7 +33,7 @@ export function canAccess(role: Role | undefined, pathname: string): boolean {
   );
 }
 
-export const ATLAS_PILOT_EMAILS = new Set(["aryan@bluedots.com"]);
+export const ATLAS_PILOT_EMAILS = new Set(["aryan@bluedots.com", "aryan@ekstepplus.org"]);
 export function isAtlasPilot(email?: string | null) {
   return !!email && ATLAS_PILOT_EMAILS.has(email.trim().toLowerCase());
 }
