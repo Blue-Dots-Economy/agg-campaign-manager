@@ -21,14 +21,21 @@ async function requireAtlasActor(): Promise<string> {
   const { getRequest } = await import("@tanstack/react-start/server");
   const { isAtlasPilot } = await import("@/auth/permissions");
   let email: string | null = null;
+  let role: string | null = null;
   try {
     const cookie = getRequest()?.headers?.get("cookie") ?? "";
     const m = cookie.split("; ").find((c) => c.startsWith("rozgar_auth="));
-    if (m) email = String(JSON.parse(decodeURIComponent(m.split("=").slice(1).join("=")))?.email ?? "").trim().toLowerCase() || null;
-  } catch { email = null; }
+    if (m) {
+      const parsed = JSON.parse(decodeURIComponent(m.split("=").slice(1).join("=")));
+      email = String(parsed?.email ?? "").trim().toLowerCase() || null;
+      role = String(parsed?.role ?? "").trim().toLowerCase() || null;
+    }
+  } catch { email = null; role = null; }
   if (!email) throw new Error("Not authorized for ATLAS.");
+  // 1) named pilot, 2) admin role from the same cookie the page gate uses,
+  // 3) registered active admin in the user registry (fallback).
   if (isAtlasPilot(email)) return email;
-  // Admin check against the user registry (not the client-set role).
+  if (role === "admin") return email;
   const { data } = await stateDb().from("app_users").select("role, active").eq("email", email).maybeSingle();
   if (data && (data as any).role === "admin" && (data as any).active !== false) return email;
   throw new Error("Not authorized for ATLAS.");
