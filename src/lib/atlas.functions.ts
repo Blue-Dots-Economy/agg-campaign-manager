@@ -1,6 +1,14 @@
 // ATLAS Mark I — shadow mode. Proposes cohorts only; NEVER dispatches.
 // No Raya, no pick_resolve, no Campaign Manager calls anywhere in this file.
-import { createServerFn } from "@tanstack/react-start";
+import { createServerFn, createMiddleware } from "@tanstack/react-start";
+
+// The preview runs inside an iframe where the session cookie may be dropped,
+// so also forward the stored session as a header for ATLAS calls.
+const atlasSession = createMiddleware({ type: "function" }).client(async ({ next }) => {
+  let raw = "";
+  try { raw = window.localStorage.getItem("rozgar-auth") ?? ""; } catch { /* ignore */ }
+  return next({ headers: raw ? { "x-rozgar-auth": encodeURIComponent(raw) } : {} });
+});
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 
 const BUDGET_CAP = 1000;
@@ -23,10 +31,13 @@ async function requireAtlasActor(): Promise<string> {
   let email: string | null = null;
   let role: string | null = null;
   try {
-    const cookie = getRequest()?.headers?.get("cookie") ?? "";
-    const m = cookie.split("; ").find((c) => c.startsWith("rozgar_auth="));
-    if (m) {
-      const parsed = JSON.parse(decodeURIComponent(m.split("=").slice(1).join("=")));
+    const headers = getRequest()?.headers;
+    const cookie = headers?.get("cookie") ?? "";
+    const m = cookie.split(/;\s*/).find((c) => c.startsWith("rozgar_auth="));
+    const hdr = headers?.get("x-rozgar-auth") ?? "";
+    const enc = hdr || (m ? m.split("=").slice(1).join("=") : "");
+    if (enc) {
+      const parsed = JSON.parse(decodeURIComponent(enc));
       email = String(parsed?.email ?? "").trim().toLowerCase() || null;
       role = String(parsed?.role ?? "").trim().toLowerCase() || null;
     }
@@ -70,7 +81,7 @@ function daysSince(d: string): number | null {
   return isNaN(t) ? null : Math.floor((Date.now() - t) / 86400000);
 }
 
-export const atlasBuildCohort = createServerFn({ method: "POST" })
+export const atlasBuildCohort = createServerFn({ method: "POST" }).middleware([atlasSession])
   .inputValidator((d: AtlasBuildInput) => d)
   .handler(async ({ data }) => {
     const actor = await requireAtlasActor();
@@ -171,7 +182,7 @@ export const atlasBuildCohort = createServerFn({ method: "POST" })
     return { cohortId, totalCount, sampleCount: members.length, exploreCount: kExplore, fairness, narration, confidenceAvailable: !!p.confidenceAvailable, regions: Array.isArray(p.regions) ? p.regions : [] };
   });
 
-export const atlasListCohorts = createServerFn({ method: "POST" }).handler(async () => {
+export const atlasListCohorts = createServerFn({ method: "POST" }).middleware([atlasSession]).handler(async () => {
   await requireAtlasActor();
   const { data, error } = await stateDb().from("atlas_cohorts")
     .select("id, created_at, program, region, total_count, status, model_mark")
@@ -180,7 +191,7 @@ export const atlasListCohorts = createServerFn({ method: "POST" }).handler(async
   return (data ?? []) as any[];
 });
 
-export const atlasGetCohort = createServerFn({ method: "POST" })
+export const atlasGetCohort = createServerFn({ method: "POST" }).middleware([atlasSession])
   .inputValidator((d: { id: string }) => d)
   .handler(async ({ data }) => {
     await requireAtlasActor();
@@ -193,12 +204,12 @@ export const atlasGetCohort = createServerFn({ method: "POST" })
     return { cohort: cohort as any, members: (members ?? []) as any[] };
   });
 
-export const atlasGetControl = createServerFn({ method: "POST" }).handler(async () => {
+export const atlasGetControl = createServerFn({ method: "POST" }).middleware([atlasSession]).handler(async () => {
   await requireAtlasActor();
   return getControl();
 });
 
-export const atlasSetControl = createServerFn({ method: "POST" })
+export const atlasSetControl = createServerFn({ method: "POST" }).middleware([atlasSession])
   .inputValidator((d: { killed?: boolean; dispatch_enabled?: boolean }) => d)
   .handler(async ({ data }) => {
     await requireAtlasActor();
@@ -210,7 +221,7 @@ export const atlasSetControl = createServerFn({ method: "POST" })
     return getControl();
   });
 
-export const atlasApproveCohort = createServerFn({ method: "POST" })
+export const atlasApproveCohort = createServerFn({ method: "POST" }).middleware([atlasSession])
   .inputValidator((d: { id: string }) => d)
   .handler(async ({ data }) => {
     await requireAtlasActor();
@@ -223,7 +234,7 @@ export const atlasApproveCohort = createServerFn({ method: "POST" })
     return { shadow: true as const, message: "Shadow mode — approved for review only. No calls were placed." };
   });
 
-export const atlasCancelCohort = createServerFn({ method: "POST" })
+export const atlasCancelCohort = createServerFn({ method: "POST" }).middleware([atlasSession])
   .inputValidator((d: { id: string }) => d)
   .handler(async ({ data }) => {
     await requireAtlasActor();
