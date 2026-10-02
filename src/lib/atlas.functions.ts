@@ -34,7 +34,8 @@ async function requireAtlasActor(): Promise<string> {
     const headers = getRequest()?.headers;
     const cookie = headers?.get("cookie") ?? "";
     const m = cookie.split(/;\s*/).find((c) => c.startsWith("rozgar_auth="));
-    const enc = m ? m.split("=").slice(1).join("=") : headers?.get("x-rozgar-auth") ?? "";
+    const hdr = headers?.get("x-rozgar-auth") ?? "";
+    const enc = hdr || (m ? m.split("=").slice(1).join("=") : "");
     if (enc) {
       const parsed = JSON.parse(decodeURIComponent(enc));
       email = String(parsed?.email ?? "").trim().toLowerCase() || null;
