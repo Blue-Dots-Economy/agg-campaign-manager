@@ -390,6 +390,41 @@ function TranscriptReview() {
 
         {/* feedback */}
         <aside className="space-y-3 lg:col-span-2 lg:h-full lg:overflow-y-auto lg:pr-1">
+          {callContext && (
+            <Collapsible open={contextOpen} onOpenChange={setContextOpen}>
+              <div className="rounded-xl border border-border bg-card">
+                <CollapsibleTrigger className="flex w-full items-center justify-between px-4 py-3 text-left">
+                  <span className="flex items-center gap-2 text-sm font-semibold">
+                    Call context
+                    {callContext.jobs.length > 0 && (
+                      <span className="rounded-full bg-primary/10 px-2 py-0.5 text-[11px] font-medium text-primary">{callContext.jobs.length} jobs recommended</span>
+                    )}
+                  </span>
+                  <ChevronDown className={cn("h-4 w-4 transition-transform", contextOpen && "rotate-180")} />
+                </CollapsibleTrigger>
+                <CollapsibleContent className="space-y-2 border-t border-border px-4 py-3 text-xs">
+                  {callContext.info.map((f) => <Info key={f.label} k={f.label} v={f.value} />)}
+                  {callContext.jobs.length > 0 && (
+                    <div className="pt-1">
+                      <div className="text-muted-foreground">Recommended jobs</div>
+                      <div className="mt-1.5 space-y-1.5">
+                        {callContext.jobs.map((j, i) => (
+                          <div key={i} className="rounded-lg border border-border bg-muted/30 px-2.5 py-2">
+                            <div className="truncate font-medium text-foreground">{[j.role, j.company].filter(Boolean).join(" · ") || "—"}</div>
+                            <div className="mt-0.5 truncate text-muted-foreground">{[j.salary, j.vacancy, j.qualification, j.location].filter(Boolean).join(" · ")}</div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                  {callContext.rawRecommendations && (
+                    <pre className="max-h-48 overflow-y-auto whitespace-pre-wrap rounded-lg border border-border bg-muted/30 p-2">{callContext.rawRecommendations}</pre>
+                  )}
+                </CollapsibleContent>
+              </div>
+            </Collapsible>
+          )}
+
           <Collapsible open={infoOpen} onOpenChange={setInfoOpen}>
             <div className="rounded-xl border border-border bg-card">
               <CollapsibleTrigger className="flex w-full items-center justify-between px-4 py-3 text-left"><span className="text-sm font-semibold">Call Info</span><ChevronDown className={cn("h-4 w-4 transition-transform", infoOpen && "rotate-180")} /></CollapsibleTrigger>
