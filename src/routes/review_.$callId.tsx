@@ -94,12 +94,8 @@ function TranscriptReview() {
   const reviewerEmail = (session?.email || "").toLowerCase();
   const isAdmin = reviewerEmail === "admin@bluedots.com";
 
-  const callsQuery = useReviewCalls(dataset);
-  const calls = callsQuery.data ?? null;
-  const call = useMemo(
-    () => calls?.find((c) => String(c.call_id) === callId) ?? calls?.find((c) => c.job_id === callId) ?? null,
-    [calls, callId],
-  );
+  const callQuery = useReviewCall(dataset, callId);
+  const call = callQuery.data ?? null;
 
   const detailFn = useServerFn(fetchCallDetail);
   const detailQuery = useQuery({
@@ -223,7 +219,7 @@ function TranscriptReview() {
     }
   }
 
-  if (calls === null) return <div className="flex items-center justify-center py-24"><Loader2 className="h-6 w-6 animate-spin text-muted-foreground" /></div>;
+  if (callQuery.isLoading) return <div className="flex items-center justify-center py-24"><Loader2 className="h-6 w-6 animate-spin text-muted-foreground" /></div>;
   if (!call) return (
     <div className="space-y-4">
       <button onClick={() => navigate({ to: "/review", search: { prefill: undefined } })} className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground"><ArrowLeft className="h-4 w-4" /> Back to review</button>

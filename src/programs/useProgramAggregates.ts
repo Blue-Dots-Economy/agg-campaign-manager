@@ -257,6 +257,22 @@ export function useReviewCalls(dataset: ReviewDataset, opts?: { enabled?: boolea
   });
 }
 
+/** Single call's metadata for the transcript review page — no full-table load. */
+export function useReviewCall(dataset: ReviewDataset, callId: string | undefined) {
+  const fn = useServerFn(fetchReviewCall);
+  return useQuery<Record<string, string> | null>({
+    queryKey: ["review-call", dataset, callId],
+    queryFn: () => fn({ data: { dataset, callId: callId ?? "" } }),
+    enabled: !!callId,
+    staleTime: 5 * 60_000,
+    gcTime: 30 * 60_000,
+    refetchOnWindowFocus: false,
+    refetchOnReconnect: false,
+    retry: 1,
+    retryDelay: 1500,
+  });
+}
+
 export function useReviewMap() {
   const fn = useServerFn(fetchReviewMap);
   return useQuery<
