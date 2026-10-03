@@ -16,6 +16,7 @@ import {
 } from "@/lib/snapshot.functions";
 import {
   fetchReviewCalls,
+  fetchReviewCallsByIds,
   fetchReviewMap,
   fetchExistingReviews,
   type ReviewDataset,
@@ -219,11 +220,31 @@ export function useAutoFreshness(programId: ProgramId, lastSyncedAt: string | nu
   return sync;
 }
 
-export function useReviewCalls(dataset: ReviewDataset) {
+export function useReviewCallsByIds(dataset: ReviewDataset, ids: string[], opts?: { enabled?: boolean }) {
+  const fn = useServerFn(fetchReviewCallsByIds);
+  const sorted = [...ids].sort();
+  let h = 0;
+  for (const id of sorted) for (let i = 0; i < id.length; i++) h = (h * 31 + id.charCodeAt(i)) | 0;
+  const key = `${sorted.length}:${h}:${sorted[0] ?? ""}:${sorted[sorted.length - 1] ?? ""}`;
+  return useQuery<Array<Record<string, string>>>({
+    queryKey: ["review-calls-by-ids", dataset, key],
+    queryFn: () => fn({ data: { dataset, ids: sorted } }),
+    enabled: (opts?.enabled ?? true) && ids.length > 0,
+    staleTime: 60_000,
+    gcTime: 5 * 60_000,
+    refetchOnWindowFocus: false,
+    refetchOnReconnect: false,
+    retry: 1,
+    retryDelay: 1500,
+  });
+}
+
+export function useReviewCalls(dataset: ReviewDataset, opts?: { enabled?: boolean }) {
   const fn = useServerFn(fetchReviewCalls);
   return useQuery<Array<Record<string, string>>>({
     queryKey: ["review-calls", dataset],
     queryFn: () => fn({ data: { dataset } }),
+    enabled: opts?.enabled ?? true,
     staleTime: 60_000,
     gcTime: 5 * 60_000,
     placeholderData: keepPreviousData,

@@ -4,7 +4,7 @@ import { Loader2, Search, Layers } from "lucide-react";
 import { toast } from "sonner";
 import { useProgram } from "@/programs/context";
 import { useAuth } from "@/auth/context";
-import { useReviewCalls, useReviewMap } from "@/programs/useProgramAggregates";
+import { useReviewCalls, useReviewCallsByIds, useReviewMap } from "@/programs/useProgramAggregates";
 import { buildStatusMap, getReviewKey, type ReviewCall } from "@/lib/review-ui";
 import { CallCard } from "@/components/review/CallCard";
 import { Input } from "@/components/ui/input";
@@ -77,9 +77,14 @@ function ReviewHub() {
   const email = session?.email;
   const navigate = useNavigate();
 
-  const callsQuery = useReviewCalls(dataset);
+  const search = Route.useSearch();
+  const [cohortIds, setCohortIds] = useState<string[] | null>(null);
+  const [cohortReady, setCohortReady] = useState(false);
+  const useTargeted = !!cohortIds && cohortIds.length > 0 && cohortIds.length <= 5000;
+  const fullQuery = useReviewCalls(dataset, { enabled: cohortReady && !useTargeted });
+  const targetedQuery = useReviewCallsByIds(dataset, cohortIds ?? [], { enabled: useTargeted });
   const mapQuery = useReviewMap();
-  const calls: ReviewCall[] | null = callsQuery.data ?? null;
+  const calls: ReviewCall[] | null = ((useTargeted ? targetedQuery.data : fullQuery.data) ?? null) as ReviewCall[] | null;
 
   const statusMap = useMemo(() => {
     if (!mapQuery.data) return null;
@@ -104,12 +109,15 @@ function ReviewHub() {
 
   useEffect(() => {
     try {
-      const ids = window.sessionStorage.getItem("review_prefill_ids");
+      const ids = window.sessionStorage.getItem("review_prefill_ids") || search.prefill || "";
+      const parsed = Array.from(new Set(ids.split(/[\s,]+/).map((x) => x.trim()).filter(Boolean)));
+      if (parsed.length > 0) setCohortIds(parsed);
       if (ids) {
         setFilters((f) => ({ ...f, search: ids, tab: "all" }));
         window.sessionStorage.removeItem("review_prefill_ids");
       }
     } catch { /* ignore */ }
+    setCohortReady(true);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
