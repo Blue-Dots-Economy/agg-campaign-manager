@@ -6,7 +6,7 @@ import { toast } from "sonner";
 import { ArrowLeft, Loader2, Plus, SkipForward, Star, X, ChevronDown, Check, AlertTriangle } from "lucide-react";
 import { useProgram } from "@/programs/context";
 import { useAuth } from "@/auth/context";
-import { useReviewCalls, useExistingReviews } from "@/programs/useProgramAggregates";
+import { useReviewCall, useExistingReviews } from "@/programs/useProgramAggregates";
 import { fetchCallDetail, submitReview } from "@/lib/review.functions";
 import { AudioPlayer } from "@/components/review/AudioPlayer";
 import { Button } from "@/components/ui/button";

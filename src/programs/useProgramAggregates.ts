@@ -17,6 +17,7 @@ import {
 import {
   fetchReviewCalls,
   fetchReviewCallsByIds,
+  fetchReviewCall,
   fetchReviewMap,
   fetchExistingReviews,
   type ReviewDataset,
