@@ -126,6 +126,33 @@ export const fetchReviewCallsByIds = createServerFn({ method: "GET" })
     return Array.from(out.values());
   });
 
+/** Single-call fetch for the transcript review page — avoids loading the whole table. */
+export const fetchReviewCall = createServerFn({ method: "GET" })
+  .inputValidator((data: { dataset: ReviewDataset; callId: string }) => data)
+  .handler(async ({ data }): Promise<Record<string, string> | null> => {
+    const client = await sb(data.dataset);
+    const { data: row, error } = await client
+      .from("call_rows")
+      .select(REVIEW_COLS)
+      .eq("program", data.dataset)
+      .eq("call_id", data.callId)
+      .maybeSingle();
+    // call_rows can hold >1 row per call_id; maybeSingle errors on multiples, so
+    // fall back to a bounded read instead of blanking the page.
+    if (error) {
+      const { data: rows } = await client
+        .from("call_rows")
+        .select(REVIEW_COLS)
+        .eq("program", data.dataset)
+        .eq("call_id", data.callId)
+        .limit(1);
+      const first = (rows ?? [])[0] as Record<string, unknown> | undefined;
+      return first ? mapReviewRow(first) : null;
+    }
+    if (!row) return null;
+    return mapReviewRow(row as unknown as Record<string, unknown>);
+  });
+
 export const fetchCallDetail = createServerFn({ method: "GET" })
   .inputValidator((data: { dataset: ReviewDataset; callId: string }) => data)
   .handler(async ({ data }) => {
