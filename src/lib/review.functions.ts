@@ -40,55 +40,90 @@ async function resolveSheet(
   return { sheet_id: pick.sheet_id, tab_name: pick.tab_name ?? null };
 }
 
+const REVIEW_COLS = "call_id, campaign_day, campaign_date, campaign_type, language, city_campaign, call_outcome, call_duration_seconds, intent_score, drop_reason, job_status, phone, channel, data";
+
+function mapReviewRow(r: Record<string, unknown>): Record<string, string> {
+  const d = (r.data ?? {}) as Record<string, unknown>;
+  const raw = (d.raw ?? {}) as Record<string, unknown>;
+  const pick = (...keys: string[]) => {
+    for (const k of keys) {
+      const v = d[k] ?? raw[k];
+      if (v !== undefined && v !== null && String(v) !== "") return String(v);
+    }
+    return "";
+  };
+  const s = (v: unknown) => (v != null ? String(v) : "");
+  return {
+    call_id: s(r.call_id),
+    job_id: pick("job_id"),
+    campaign_day: s(r.campaign_day),
+    campaign_date: s(r.campaign_date),
+    campaign_type: s(r.campaign_type),
+    language: s(r.language),
+    city_campaign: s(r.city_campaign),
+    call_outcome: s(r.call_outcome),
+    call_duration_seconds: s(r.call_duration_seconds),
+    call_datetime_ist: pick("call_datetime_ist"),
+    intent_score: s(r.intent_score),
+    drop_reason: s(r.drop_reason),
+    job_status: s(r.job_status),
+    channel: r.channel != null ? String(r.channel) : "outbound",
+    call_recording_url: "",
+  };
+}
+
 export const fetchReviewCalls = createServerFn({ method: "GET" })
   .inputValidator((data: { dataset: ReviewDataset }) => data)
   .handler(async ({ data }): Promise<Array<Record<string, string>>> => {
     const client = await sb(data.dataset);
-    const cols = "call_id, campaign_day, campaign_date, campaign_type, language, city_campaign, call_outcome, call_duration_seconds, intent_score, drop_reason, job_status, phone, channel, data";
     const rows: Record<string, unknown>[] = [];
     let _from = 0;
     while (true) {
       const { data: batch, error } = await client
         .from("call_rows")
-        .select(cols)
+        .select(REVIEW_COLS)
         .eq("program", data.dataset)
         .order("call_id", { ascending: true })
         .range(_from, _from + 999);
       if (error) throw new Error(error.message);
-      const b = (batch ?? []) as Record<string, unknown>[];
+      const b = (batch ?? []) as unknown as Record<string, unknown>[];
       rows.push(...b);
       if (b.length === 0 || rows.length >= 100000) break;
       _from += b.length;
     }
-    return rows.map((r: Record<string, unknown>) => {
-      const d = (r.data ?? {}) as Record<string, unknown>;
-      const raw = (d.raw ?? {}) as Record<string, unknown>;
-      const pick = (...keys: string[]) => {
-        for (const k of keys) {
-          const v = (d as Record<string, unknown>)[k] ?? (raw as Record<string, unknown>)[k];
-          if (v !== undefined && v !== null && String(v) !== "") return String(v);
-        }
-        return "";
-      };
-      return {
-        call_id: r.call_id != null ? String(r.call_id) : "",
-        job_id: pick("job_id"),
-        
-        campaign_day: r.campaign_day != null ? String(r.campaign_day) : "",
-        campaign_date: r.campaign_date != null ? String(r.campaign_date) : "",
-        campaign_type: r.campaign_type != null ? String(r.campaign_type) : "",
-        language: r.language != null ? String(r.language) : "",
-        city_campaign: r.city_campaign != null ? String(r.city_campaign) : "",
-        call_outcome: r.call_outcome != null ? String(r.call_outcome) : "",
-        call_duration_seconds: r.call_duration_seconds != null ? String(r.call_duration_seconds) : "",
-        call_datetime_ist: pick("call_datetime_ist"),
-        intent_score: r.intent_score != null ? String(r.intent_score) : "",
-        drop_reason: r.drop_reason != null ? String(r.drop_reason) : "",
-        job_status: r.job_status != null ? String(r.job_status) : "",
-        channel: r.channel != null ? String(r.channel) : "outbound",
-        call_recording_url: "",
-      } as Record<string, string>;
-    });
+    return rows.map(mapReviewRow);
+  });
+
+/** Targeted fetch for a cohort: chunks of 150 ids, at most 5 chunks in flight. */
+export const fetchReviewCallsByIds = createServerFn({ method: "GET" })
+  .inputValidator((data: { dataset: ReviewDataset; ids: string[] }) => data)
+  .handler(async ({ data }): Promise<Array<Record<string, string>>> => {
+    const ids = Array.from(new Set((data.ids ?? []).map((x) => String(x ?? "").trim()).filter(Boolean)));
+    if (ids.length === 0) return [];
+    const client = await sb(data.dataset);
+    const chunks: string[][] = [];
+    for (let i = 0; i < ids.length; i += 150) chunks.push(ids.slice(i, i + 150));
+    const rows: Record<string, unknown>[] = [];
+    let next = 0;
+    const worker = async () => {
+      while (next < chunks.length) {
+        const chunk = chunks[next++];
+        const { data: batch, error } = await client
+          .from("call_rows")
+          .select(REVIEW_COLS)
+          .eq("program", data.dataset)
+          .in("call_id", chunk);
+        if (error) throw new Error(error.message);
+        rows.push(...((batch ?? []) as unknown as Record<string, unknown>[]));
+      }
+    };
+    await Promise.all(Array.from({ length: Math.min(5, chunks.length) }, worker));
+    const out = new Map<string, Record<string, string>>();
+    for (const r of rows) {
+      const m = mapReviewRow(r);
+      if (!out.has(m.call_id)) out.set(m.call_id, m);
+    }
+    return Array.from(out.values());
   });
 
 export const fetchCallDetail = createServerFn({ method: "GET" })
@@ -134,15 +169,22 @@ export const fetchCallDetail = createServerFn({ method: "GET" })
 
 export const fetchReviewMap = createServerFn({ method: "GET" }).handler(async () => {
   const client = await sb();
-  const { data, error } = await client
-    .from("transcript_reviews")
-    .select("call_id, job_id, reviewer_email");
-  if (error) throw new Error(error.message);
-  return (data ?? []) as Array<{
-    call_id: string | null;
-    job_id: string | null;
-    reviewer_email: string | null;
-  }>;
+  type Row = { call_id: string | null; job_id: string | null; reviewer_email: string | null };
+  const out: Row[] = [];
+  let from = 0;
+  while (true) {
+    const { data, error } = await client
+      .from("transcript_reviews")
+      .select("call_id, job_id, reviewer_email")
+      .order("id", { ascending: true })
+      .range(from, from + 999);
+    if (error) throw new Error(error.message);
+    const b = (data ?? []) as Row[];
+    if (b.length === 0) break;
+    out.push(...b);
+    from += b.length;
+  }
+  return out;
 });
 
 export const fetchReviewedCallIds = createServerFn({ method: "GET" })
