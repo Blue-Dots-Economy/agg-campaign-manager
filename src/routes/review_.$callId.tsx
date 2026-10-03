@@ -51,14 +51,77 @@ function normaliseTranscript(raw: unknown): Turn[] {
       if (m) turns.push({ speaker: m[1], content: m[2] });
       else if (line.trim() && turns.length) turns[turns.length - 1].content += " " + line.trim();
     }
-    return turns;
+    return turns.filter((t) => !isContextContent(t.content));
   }
   if (!Array.isArray(raw)) return [];
-  return (raw as Record<string, unknown>[]).map((t) => ({
-    speaker: String(t.speaker ?? t.role ?? ""),
-    content: String(t.content ?? t.text ?? t.message ?? ""),
-    no_audio: t.no_audio === true || /no audio/i.test(String(t.content ?? "")),
-  }));
+  return (raw as Record<string, unknown>[])
+    .map((t) => ({
+      speaker: String(t.speaker ?? t.role ?? ""),
+      content: String(t.content ?? t.text ?? t.message ?? ""),
+      no_audio: t.no_audio === true || /no audio/i.test(String(t.content ?? "")),
+    }))
+    .filter((t) => !isContextContent(t.content));
+}
+
+function isContextContent(s: string): boolean {
+  if (!s) return false;
+  if (s.includes("[CALL CONTEXT]")) return true;
+  if (s.includes("${recommendations}")) return true;
+  if (s.includes("${college_name}")) return true;
+  if (s.includes("${contact_name}")) return true;
+  return s.includes("CURRENT_DATE =") && s.includes("CURRENT_YEAR =");
+}
+
+type ParsedCallContext = {
+  info: Array<{ label: string; value: string }>;
+  jobs: Array<Record<string, string>>;
+  rawRecommendations?: string;
+};
+
+const CONTEXT_JOB_KEYS = ["job_id", "role", "company", "qualification", "salary", "vacancy", "location"] as const;
+
+function parseCallContext(raw: unknown): ParsedCallContext | null {
+  let text: string | null = null;
+  if (Array.isArray(raw)) {
+    for (const el of raw as Record<string, unknown>[]) {
+      const c = String(el?.content ?? el?.text ?? el?.message ?? "");
+      if (isContextContent(c)) { text = c; break; }
+    }
+  } else if (typeof raw === "string" && isContextContent(raw)) {
+    text = raw;
+  }
+  if (!text) return null;
+
+  const info: Array<{ label: string; value: string }> = [];
+  const infoFields: Array<[RegExp, string]> = [
+    [/\$\{college_name\}\s*=\s*(.+)/, "College"],
+    [/\$\{contact_name\}\s*=\s*(.+)/, "Contact name"],
+    [/\$\{contact_phone\}\s*=\s*(.+)/, "Contact phone"],
+    [/\$\{seeker_name\}\s*=\s*(.+)/, "Seeker"],
+  ];
+  for (const [re, label] of infoFields) {
+    const m = text.match(re);
+    if (m) info.push({ label, value: m[1].trim() });
+  }
+
+  const jobs: Array<Record<string, string>> = [];
+  let rawRecommendations: string | undefined;
+  const recStart = text.indexOf("${recommendations}");
+  if (recStart >= 0) {
+    const rest = text.slice(recStart);
+    const nextMarker = rest.slice(1).indexOf("${");
+    const rec = nextMarker >= 0 ? rest.slice(0, nextMarker + 1) : rest;
+    for (const obj of rec.match(/\{[^{}]*\}/g) ?? []) {
+      const job: Record<string, string> = {};
+      for (const key of CONTEXT_JOB_KEYS) {
+        const km = obj.match(new RegExp(`${key}\\s*:\\s*"((?:[^"\\\\]|\\\\.)*)"`));
+        if (km) job[key] = km[1].replace(/\\"/g, '"');
+      }
+      if (Object.keys(job).length > 0) jobs.push(job);
+    }
+    if (jobs.length === 0) rawRecommendations = rec.trim();
+  }
+  return { info, jobs, rawRecommendations };
 }
 function normaliseSpeaker(s: string): "Bot" | "Employer" {
   const x = s.toLowerCase();
@@ -105,6 +168,7 @@ function TranscriptReview() {
     enabled: !!callId,
   });
   const transcript = useMemo(() => normaliseTranscript(detailQuery.data?.call_transcript), [detailQuery.data]);
+  const callContext = useMemo(() => parseCallContext(detailQuery.data?.call_transcript), [detailQuery.data]);
   const recordingUrl = detailQuery.data?.call_recording_url;
 
   const existing = useExistingReviews(call?.call_id || callId, call?.job_id || null);
@@ -118,6 +182,7 @@ function TranscriptReview() {
   const [rating, setRating] = useState(0);
   const [submitting, setSubmitting] = useState(false);
   const [infoOpen, setInfoOpen] = useState(true);
+  const [contextOpen, setContextOpen] = useState(false);
   const [sessionReviewed, setSessionReviewed] = useState<number>(() => {
     if (typeof window === "undefined") return 0;
     try { return Number(window.sessionStorage.getItem("reviews_done_session")) || 0; } catch { return 0; }
