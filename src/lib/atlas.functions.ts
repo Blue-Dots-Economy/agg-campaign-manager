@@ -120,21 +120,33 @@ export const atlasBuildCohort = createServerFn({ method: "POST" }).middleware([a
     const matched = Number(p.count ?? 0);
     const totalCount = Math.min(matched, budget);
     const sample = Array.isArray(p.sample) ? p.sample : [];
+    // Optional min-urgency filter. With no urgency data this drops nothing unless a
+    // threshold was explicitly set — in which case an empty-ish cohort is correct.
+    const usable = urgencyMin == null
+      ? sample
+      : sample.filter((r) => { const u = num(r.urgency); return u != null && u >= urgencyMin; });
 
     // Score: confidence + intent/match up; campaigns run + very recent contact down.
-    const scored = sample.map((r) => {
+    // Urgency is an optional additive boost on top — it never dominates.
+    const scored = usable.map((r) => {
       const conf = num(r.confidence);
       const intent = num(r.max_intent) ?? num(r.avg_intent);
       const match = num(r.avg_match);
       const camps = Number(r.total_campaigns ?? 0);
       const ds = daysSince(r.last_call_date);
+      const urg = num(r.urgency);
+      const urgReason = r.urgency_reason ?? null;
       let s = 0;
       s += (conf ?? 5) / 10 * 40;
       s += (intent != null ? Math.min(intent, 10) / 10 : 0.4) * 30;
       s += (match != null ? Math.min(match, 10) / 10 : 0.4) * 20;
       s -= Math.min(camps, 10) * 4;
       if (ds != null && ds < 14) s -= (14 - ds) * 1.5;
-      return { r, conf, intent, match, camps, ds, score: s };
+      if (urg != null) {
+        const urgNorm = (Math.max(-2, Math.min(5, urg)) + 2) / 7;
+        s += urgNorm * urgencyWeight;
+      }
+      return { r, conf, intent, match, camps, ds, urg, urgReason, score: s };
     });
 
     const kExplore = Math.round((scored.length * explorePct) / 100);
@@ -144,17 +156,20 @@ export const atlasBuildCohort = createServerFn({ method: "POST" }).middleware([a
     const members = scored.map((x) => {
       const isExp = exploreSet.has(x);
       const score = Math.round((x.score + (isExp ? 10 : 0)) * 10) / 10;
+      const isUrgent = x.urg != null && x.urg >= 3;
       let reason: string;
       if (isExp) reason = x.camps === 0 ? "Never reached by a campaign — exploration" : x.ds != null && x.ds > 30 ? "Not called in a while — exploration" : "Lightly contacted so far — exploration";
       else if (x.conf != null && x.conf >= 8 && (x.intent ?? 0) >= 6) reason = "Strong confidence and clear intent";
       else if (x.camps >= 2 && (x.intent ?? 0) >= 5) reason = `Engaged across ${x.camps} campaigns, still showing intent — worth a nudge`;
       else if (x.match != null && x.match >= 6) reason = "Good job match on record";
       else reason = "Meets your filters; moderate signal";
+      if (isUrgent) reason = `Urgent — ${x.urgReason || "high job urgency"}; ${reason}`;
       return {
         phone_masked: x.r.phone_masked, region: x.r.region, district: x.r.district,
         category: hasVal(x.r.category) ? x.r.category : null,
         confidence: x.conf, total_campaigns: x.camps, last_call_date: x.r.last_call_date,
         intent: x.intent, match: x.match, priority_score: score, reason, is_exploration: isExp,
+        urgency: x.urg, urgency_reason: x.urgReason, is_urgent: isUrgent,
       };
     }).sort((a, b) => b.priority_score - a.priority_score);
 
@@ -177,9 +192,15 @@ export const atlasBuildCohort = createServerFn({ method: "POST" }).middleware([a
       ? `Across the preview, categories are spread as ${Object.entries(byCategory).map(([k, v]) => `${k} ${v}`).join(", ")} — I'd still like a human eye on that balance`
       : "I can't check fairness by category yet because that data isn't available, so treat that part as unverified";
     const capNote = matched > budget ? `, capped at your daily budget of ${budget} out of ${matched} who qualify` : matched === 0 ? "" : `, which is everyone who qualifies`;
+    const urgentCount = members.filter((m) => m.is_urgent).length;
+    const urgencyPresent = members.some((m) => m.urgency != null);
+    const urgencySentence = members.length === 0 ? ""
+      : urgencyPresent
+        ? `${urgentCount} of these match urgent, unfilled jobs. `
+        : "Urgency data isn't available yet, so I've ranked on confidence, intent and history. ";
     const narration = totalCount === 0
       ? `I looked for people in ${regionLabel} who meet these filters and found no one. I'd suggest loosening the confidence threshold or cooldown before trying again.`
-      : `Here's my plan for ${regionLabel}: ${totalCount} people today${capNote}. Most are strong matches, but I've deliberately included about ${expShare} we haven't reached much — they deserve a shot even if I'm less certain about them. ${fairnessSentence}. ${p.confidenceAvailable ? "" : "Confidence scores are missing for this pool, so my ranking leans on intent and history. "}This is my recommendation — you approve before anything runs.`;
+      : `Here's my plan for ${regionLabel}: ${totalCount} people today${capNote}. Most are strong matches, but I've deliberately included about ${expShare} we haven't reached much — they deserve a shot even if I'm less certain about them. ${fairnessSentence}. ${p.confidenceAvailable ? "" : "Confidence scores are missing for this pool, so my ranking leans on intent and history. "}${urgencySentence}This is my recommendation — you approve before anything runs.`;
 
     const db = stateDb();
     const { data: row, error: insErr } = await db.from("atlas_cohorts").insert({
