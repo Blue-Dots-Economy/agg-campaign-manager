@@ -146,8 +146,9 @@ jobs:
             [ "${code}" = "200" ] || { echo "::error::GET ${path} returned ${code}, expected 200"; exit 1; }
           done
 
-          # The image is meant to run unprivileged.
-          uid=$(docker exec cm id -u)
+          # The image is meant to run unprivileged. Asked of Node, because the
+          # hardened runtime image has no `id` binary.
+          uid=$(docker exec cm node -p 'process.getuid()')
           echo "container uid: ${uid}"
           [ "${uid}" != "0" ] || { echo "::error::the container runs as root"; exit 1; }
 
