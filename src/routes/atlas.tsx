@@ -9,6 +9,7 @@ import {
   atlasApproveCohort, atlasCancelCohort, atlasChat, atlasGetControl, atlasSetControl,
 } from "@/lib/atlas.functions";
 import { cn } from "@/lib/utils";
+import { AtlasOrb } from "@/components/atlas/AtlasOrb";
 import { CohortConsole } from "@/components/atlas/CohortConsole";
 
 export const Route = createFileRoute("/atlas")({
@@ -40,14 +41,9 @@ const CHIPS = ["Give me today's cohort", "Most urgent in Ghaziabad", "Only high-
 // Page-scoped neural palette (does not touch the global theme).
 const NEURAL_CSS = `
 .atlas-neural{--n-bg:#07080f;--n-surface:#0e1120;--n-border:rgba(148,163,255,.14);--n-text:#e8eaf6;--n-muted:#a3a9c7;--n-accent:#7dd3fc;--n-user:#e8eaf6;--n-user-text:#0b0d18;background:radial-gradient(1200px 600px at 50% -10%,rgba(79,70,229,.18),transparent 60%),var(--n-bg);color:var(--n-text)}
-.atlas-orb{position:relative;border-radius:9999px;background:radial-gradient(circle at 35% 30%,#e0f7ff 0%,#67e8f9 18%,#6366f1 55%,#312e81 80%,transparent 100%);box-shadow:0 0 60px 10px rgba(99,102,241,.45),0 0 120px 30px rgba(34,211,238,.18);animation:atlas-pulse 4.5s ease-in-out infinite}
-.atlas-orb::after{content:"";position:absolute;inset:-18%;border-radius:inherit;background:conic-gradient(from 0deg,transparent,rgba(103,232,249,.35),transparent 40%,rgba(129,140,248,.35),transparent 75%);filter:blur(18px);animation:atlas-spin 12s linear infinite}
-.atlas-orb.thinking{animation-duration:1.4s}
-@keyframes atlas-pulse{0%,100%{transform:scale(1);filter:brightness(1)}50%{transform:scale(1.05);filter:brightness(1.15)}}
-@keyframes atlas-spin{to{transform:rotate(360deg)}}
 .atlas-fade{animation:atlas-fade .35s ease-out both}
 @keyframes atlas-fade{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
-@media (prefers-reduced-motion: reduce){.atlas-orb,.atlas-orb::after,.atlas-fade{animation:none}}
+@media (prefers-reduced-motion: reduce){.atlas-fade{animation:none}}
 `;
 
 function greeting() {
@@ -148,7 +144,7 @@ function AtlasPage() {
         {/* Header */}
         <header className="flex flex-wrap items-center justify-between gap-3 border-b px-4 py-3 sm:px-6" style={{ borderColor: "var(--n-border)" }}>
           <div className="flex items-center gap-3">
-            <div aria-hidden className="atlas-orb h-7 w-7" />
+            <AtlasOrb size={32} active={sendMut.isPending} />
             <div>
               <h1 className="text-base font-semibold tracking-wide">ATLAS</h1>
               <p className="text-xs" style={{ color: "var(--n-muted)" }}>Automated Targeting, Learning &amp; Allocation System</p>
@@ -171,7 +167,7 @@ function AtlasPage() {
           <div className="mx-auto w-full max-w-3xl py-6">
             {empty ? (
               <div className="flex flex-col items-center pt-10 text-center sm:pt-16">
-                <div aria-hidden className={cn("atlas-orb h-32 w-32 sm:h-44 sm:w-44", sendMut.isPending && "thinking")} />
+                <AtlasOrb size={240} active={sendMut.isPending} className="max-w-[70vw] h-auto" />
                 <h2 className="mt-10 text-2xl font-medium sm:text-3xl">{greeting()}. I'm ATLAS.</h2>
                 <p className="mt-2 text-sm" style={{ color: "var(--n-muted)" }}>Ask me for today's cohort. I propose — you decide.</p>
                 <Chips onPick={send} disabled={killed} className="mt-8 justify-center" />
@@ -186,7 +182,7 @@ function AtlasPage() {
                       </div>
                     ) : (
                       <div className="flex gap-3">
-                        <div aria-hidden className="atlas-orb mt-0.5 h-6 w-6 shrink-0" />
+                        <AtlasOrb size={28} className="mt-0.5 shrink-0" />
                         <div className="min-w-0 flex-1 space-y-4">
                           <p className="whitespace-pre-wrap text-sm leading-relaxed">{m.content}</p>
                           {m.cohort && (
@@ -204,7 +200,7 @@ function AtlasPage() {
                 ))}
                 {sendMut.isPending && (
                   <li className="atlas-fade flex items-center gap-3" aria-live="polite">
-                    <div aria-hidden className="atlas-orb thinking h-6 w-6" />
+                    <AtlasOrb size={28} active />
                     <span className="text-sm" style={{ color: "var(--n-muted)" }}>Thinking it through…</span>
                   </li>
                 )}
