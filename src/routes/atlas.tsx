@@ -131,33 +131,44 @@ function AtlasPage() {
       </Panel>
 
       <Panel title="Cohort planner" description="Set today's constraints. I'll propose who to call and explain why.">
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          <div className="space-y-1.5">
-            <Label>Program</Label>
-            <div className="inline-flex w-full rounded-md border p-1">
-              {(["kkb", "dkb"] as const).map((p) => (
-                <button key={p} type="button" onClick={() => setProgram(p)} className={cn("flex-1 rounded py-1 text-xs font-medium uppercase", program === p ? "bg-primary text-primary-foreground" : "text-muted-foreground")}>{p}</button>
-              ))}
-            </div>
-          </div>
-          <div className="space-y-1.5">
-            <Label>Region</Label>
-            <Input list="atlas-regions" value={region} onChange={(e) => setRegion(e.target.value)} placeholder="All regions" />
-            <datalist id="atlas-regions">{regions.map((r) => <option key={r} value={r} />)}</datalist>
-          </div>
-          <NumField label="Budget (max 1000)" value={budget} min={1} max={1000} onChange={(v) => setBudget(Math.min(v, 1000))} />
-          <NumField label="Confidence ≥ (0–10)" value={confidenceMin} min={0} max={10} step={0.5} onChange={setConfidenceMin} />
-          <NumField label="Cooldown days" value={cooldownDays} min={0} onChange={setCooldownDays} />
-          <NumField label="Max campaigns run" value={maxCampaigns} min={0} onChange={setMaxCampaigns} />
-          <NumField label="Exploration %" value={explorePct} min={0} max={50} onChange={setExplorePct} />
-          <NumField label="Urgency weight" value={urgencyWeight} min={0} max={60} onChange={setUrgencyWeight} help="How much job urgency boosts ranking (0 = ignore it)." />
-          <OptionalNumField label="Min urgency" value={urgencyMin} onChange={setUrgencyMin} min={-2} max={5} step={0.5} placeholder="No filter" help="Only call seekers matched to jobs at or above this urgency." />
-          <div className="flex items-end">
-            <Button className="w-full" disabled={killed || buildMut.isPending} onClick={() => buildMut.mutate()}>
-              {buildMut.isPending ? "Thinking…" : "Build today's cohort"}
-            </Button>
-          </div>
+        <div className="divide-y divide-border">
+          <Group title="Who to call" className="pb-5">
+            <FieldShell label="Program" caption="Which program's records to draw from.">
+              <div className="flex h-9 w-full items-center rounded-md border p-1">
+                {(["kkb", "dkb"] as const).map((p) => (
+                  <button key={p} type="button" onClick={() => setProgram(p)} className={cn("h-full flex-1 rounded py-1 text-xs font-medium uppercase", program === p ? "bg-primary text-primary-foreground" : "text-muted-foreground")}>{p}</button>
+                ))}
+              </div>
+            </FieldShell>
+            <FieldShell label="Region" caption="Leave blank to include every region.">
+              <Input list="atlas-regions" className="h-9" value={region} onChange={(e) => setRegion(e.target.value)} placeholder="All regions" />
+              <datalist id="atlas-regions">{regions.map((r) => <option key={r} value={r} />)}</datalist>
+            </FieldShell>
+            <NumField label="Confidence ≥ (0–10)" value={confidenceMin} min={0} max={10} step={0.5} onChange={setConfidenceMin} caption="Lowest match confidence to include." />
+            <NumField label="Cooldown days" value={cooldownDays} min={0} onChange={setCooldownDays} caption="Skip anyone called more recently." />
+            <NumField label="Max campaigns run" value={maxCampaigns} min={0} onChange={setMaxCampaigns} caption="Skip anyone already called too often." />
+            <NumField label="Min urgency" value={urgencyMin} min={-2} max={5} step={0.5} onChange={setUrgencyMin} placeholder="No filter"
+              caption="Only seekers matched to a job at or above this urgency."
+              hint="Only include seekers matched to a job at or above this urgency (scale −2 to 5). Leave blank to include everyone. Changes who's included." />
+          </Group>
+
+          <Group title="How to prioritise" className="py-5">
+            <NumField label="Urgency weight" value={urgencyWeight} min={0} max={60} onChange={setUrgencyWeight}
+              caption="Lifts urgent seekers up the order."
+              hint="How much job urgency lifts a seeker's ranking (0 = ignore). Changes the order, not who's included." />
+            <NumField label="Exploration %" value={explorePct} min={0} max={50} onChange={setExplorePct}
+              caption="Share held back for the least-contacted." />
+          </Group>
+
+          <Group title="Size" className="pt-5">
+            <NumField label="Budget (max 1000)" value={budget} min={1} max={1000} onChange={(v) => setBudget(Math.min(v, 1000))}
+              caption="Most people ATLAS may propose today." />
+          </Group>
         </div>
+
+        <Button className="mt-6 w-full" disabled={killed || buildMut.isPending} onClick={() => buildMut.mutate()}>
+          {buildMut.isPending ? "Thinking…" : "Build today's cohort"}
+        </Button>
         {killed && <p className="mt-3 text-xs text-destructive">ATLAS is halted — resume it above to build a cohort.</p>}
       </Panel>
 
