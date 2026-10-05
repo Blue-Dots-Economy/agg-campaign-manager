@@ -89,6 +89,10 @@ jobs:
     name: smoke-image
     runs-on: ubuntu-latest
     timeout-minutes: 20
+    # Job-level so the step `if:`s below can read it: the `secrets` context is not
+    # available in a step conditional.
+    env:
+      DOCKERHUB_TOKEN: ${{ secrets.DOCKERHUB_TOKEN }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -97,9 +101,20 @@ jobs:
       # docker-container driver: required for the gha layer cache below.
       - uses: docker/setup-buildx-action@37fe631027851001ddb9b187196cc803df7f5f0e # v4.3.0
 
-      # No registry login and no secrets: the base images come from the public AWS
-      # ECR mirror, so fork and Dependabot pull requests get the same coverage.
+      # The base images live on dhi.io, which refuses anonymous pulls, so the build
+      # cannot reach the first FROM without this. GitHub withholds repo secrets
+      # from fork and Dependabot pull requests, so every step here is gated on the
+      # token being present rather than failing: an ungated build would turn those
+      # PRs red for a missing credential, not a real defect.
+      - uses: docker/login-action@dbcb813823bdd20940b903addbd779551569679f # v4.6.0
+        if: env.DOCKERHUB_TOKEN != ''
+        with:
+          registry: dhi.io
+          username: ${{ vars.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
       - name: Build the image (no push)
+        if: env.DOCKERHUB_TOKEN != ''
         uses: docker/build-push-action@53b7df96c91f9c12dcc8a07bcb9ccacbed38856a # v7.3.0
         with:
           context: .
@@ -113,6 +128,7 @@ jobs:
       # so a real boot-and-probe is possible; a build alone would miss a bad CMD,
       # a missing file in .output, or a crash at startup.
       - name: Boot the image and probe it
+        if: env.DOCKERHUB_TOKEN != ''
         run: |
           set -euo pipefail
           docker run -d --name cm -p 3000:3000 agg-campaign-manager:ci
@@ -134,6 +150,11 @@ jobs:
           uid=$(docker exec cm id -u)
           echo "container uid: ${uid}"
           [ "${uid}" != "0" ] || { echo "::error::the container runs as root"; exit 1; }
+
+      - name: Explain the skip
+        if: env.DOCKERHUB_TOKEN == ''
+        run: |
+          echo "::warning title=smoke-image skipped::No dhi.io credential on this run (fork or Dependabot PR, or DOCKERHUB_TOKEN is not set). The image build is still covered on the release-tag path in build-images.yaml."
 
   lint:
     name: lint (advisory)

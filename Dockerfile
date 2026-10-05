@@ -7,13 +7,14 @@
 # Node server (.output/server/index.mjs). Checked: it builds and answers 200 on
 # `/` and `/login` with no secrets and no environment variables set.
 #
-# Base images come from the AWS public ECR mirror of Docker's official images
-# rather than Docker Hub or dhi.io. The repository has no registry credentials,
-# dhi.io refuses anonymous pulls, and Docker Hub rate-limits shared CI runner IPs.
-# Both stages take the same ARG, so moving to a hardened base later is one value.
-ARG NODE_IMAGE=public.ecr.aws/docker/library/node:24-slim
+# Base images are Docker Hardened Images from dhi.io, as in the other service
+# repos: the -dev variant (shell, npm) builds, the minimal variant runs. dhi.io
+# refuses anonymous pulls, so building this needs `docker login dhi.io`, and any
+# CI workflow that builds it needs a dhi.io login step.
+ARG BUILD_IMAGE=dhi.io/node:24-alpine-dev
+ARG RUNTIME_IMAGE=dhi.io/node:24-alpine
 
-FROM ${NODE_IMAGE} AS build
+FROM ${BUILD_IMAGE} AS build
 WORKDIR /app
 
 # Bun is the package manager (bun.lock). Pinned to the version CI uses, so the
@@ -36,7 +37,7 @@ ENV NITRO_PRESET=node-server
 RUN bun run build
 
 
-FROM ${NODE_IMAGE} AS runtime
+FROM ${RUNTIME_IMAGE} AS runtime
 WORKDIR /app
 
 # Server-side secrets (SUPABASE_SERVICE_ROLE_KEY, RAYA_API_KEY, ...) are read from
@@ -49,11 +50,11 @@ ENV NODE_ENV=production \
 # .output/server/node_modules, so no node_modules, source or toolchain ships.
 COPY --from=build --chown=node:node /app/.output ./.output
 
-# The official Node images ship a non-root `node` user (uid 1000).
+# The Node images ship a non-root `node` user (uid 1000).
 USER node
 EXPOSE 3000
 
-# Node, because the slim image has no curl or wget.
+# Node, because the runtime image has no curl or wget.
 HEALTHCHECK --interval=30s --timeout=5s --start-period=20s --retries=3 \
   CMD node -e "fetch('http://127.0.0.1:'+(process.env.PORT||3000)+'/').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"
 
