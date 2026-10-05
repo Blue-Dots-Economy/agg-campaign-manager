@@ -52,6 +52,8 @@ function AtlasPage() {
   const [cooldownDays, setCooldownDays] = useState(30);
   const [maxCampaigns, setMaxCampaigns] = useState(3);
   const [explorePct, setExplorePct] = useState(15);
+  const [urgencyWeight, setUrgencyWeight] = useState(30);
+  const [urgencyMin, setUrgencyMin] = useState("");
   const [selectedId, setSelectedId] = useState<string | null>(null);
 
   const detail = useQuery({
@@ -67,7 +69,7 @@ function AtlasPage() {
   });
 
   const buildMut = useMutation({
-    mutationFn: () => build({ data: { program, region: region || null, budget: Math.min(budget, 1000), confidenceMin, cooldownDays, maxCampaigns, explorePct } }),
+    mutationFn: () => build({ data: { program, region: region || null, budget: Math.min(budget, 1000), confidenceMin, cooldownDays, maxCampaigns, explorePct, urgencyWeight, urgencyMin: urgencyMin === "" ? null : Number(urgencyMin) } }),
     onSuccess: (r) => {
       if (r.regions.length) setRegions(r.regions);
       setSelectedId(r.cohortId);
@@ -148,6 +150,8 @@ function AtlasPage() {
           <NumField label="Cooldown days" value={cooldownDays} min={0} onChange={setCooldownDays} />
           <NumField label="Max campaigns run" value={maxCampaigns} min={0} onChange={setMaxCampaigns} />
           <NumField label="Exploration %" value={explorePct} min={0} max={50} onChange={setExplorePct} />
+          <NumField label="Urgency weight" value={urgencyWeight} min={0} max={60} onChange={setUrgencyWeight} help="How much job urgency boosts ranking (0 = ignore it)." />
+          <OptionalNumField label="Min urgency" value={urgencyMin} onChange={setUrgencyMin} min={-2} max={5} step={0.5} placeholder="No filter" help="Only call seekers matched to jobs at or above this urgency." />
           <div className="flex items-end">
             <Button className="w-full" disabled={killed || buildMut.isPending} onClick={() => buildMut.mutate()}>
               {buildMut.isPending ? "Thinking…" : "Build today's cohort"}
@@ -187,13 +191,18 @@ function AtlasPage() {
                 </div>
               )}
 
+              {members.length > 0 && members.every((m) => m.urgency == null) && (
+                <p className="rounded-lg border border-dashed px-3 py-2 text-xs text-muted-foreground">
+                  Urgency data not yet populated — ranking is using confidence, intent and history. It will factor in automatically once available.
+                </p>
+              )}
               <div className="overflow-x-auto rounded-lg border">
                 <table className="w-full text-sm">
                   <caption className="caption-bottom p-2 text-xs text-muted-foreground">
                     Representative preview of {c.total_count} — full list is resolved only at dispatch (disabled in this version).
                   </caption>
                   <thead className="bg-muted/50 text-xs text-muted-foreground">
-                    <tr>{["Phone", "Region", "Category", "Conf.", "Campaigns", "Last call", "Priority", "Why"].map((h) => <th key={h} className="px-3 py-2 text-left font-medium">{h}</th>)}</tr>
+                    <tr>{["Phone", "Region", "Category", "Conf.", "Campaigns", "Last call", "Urgency", "Priority", "Why"].map((h) => <th key={h} className="px-3 py-2 text-left font-medium">{h}</th>)}</tr>
                   </thead>
                   <tbody>
                     {members.map((m) => (
@@ -204,6 +213,17 @@ function AtlasPage() {
                         <td className="px-3 py-2">{m.confidence ?? "—"}</td>
                         <td className="px-3 py-2">{m.total_campaigns}</td>
                         <td className="px-3 py-2">{m.last_call_date || "—"}</td>
+                        <td className="px-3 py-2 align-top">
+                          {m.urgency == null ? <span className="text-muted-foreground">—</span> : (
+                            <div className="flex flex-col gap-1">
+                              <span className="flex items-center gap-1.5">
+                                <span className="font-semibold">{m.urgency}</span>
+                                {m.is_urgent && <Badge className="border-amber-500/40 bg-amber-500/15 text-amber-700 dark:text-amber-400">Urgent</Badge>}
+                              </span>
+                              {m.urgency_reason && <span className="text-xs text-muted-foreground">{m.urgency_reason}</span>}
+                            </div>
+                          )}
+                        </td>
                         <td className="px-3 py-2 font-semibold">{m.priority_score}</td>
                         <td className="px-3 py-2">
                           {m.is_exploration && <Badge variant="outline" className="mr-2">exploration</Badge>}
@@ -211,7 +231,7 @@ function AtlasPage() {
                         </td>
                       </tr>
                     ))}
-                    {members.length === 0 && <tr><td colSpan={8} className="px-3 py-6 text-center text-muted-foreground">No preview rows.</td></tr>}
+                    {members.length === 0 && <tr><td colSpan={9} className="px-3 py-6 text-center text-muted-foreground">No preview rows.</td></tr>}
                   </tbody>
                 </table>
               </div>
@@ -246,11 +266,23 @@ function AtlasPage() {
   );
 }
 
-function NumField({ label, value, onChange, min, max, step }: { label: string; value: number; onChange: (v: number) => void; min?: number; max?: number; step?: number }) {
+function NumField({ label, value, onChange, min, max, step, help }: { label: string; value: number; onChange: (v: number) => void; min?: number; max?: number; step?: number; help?: string }) {
   return (
     <div className="space-y-1.5">
       <Label>{label}</Label>
       <Input type="number" value={value} min={min} max={max} step={step} onChange={(e) => onChange(Number(e.target.value))} />
+      {help && <p className="text-xs text-muted-foreground">{help}</p>}
+    </div>
+  );
+}
+
+// Blank means "no filter" — used for the optional min-urgency threshold.
+function OptionalNumField({ label, value, onChange, min, max, step, placeholder, help }: { label: string; value: string; onChange: (v: string) => void; min?: number; max?: number; step?: number; placeholder?: string; help?: string }) {
+  return (
+    <div className="space-y-1.5">
+      <Label>{label}</Label>
+      <Input type="number" value={value} min={min} max={max} step={step} placeholder={placeholder} onChange={(e) => onChange(e.target.value)} />
+      {help && <p className="text-xs text-muted-foreground">{help}</p>}
     </div>
   );
 }
