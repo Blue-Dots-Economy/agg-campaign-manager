@@ -282,7 +282,7 @@ function Group({ title, className, children }: { title: string; className?: stri
   return (
     <section className={cn("space-y-3", className)}>
       <h2 className="text-sm font-medium text-muted-foreground">{title}</h2>
-      <div className="grid grid-cols-2 items-start gap-x-4 gap-y-5 md:grid-cols-3">{children}</div>
+      <div className="grid grid-cols-1 items-start gap-x-4 gap-y-5 sm:grid-cols-2 md:grid-cols-3">{children}</div>
     </section>
   );
 }
