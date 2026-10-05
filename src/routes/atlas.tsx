@@ -231,7 +231,7 @@ function AtlasPage() {
                         </td>
                       </tr>
                     ))}
-                    {members.length === 0 && <tr><td colSpan={8} className="px-3 py-6 text-center text-muted-foreground">No preview rows.</td></tr>}
+                    {members.length === 0 && <tr><td colSpan={9} className="px-3 py-6 text-center text-muted-foreground">No preview rows.</td></tr>}
                   </tbody>
                 </table>
               </div>
@@ -266,11 +266,23 @@ function AtlasPage() {
   );
 }
 
-function NumField({ label, value, onChange, min, max, step }: { label: string; value: number; onChange: (v: number) => void; min?: number; max?: number; step?: number }) {
+function NumField({ label, value, onChange, min, max, step, help }: { label: string; value: number; onChange: (v: number) => void; min?: number; max?: number; step?: number; help?: string }) {
   return (
     <div className="space-y-1.5">
       <Label>{label}</Label>
       <Input type="number" value={value} min={min} max={max} step={step} onChange={(e) => onChange(Number(e.target.value))} />
+      {help && <p className="text-xs text-muted-foreground">{help}</p>}
+    </div>
+  );
+}
+
+// Blank means "no filter" — used for the optional min-urgency threshold.
+function OptionalNumField({ label, value, onChange, min, max, step, placeholder, help }: { label: string; value: string; onChange: (v: string) => void; min?: number; max?: number; step?: number; placeholder?: string; help?: string }) {
+  return (
+    <div className="space-y-1.5">
+      <Label>{label}</Label>
+      <Input type="number" value={value} min={min} max={max} step={step} placeholder={placeholder} onChange={(e) => onChange(e.target.value)} />
+      {help && <p className="text-xs text-muted-foreground">{help}</p>}
     </div>
   );
 }
