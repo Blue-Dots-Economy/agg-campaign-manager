@@ -6,16 +6,17 @@
 # What runs here (language: ts, no image-refs, gitleaks on):
 #   * trivy-fs     - dependency CVEs, Dockerfile/IaC misconfig and filesystem
 #                    secret detection -> SARIF. THIS IS THE ONLY DEPENDENCY
-#                    SCANNER THAT WORKS HERE: the repo is Bun (bun.lock), and a
-#                    recent Trivy reads bun.lock (248 packages, 8 known
-#                    vulnerabilities, 5 of them HIGH, when tried locally on 0.75).
-#                    The Trivy the shared workflow pins is older than that, and
-#                    bun.lock support in it is unconfirmed until this runs.
-#   * deps-audit   - EFFECTIVELY A NO-OP. For `ts` it runs `pnpm audit`, which
-#                    needs a pnpm-lock.yaml this repo does not have, and the
-#                    shared workflow swallows the failure into a warning. It
-#                    reports nothing and protects nothing; do not read its green
-#                    tick as dependency coverage.
+#                    SCANNER THAT WORKS HERE: the repo is Bun (bun.lock). The
+#                    Trivy this workflow pins (0.70.0) reads it - the first run
+#                    logged "[bun] Detecting vulnerabilities..." over one lockfile.
+#                    A local run of Trivy 0.75 over the same file found 248
+#                    packages and 8 known vulnerabilities, 5 of them HIGH.
+#   * deps-audit   - A NO-OP. For `ts` it runs `pnpm audit`, which fails here with
+#                    ERR_PNPM_AUDIT_NO_LOCKFILE ("No pnpm-lock.yaml found"), and
+#                    the shared workflow turns that into the warning "pnpm audit
+#                    reported advisories". That wording is MISLEADING: no audit
+#                    ran and nothing was reported. Its green tick is not
+#                    dependency coverage.
 #   * image-scan   - SKIPPED: no image-refs passed, and this repo builds no image.
 #   * gitleaks     - git-history secret scan. It WILL report two `jwt` findings
 #                    in the tracked `.env` (SUPABASE_PUBLISHABLE_KEY and its VITE_
