@@ -277,24 +277,58 @@ function AtlasPage() {
   );
 }
 
-function NumField({ label, value, onChange, min, max, step, help }: { label: string; value: number; onChange: (v: number) => void; min?: number; max?: number; step?: number; help?: string }) {
+// Labeled sub-group inside the planner card: subtle heading + aligned control grid.
+function Group({ title, className, children }: { title: string; className?: string; children: ReactNode }) {
+  return (
+    <section className={cn("space-y-3", className)}>
+      <h2 className="text-sm font-medium text-muted-foreground">{title}</h2>
+      <div className="grid grid-cols-2 items-start gap-x-4 gap-y-5 md:grid-cols-3">{children}</div>
+    </section>
+  );
+}
+
+// Shared shell so every control has the same label row, control height and caption slot.
+function FieldShell({ label, caption, hint, children }: { label: string; caption?: string; hint?: string; children: ReactNode }) {
   return (
     <div className="space-y-1.5">
-      <Label>{label}</Label>
-      <Input type="number" value={value} min={min} max={max} step={step} onChange={(e) => onChange(Number(e.target.value))} />
-      {help && <p className="text-xs text-muted-foreground">{help}</p>}
+      <div className="flex min-h-5 items-center gap-1.5">
+        <Label className="text-sm font-medium">{label}</Label>
+        {hint && (
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <button type="button" aria-label={`About ${label}`} className="shrink-0 rounded text-muted-foreground outline-none transition-colors hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring">
+                  <Info className="h-3.5 w-3.5" />
+                </button>
+              </TooltipTrigger>
+              <TooltipContent className="max-w-64 text-xs leading-relaxed">{hint}</TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
+        )}
+      </div>
+      {children}
+      <p className="min-h-[2.4rem] text-xs leading-snug text-muted-foreground">{caption}</p>
     </div>
   );
 }
 
-// Blank means "no filter" — used for the optional min-urgency threshold.
-function OptionalNumField({ label, value, onChange, min, max, step, placeholder, help }: { label: string; value: string; onChange: (v: string) => void; min?: number; max?: number; step?: number; placeholder?: string; help?: string }) {
+type NumFieldProps = {
+  label: string; min?: number; max?: number; step?: number; placeholder?: string;
+  caption?: string; hint?: string;
+} & ({ value: number; onChange: (v: number) => void } | { value: string; onChange: (v: string) => void });
+
+// Blank stays blank for the string form (min urgency = "no filter").
+function NumField({ label, value, onChange, min, max, step, placeholder, caption, hint }: NumFieldProps) {
+  const isText = typeof value === "string";
   return (
-    <div className="space-y-1.5">
-      <Label>{label}</Label>
-      <Input type="number" value={value} min={min} max={max} step={step} placeholder={placeholder} onChange={(e) => onChange(e.target.value)} />
-      {help && <p className="text-xs text-muted-foreground">{help}</p>}
-    </div>
+    <FieldShell label={label} caption={caption} hint={hint}>
+      <Input className="h-9" type="number" value={value} min={min} max={max} step={step} placeholder={placeholder}
+        onChange={(e) => {
+          const raw = e.target.value;
+          if (isText) (onChange as (v: string) => void)(raw);
+          else (onChange as (v: number) => void)(raw === "" ? 0 : Number(raw));
+        }} />
+    </FieldShell>
   );
 }
 
