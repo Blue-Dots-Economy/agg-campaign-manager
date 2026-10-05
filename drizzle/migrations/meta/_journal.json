@@ -8,6 +8,13 @@
       "when": 1790583000394,
       "tag": "0000_create_atlas_tables",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1791182847600,
+      "tag": "0001_add_urgency_to_atlas_cohort_members",
+      "breakpoints": true
     }
   ]
 }

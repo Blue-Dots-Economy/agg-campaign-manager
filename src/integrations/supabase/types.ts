@@ -68,6 +68,7 @@ export type Database = {
           id: string
           intent: number | null
           is_exploration: boolean | null
+          is_urgent: boolean | null
           last_call_date: string | null
           match: number | null
           phone_masked: string | null
@@ -75,6 +76,8 @@ export type Database = {
           reason: string | null
           region: string | null
           total_campaigns: number | null
+          urgency: number | null
+          urgency_reason: string | null
         }
         Insert: {
           category?: string | null
@@ -84,6 +87,7 @@ export type Database = {
           id?: string
           intent?: number | null
           is_exploration?: boolean | null
+          is_urgent?: boolean | null
           last_call_date?: string | null
           match?: number | null
           phone_masked?: string | null
@@ -91,6 +95,8 @@ export type Database = {
           reason?: string | null
           region?: string | null
           total_campaigns?: number | null
+          urgency?: number | null
+          urgency_reason?: string | null
         }
         Update: {
           category?: string | null
@@ -100,6 +106,7 @@ export type Database = {
           id?: string
           intent?: number | null
           is_exploration?: boolean | null
+          is_urgent?: boolean | null
           last_call_date?: string | null
           match?: number | null
           phone_masked?: string | null
@@ -107,6 +114,8 @@ export type Database = {
           reason?: string | null
           region?: string | null
           total_campaigns?: number | null
+          urgency?: number | null
+          urgency_reason?: string | null
         }
         Relationships: [
           {
