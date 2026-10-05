@@ -1,9 +1,9 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { toast } from "sonner";
-import { Radar, ShieldAlert, OctagonX } from "lucide-react";
+import { Radar, ShieldAlert, OctagonX, Info } from "lucide-react";
 import { Panel } from "@/components/Panel";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -131,33 +131,44 @@ function AtlasPage() {
       </Panel>
 
       <Panel title="Cohort planner" description="Set today's constraints. I'll propose who to call and explain why.">
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          <div className="space-y-1.5">
-            <Label>Program</Label>
-            <div className="inline-flex w-full rounded-md border p-1">
-              {(["kkb", "dkb"] as const).map((p) => (
-                <button key={p} type="button" onClick={() => setProgram(p)} className={cn("flex-1 rounded py-1 text-xs font-medium uppercase", program === p ? "bg-primary text-primary-foreground" : "text-muted-foreground")}>{p}</button>
-              ))}
-            </div>
-          </div>
-          <div className="space-y-1.5">
-            <Label>Region</Label>
-            <Input list="atlas-regions" value={region} onChange={(e) => setRegion(e.target.value)} placeholder="All regions" />
-            <datalist id="atlas-regions">{regions.map((r) => <option key={r} value={r} />)}</datalist>
-          </div>
-          <NumField label="Budget (max 1000)" value={budget} min={1} max={1000} onChange={(v) => setBudget(Math.min(v, 1000))} />
-          <NumField label="Confidence ≥ (0–10)" value={confidenceMin} min={0} max={10} step={0.5} onChange={setConfidenceMin} />
-          <NumField label="Cooldown days" value={cooldownDays} min={0} onChange={setCooldownDays} />
-          <NumField label="Max campaigns run" value={maxCampaigns} min={0} onChange={setMaxCampaigns} />
-          <NumField label="Exploration %" value={explorePct} min={0} max={50} onChange={setExplorePct} />
-          <NumField label="Urgency weight" value={urgencyWeight} min={0} max={60} onChange={setUrgencyWeight} help="How much job urgency boosts ranking (0 = ignore it)." />
-          <OptionalNumField label="Min urgency" value={urgencyMin} onChange={setUrgencyMin} min={-2} max={5} step={0.5} placeholder="No filter" help="Only call seekers matched to jobs at or above this urgency." />
-          <div className="flex items-end">
-            <Button className="w-full" disabled={killed || buildMut.isPending} onClick={() => buildMut.mutate()}>
-              {buildMut.isPending ? "Thinking…" : "Build today's cohort"}
-            </Button>
-          </div>
+        <div className="divide-y divide-border">
+          <Group title="Who to call" className="pb-5">
+            <FieldShell label="Program" caption="Which program's records to draw from.">
+              <div className="flex h-9 w-full items-center rounded-md border p-1">
+                {(["kkb", "dkb"] as const).map((p) => (
+                  <button key={p} type="button" onClick={() => setProgram(p)} className={cn("h-full flex-1 rounded py-1 text-xs font-medium uppercase", program === p ? "bg-primary text-primary-foreground" : "text-muted-foreground")}>{p}</button>
+                ))}
+              </div>
+            </FieldShell>
+            <FieldShell label="Region" caption="Leave blank to include every region.">
+              <Input list="atlas-regions" className="h-9" value={region} onChange={(e) => setRegion(e.target.value)} placeholder="All regions" />
+              <datalist id="atlas-regions">{regions.map((r) => <option key={r} value={r} />)}</datalist>
+            </FieldShell>
+            <NumField label="Confidence ≥ (0–10)" value={confidenceMin} min={0} max={10} step={0.5} onChange={setConfidenceMin} caption="Lowest match confidence to include." />
+            <NumField label="Cooldown days" value={cooldownDays} min={0} onChange={setCooldownDays} caption="Skip anyone called more recently." />
+            <NumField label="Max campaigns run" value={maxCampaigns} min={0} onChange={setMaxCampaigns} caption="Skip anyone already called too often." />
+            <NumField label="Min urgency" value={urgencyMin} min={-2} max={5} step={0.5} onChange={setUrgencyMin} placeholder="No filter"
+              caption="Only seekers matched to a job at or above this urgency."
+              hint="Only include seekers matched to a job at or above this urgency (scale −2 to 5). Leave blank to include everyone. Changes who's included." />
+          </Group>
+
+          <Group title="How to prioritise" className="py-5">
+            <NumField label="Urgency weight" value={urgencyWeight} min={0} max={60} onChange={setUrgencyWeight}
+              caption="Lifts urgent seekers up the order."
+              hint="How much job urgency lifts a seeker's ranking (0 = ignore). Changes the order, not who's included." />
+            <NumField label="Exploration %" value={explorePct} min={0} max={50} onChange={setExplorePct}
+              caption="Share held back for the least-contacted." />
+          </Group>
+
+          <Group title="Size" className="pt-5">
+            <NumField label="Budget (max 1000)" value={budget} min={1} max={1000} onChange={(v) => setBudget(Math.min(v, 1000))}
+              caption="Most people ATLAS may propose today." />
+          </Group>
         </div>
+
+        <Button className="mt-6 w-full" disabled={killed || buildMut.isPending} onClick={() => buildMut.mutate()}>
+          {buildMut.isPending ? "Thinking…" : "Build today's cohort"}
+        </Button>
         {killed && <p className="mt-3 text-xs text-destructive">ATLAS is halted — resume it above to build a cohort.</p>}
       </Panel>
 
@@ -266,24 +277,57 @@ function AtlasPage() {
   );
 }
 
-function NumField({ label, value, onChange, min, max, step, help }: { label: string; value: number; onChange: (v: number) => void; min?: number; max?: number; step?: number; help?: string }) {
+// Labeled sub-group inside the planner card: subtle heading + aligned control grid.
+function Group({ title, className, children }: { title: string; className?: string; children: ReactNode }) {
+  return (
+    <section className={cn("space-y-3", className)}>
+      <h2 className="text-sm font-medium text-muted-foreground">{title}</h2>
+      <div className="grid grid-cols-1 items-start gap-x-4 gap-y-5 sm:grid-cols-2 md:grid-cols-3">{children}</div>
+    </section>
+  );
+}
+
+// Shared shell so every control has the same label row, control height and caption slot.
+function FieldShell({ label, caption, hint, children }: { label: string; caption?: string; hint?: string; children: ReactNode }) {
   return (
     <div className="space-y-1.5">
-      <Label>{label}</Label>
-      <Input type="number" value={value} min={min} max={max} step={step} onChange={(e) => onChange(Number(e.target.value))} />
-      {help && <p className="text-xs text-muted-foreground">{help}</p>}
+      <div className="flex min-h-5 items-center gap-1.5">
+        <Label className="text-sm font-medium">{label}</Label>
+        {hint && (
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <button type="button" aria-label={`About ${label}`} className="shrink-0 rounded text-muted-foreground outline-none transition-colors hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring">
+                  <Info className="h-3.5 w-3.5" />
+                </button>
+              </TooltipTrigger>
+              <TooltipContent className="max-w-64 text-xs leading-relaxed">{hint}</TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
+        )}
+      </div>
+      {children}
+      <p className="min-h-[2.4rem] text-xs leading-snug text-muted-foreground">{caption}</p>
     </div>
   );
 }
 
-// Blank means "no filter" — used for the optional min-urgency threshold.
-function OptionalNumField({ label, value, onChange, min, max, step, placeholder, help }: { label: string; value: string; onChange: (v: string) => void; min?: number; max?: number; step?: number; placeholder?: string; help?: string }) {
+// Number or text field. Blank stays blank for the string form (min urgency = "no filter").
+function NumField<T extends number | string>({ label, value, onChange, min, max, step, placeholder, caption, hint }: {
+  label: string; value: T; onChange: (v: T) => void;
+  min?: number; max?: number; step?: number; placeholder?: string;
+  caption?: string; hint?: string;
+}) {
+  const isText = typeof value === "string";
   return (
-    <div className="space-y-1.5">
-      <Label>{label}</Label>
-      <Input type="number" value={value} min={min} max={max} step={step} placeholder={placeholder} onChange={(e) => onChange(e.target.value)} />
-      {help && <p className="text-xs text-muted-foreground">{help}</p>}
-    </div>
+    <FieldShell label={label} caption={caption} hint={hint}>
+      <Input className="h-9" type="number" value={value} min={min} max={max} step={step} placeholder={placeholder}
+        onChange={(e) => {
+          const raw = e.target.value;
+          if (isText) (onChange as (v: string) => void)(raw);
+          else (onChange as (v: number) => void)(raw === "" ? 0 : Number(raw));
+        }} />
+    </FieldShell>
   );
 }
 
