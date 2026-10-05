@@ -66,12 +66,16 @@ export interface AtlasBuildInput {
   cooldownDays?: number | null;
   maxCampaigns?: number | null;
   explorePct?: number | null;
+  // Urgency is optional — absent data leaves ATLAS behaving exactly as before.
+  urgencyWeight?: number | null;
+  urgencyMin?: number | null;
 }
 
 interface SampleRow {
   phone_masked: string; region: string; district: string; category: string;
   confidence: number | null; total_campaigns: number; last_call_date: string;
   avg_intent: number | null; max_intent: number | null; avg_match: number | null;
+  urgency?: number | null; urgency_reason?: string | null;
 }
 
 const num = (v: unknown) => (v == null || v === "" || isNaN(Number(v)) ? null : Number(v));
@@ -80,6 +84,16 @@ function daysSince(d: string): number | null {
   const t = Date.parse(d);
   return isNaN(t) ? null : Math.floor((Date.now() - t) / 86400000);
 }
+// Urgency weight: 0..60, default 30. Urgency min: blank/null = filter off.
+function urgencyWeightOf(v: unknown): number {
+  const n = Number(v ?? 30);
+  return Number.isNaN(n) ? 30 : Math.max(0, Math.min(n, 60));
+}
+function urgencyMinOf(v: unknown): number | null {
+  if (v == null || v === "") return null;
+  const n = Number(v);
+  return Number.isNaN(n) ? null : n;
+}
 
 export const atlasBuildCohort = createServerFn({ method: "POST" }).middleware([atlasSession])
   .inputValidator((d: AtlasBuildInput) => d)
@@ -87,6 +101,8 @@ export const atlasBuildCohort = createServerFn({ method: "POST" }).middleware([a
     const actor = await requireAtlasActor();
     const budget = Math.max(1, Math.min(Number(data.budget ?? BUDGET_CAP) || BUDGET_CAP, BUDGET_CAP));
     const explorePct = Math.max(0, Math.min(Number(data.explorePct ?? 15), 50));
+    const urgencyWeight = urgencyWeightOf(data.urgencyWeight);
+    const urgencyMin = urgencyMinOf(data.urgencyMin);
     const ctl = await getControl();
     if (ctl.killed) throw new Error("ATLAS is halted (kill switch on).");
 
