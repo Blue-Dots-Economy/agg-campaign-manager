@@ -13,6 +13,10 @@ name: Build and Push image (agg-campaign-manager)
 # caught in review instead of when a release tag is cut.
 on:
   push:
+    # TEMPORARY - remove with the commit that added it. Lets the branch build once
+    # so the image can be pulled and run locally. Never keep a branch trigger:
+    # it breaks the tags-and-dispatch-only policy (signals-dpg#756).
+    branches: [chore/ci-pipelines]
     # Release tags. Two schemes, matching the other service repos:
     #   v*.*.*      semver releases   e.g. v1.2.0
     #   20*-s*-rc*  sprint release    e.g. 202610-s1-rc1
@@ -62,8 +66,17 @@ jobs:
           REPO: ${{ github.repository }}
           SHA: ${{ github.sha }}
           SKIP: ${{ inputs.skip_ci_check }}
+          REF_TYPE: ${{ github.ref_type }}
+          EVENT: ${{ github.event_name }}
         run: |
           set -euo pipefail
+
+          # TEMPORARY - remove with the temporary branch trigger. ci.yaml runs
+          # concurrently on a branch push, so there is nothing to verify yet.
+          if [ "${EVENT}" = "push" ] && [ "${REF_TYPE}" = "branch" ]; then
+            echo "::warning title=CI gate skipped::Temporary branch-push build of ${SHA}; CI was not checked."
+            exit 0
+          fi
 
           # `inputs` is empty on a tag push, so this is false unless someone
           # dispatched with the box ticked.
