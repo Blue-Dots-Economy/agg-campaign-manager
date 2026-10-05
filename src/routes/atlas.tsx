@@ -312,6 +312,7 @@ function FieldShell({ label, caption, hint, children }: { label: string; caption
   );
 }
 
+// Number or text field. Blank stays blank for the string form (min urgency = "no filter").
 function NumField<T extends number | string>({ label, value, onChange, min, max, step, placeholder, caption, hint }: {
   label: string; value: T; onChange: (v: T) => void;
   min?: number; max?: number; step?: number; placeholder?: string;
