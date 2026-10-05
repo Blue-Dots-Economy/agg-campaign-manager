@@ -16,7 +16,9 @@ export const Route = createFileRoute("/api/public/hooks/zeffy-webhook")({
           });
         }
         const token = new URL(request.url).searchParams.get("token");
-        const result = await processZeffyWebhook({ data: { token, payload: body as Record<string, unknown> } });
+        const result = (await processZeffyWebhook({ data: { token, payload: body as Record<string, unknown> } })) as {
+          ok: boolean;
+        };
         return new Response(JSON.stringify(result), {
           status: result.ok ? 200 : 401,
           headers: { "Content-Type": "application/json" },
