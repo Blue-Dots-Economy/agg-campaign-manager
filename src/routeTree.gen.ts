@@ -16,6 +16,7 @@ import { Route as RequestCampaignRouteImport } from './routes/request-campaign'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as LaunchRouteImport } from './routes/launch'
 import { Route as EcosystemViewRouteImport } from './routes/ecosystem-view'
+import { Route as DoneraRouteImport } from './routes/donera'
 import { Route as CoordinatorLoginRouteImport } from './routes/coordinator-login'
 import { Route as CmTestRouteImport } from './routes/cm-test'
 import { Route as CampaignsRouteImport } from './routes/campaigns'
@@ -25,6 +26,7 @@ import { Route as IndexRouteImport } from './routes/index'
 import { Route as ReviewCallIdRouteImport } from './routes/review_.$callId'
 import { Route as CampaignsCampaignRouteImport } from './routes/campaigns_.$campaign'
 import { Route as AuthCallbackRouteImport } from './routes/auth.callback'
+import { Route as ApiPublicHooksZeffyWebhookRouteImport } from './routes/api.public/hooks.zeffy-webhook'
 import { Route as ApiPublicHooksSyncSnapshotsRouteImport } from './routes/api/public/hooks/sync-snapshots'
 
 const UserLevelAnalysisRoute = UserLevelAnalysisRouteImport.update({
@@ -60,6 +62,11 @@ const LaunchRoute = LaunchRouteImport.update({
 const EcosystemViewRoute = EcosystemViewRouteImport.update({
   id: '/ecosystem-view',
   path: '/ecosystem-view',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const DoneraRoute = DoneraRouteImport.update({
+  id: '/donera',
+  path: '/donera',
   getParentRoute: () => rootRouteImport,
 } as any)
 const CoordinatorLoginRoute = CoordinatorLoginRouteImport.update({
@@ -107,6 +114,12 @@ const AuthCallbackRoute = AuthCallbackRouteImport.update({
   path: '/auth/callback',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiPublicHooksZeffyWebhookRoute =
+  ApiPublicHooksZeffyWebhookRouteImport.update({
+    id: '/api/public/hooks/zeffy-webhook',
+    path: '/api/public/hooks/zeffy-webhook',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const ApiPublicHooksSyncSnapshotsRoute =
   ApiPublicHooksSyncSnapshotsRouteImport.update({
     id: '/api/public/hooks/sync-snapshots',
@@ -121,6 +134,7 @@ export interface FileRoutesByFullPath {
   '/campaigns': typeof CampaignsRoute
   '/cm-test': typeof CmTestRoute
   '/coordinator-login': typeof CoordinatorLoginRoute
+  '/donera': typeof DoneraRoute
   '/ecosystem-view': typeof EcosystemViewRoute
   '/launch': typeof LaunchRoute
   '/login': typeof LoginRoute
@@ -132,6 +146,7 @@ export interface FileRoutesByFullPath {
   '/campaigns/$campaign': typeof CampaignsCampaignRoute
   '/review/$callId': typeof ReviewCallIdRoute
   '/api/public/hooks/sync-snapshots': typeof ApiPublicHooksSyncSnapshotsRoute
+  '/api/public/hooks/zeffy-webhook': typeof ApiPublicHooksZeffyWebhookRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -140,6 +155,7 @@ export interface FileRoutesByTo {
   '/campaigns': typeof CampaignsRoute
   '/cm-test': typeof CmTestRoute
   '/coordinator-login': typeof CoordinatorLoginRoute
+  '/donera': typeof DoneraRoute
   '/ecosystem-view': typeof EcosystemViewRoute
   '/launch': typeof LaunchRoute
   '/login': typeof LoginRoute
@@ -151,6 +167,7 @@ export interface FileRoutesByTo {
   '/campaigns/$campaign': typeof CampaignsCampaignRoute
   '/review/$callId': typeof ReviewCallIdRoute
   '/api/public/hooks/sync-snapshots': typeof ApiPublicHooksSyncSnapshotsRoute
+  '/api/public/hooks/zeffy-webhook': typeof ApiPublicHooksZeffyWebhookRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -160,6 +177,7 @@ export interface FileRoutesById {
   '/campaigns': typeof CampaignsRoute
   '/cm-test': typeof CmTestRoute
   '/coordinator-login': typeof CoordinatorLoginRoute
+  '/donera': typeof DoneraRoute
   '/ecosystem-view': typeof EcosystemViewRoute
   '/launch': typeof LaunchRoute
   '/login': typeof LoginRoute
@@ -171,6 +189,7 @@ export interface FileRoutesById {
   '/campaigns_/$campaign': typeof CampaignsCampaignRoute
   '/review_/$callId': typeof ReviewCallIdRoute
   '/api/public/hooks/sync-snapshots': typeof ApiPublicHooksSyncSnapshotsRoute
+  '/api/public/hooks/zeffy-webhook': typeof ApiPublicHooksZeffyWebhookRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -181,6 +200,7 @@ export interface FileRouteTypes {
     | '/campaigns'
     | '/cm-test'
     | '/coordinator-login'
+    | '/donera'
     | '/ecosystem-view'
     | '/launch'
     | '/login'
@@ -192,6 +212,7 @@ export interface FileRouteTypes {
     | '/campaigns/$campaign'
     | '/review/$callId'
     | '/api/public/hooks/sync-snapshots'
+    | '/api/public/hooks/zeffy-webhook'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -200,6 +221,7 @@ export interface FileRouteTypes {
     | '/campaigns'
     | '/cm-test'
     | '/coordinator-login'
+    | '/donera'
     | '/ecosystem-view'
     | '/launch'
     | '/login'
@@ -211,6 +233,7 @@ export interface FileRouteTypes {
     | '/campaigns/$campaign'
     | '/review/$callId'
     | '/api/public/hooks/sync-snapshots'
+    | '/api/public/hooks/zeffy-webhook'
   id:
     | '__root__'
     | '/'
@@ -219,6 +242,7 @@ export interface FileRouteTypes {
     | '/campaigns'
     | '/cm-test'
     | '/coordinator-login'
+    | '/donera'
     | '/ecosystem-view'
     | '/launch'
     | '/login'
@@ -230,6 +254,7 @@ export interface FileRouteTypes {
     | '/campaigns_/$campaign'
     | '/review_/$callId'
     | '/api/public/hooks/sync-snapshots'
+    | '/api/public/hooks/zeffy-webhook'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -239,6 +264,7 @@ export interface RootRouteChildren {
   CampaignsRoute: typeof CampaignsRoute
   CmTestRoute: typeof CmTestRoute
   CoordinatorLoginRoute: typeof CoordinatorLoginRoute
+  DoneraRoute: typeof DoneraRoute
   EcosystemViewRoute: typeof EcosystemViewRoute
   LaunchRoute: typeof LaunchRoute
   LoginRoute: typeof LoginRoute
@@ -250,6 +276,7 @@ export interface RootRouteChildren {
   CampaignsCampaignRoute: typeof CampaignsCampaignRoute
   ReviewCallIdRoute: typeof ReviewCallIdRoute
   ApiPublicHooksSyncSnapshotsRoute: typeof ApiPublicHooksSyncSnapshotsRoute
+  ApiPublicHooksZeffyWebhookRoute: typeof ApiPublicHooksZeffyWebhookRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -301,6 +328,13 @@ declare module '@tanstack/react-router' {
       path: '/ecosystem-view'
       fullPath: '/ecosystem-view'
       preLoaderRoute: typeof EcosystemViewRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/donera': {
+      id: '/donera'
+      path: '/donera'
+      fullPath: '/donera'
+      preLoaderRoute: typeof DoneraRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/coordinator-login': {
@@ -366,6 +400,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthCallbackRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/hooks/zeffy-webhook': {
+      id: '/api/public/hooks/zeffy-webhook'
+      path: '/api/public/hooks/zeffy-webhook'
+      fullPath: '/api/public/hooks/zeffy-webhook'
+      preLoaderRoute: typeof ApiPublicHooksZeffyWebhookRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/public/hooks/sync-snapshots': {
       id: '/api/public/hooks/sync-snapshots'
       path: '/api/public/hooks/sync-snapshots'
@@ -383,6 +424,7 @@ const rootRouteChildren: RootRouteChildren = {
   CampaignsRoute: CampaignsRoute,
   CmTestRoute: CmTestRoute,
   CoordinatorLoginRoute: CoordinatorLoginRoute,
+  DoneraRoute: DoneraRoute,
   EcosystemViewRoute: EcosystemViewRoute,
   LaunchRoute: LaunchRoute,
   LoginRoute: LoginRoute,
@@ -394,6 +436,7 @@ const rootRouteChildren: RootRouteChildren = {
   CampaignsCampaignRoute: CampaignsCampaignRoute,
   ReviewCallIdRoute: ReviewCallIdRoute,
   ApiPublicHooksSyncSnapshotsRoute: ApiPublicHooksSyncSnapshotsRoute,
+  ApiPublicHooksZeffyWebhookRoute: ApiPublicHooksZeffyWebhookRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

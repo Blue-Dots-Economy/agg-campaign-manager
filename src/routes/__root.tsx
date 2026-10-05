@@ -139,7 +139,7 @@ function AuthGate({ children }: { children: ReactNode }) {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const { isAuthenticated, hydrated, session } = useAuth();
   const navigate = useNavigate();
-  const isLogin = pathname === "/login" || pathname === "/auth/callback" || pathname === "/coordinator-login";
+  const isLogin = pathname === "/login" || pathname === "/auth/callback" || pathname === "/coordinator-login" || pathname === "/donera";
   const role = session?.role;
   const isAtlas = pathname === "/atlas" || pathname.startsWith("/atlas/");
   const allowed = isLogin || (isAtlas ? canAccessAtlas(role, session?.email) : canAccess(role, pathname));

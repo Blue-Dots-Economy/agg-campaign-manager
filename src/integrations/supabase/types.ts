@@ -484,6 +484,116 @@ export type Database = {
         }
         Relationships: []
       }
+      donation_events: {
+        Row: {
+          created_at: string
+          detail: Json | null
+          id: string
+          submission_id: string | null
+          type: string
+        }
+        Insert: {
+          created_at?: string
+          detail?: Json | null
+          id?: string
+          submission_id?: string | null
+          type: string
+        }
+        Update: {
+          created_at?: string
+          detail?: Json | null
+          id?: string
+          submission_id?: string | null
+          type?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "donation_events_submission_id_fkey"
+            columns: ["submission_id"]
+            isOneToOne: false
+            referencedRelation: "donation_submissions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      donation_submissions: {
+        Row: {
+          amount_sek: number | null
+          city: string | null
+          comment: string | null
+          country: string | null
+          created_at: string
+          csv_content: string | null
+          email: string
+          email_status: string | null
+          error: string | null
+          first_name: string
+          id: string
+          last_name: string
+          payment_method: string | null
+          pays_towards: string | null
+          phone: string | null
+          plan: string
+          postal: string | null
+          session_token: string | null
+          status: string
+          street: string | null
+          zeffy_contact_id: string | null
+          zeffy_payment_id: string | null
+          zeffy_tags: Json | null
+        }
+        Insert: {
+          amount_sek?: number | null
+          city?: string | null
+          comment?: string | null
+          country?: string | null
+          created_at?: string
+          csv_content?: string | null
+          email: string
+          email_status?: string | null
+          error?: string | null
+          first_name: string
+          id?: string
+          last_name: string
+          payment_method?: string | null
+          pays_towards?: string | null
+          phone?: string | null
+          plan: string
+          postal?: string | null
+          session_token?: string | null
+          status?: string
+          street?: string | null
+          zeffy_contact_id?: string | null
+          zeffy_payment_id?: string | null
+          zeffy_tags?: Json | null
+        }
+        Update: {
+          amount_sek?: number | null
+          city?: string | null
+          comment?: string | null
+          country?: string | null
+          created_at?: string
+          csv_content?: string | null
+          email?: string
+          email_status?: string | null
+          error?: string | null
+          first_name?: string
+          id?: string
+          last_name?: string
+          payment_method?: string | null
+          pays_towards?: string | null
+          phone?: string | null
+          plan?: string
+          postal?: string | null
+          session_token?: string | null
+          status?: string
+          street?: string | null
+          zeffy_contact_id?: string | null
+          zeffy_payment_id?: string | null
+          zeffy_tags?: Json | null
+        }
+        Relationships: []
+      }
       launched_batch_inputs: {
         Row: {
           batch_id: string
