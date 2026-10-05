@@ -1,52 +1,75 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useState, type ReactNode } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { toast } from "sonner";
-import { Radar, ShieldAlert, OctagonX, Info } from "lucide-react";
-import { Panel } from "@/components/Panel";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Switch } from "@/components/ui/switch";
-import { Badge } from "@/components/ui/badge";
+import { ArrowUp, ChevronDown, Info, Mic, OctagonX, ShieldAlert, SlidersHorizontal } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import {
-  atlasApproveCohort, atlasBuildCohort, atlasCancelCohort, atlasGetCohort,
-  atlasGetControl, atlasListCohorts, atlasSetControl,
+  atlasApproveCohort, atlasCancelCohort, atlasChat, atlasGetControl, atlasSetControl,
 } from "@/lib/atlas.functions";
 import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/atlas")({
   head: () => ({
     meta: [
-      { title: "ATLAS — Cohort Planner (Pilot)" },
-      { name: "description", content: "Automated Targeting, Learning & Allocation System — shadow-mode cohort planner." },
-      { property: "og:title", content: "ATLAS — Cohort Planner (Pilot)" },
-      { property: "og:description", content: "Shadow-mode daily cohort planner with human review." },
+      { title: "ATLAS — Conversational Cohort Planner (Pilot)" },
+      { name: "description", content: "Ask ATLAS for today's cohort — a shadow-mode planner that proposes who to call and explains why." },
+      { property: "og:title", content: "ATLAS — Conversational Cohort Planner (Pilot)" },
+      { property: "og:description", content: "Shadow-mode conversational cohort planner with human review." },
+      { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary" },
       { name: "robots", content: "noindex" },
     ],
   }),
   component: AtlasPage,
 });
 
+type Member = any;
+type Cohort = {
+  cohortId: string; totalCount: number; sampleCount: number; exploreCount: number; urgentCount: number;
+  narration: string; members: Member[]; urgencyAvailable: boolean; status?: string;
+  fairness: { byRegion: Record<string, number>; byCategory: Record<string, number>; categoryAvailable: boolean; note: string | null };
+};
+type Msg = { id: string; role: "user" | "assistant"; content: string; cohort?: Cohort; usedParams?: any };
+
+const STORE = "atlas-chat-v1";
+const CHIPS = ["Give me today's cohort", "Most urgent in Ghaziabad", "Only high-confidence seekers", "Who haven't we called recently?", "Why these people?"];
+
+// Page-scoped neural palette (does not touch the global theme).
+const NEURAL_CSS = `
+.atlas-neural{--n-bg:#07080f;--n-surface:#0e1120;--n-border:rgba(148,163,255,.14);--n-text:#e8eaf6;--n-muted:#a3a9c7;--n-accent:#7dd3fc;--n-user:#e8eaf6;--n-user-text:#0b0d18;background:radial-gradient(1200px 600px at 50% -10%,rgba(79,70,229,.18),transparent 60%),var(--n-bg);color:var(--n-text)}
+.atlas-orb{position:relative;border-radius:9999px;background:radial-gradient(circle at 35% 30%,#e0f7ff 0%,#67e8f9 18%,#6366f1 55%,#312e81 80%,transparent 100%);box-shadow:0 0 60px 10px rgba(99,102,241,.45),0 0 120px 30px rgba(34,211,238,.18);animation:atlas-pulse 4.5s ease-in-out infinite}
+.atlas-orb::after{content:"";position:absolute;inset:-18%;border-radius:inherit;background:conic-gradient(from 0deg,transparent,rgba(103,232,249,.35),transparent 40%,rgba(129,140,248,.35),transparent 75%);filter:blur(18px);animation:atlas-spin 12s linear infinite}
+.atlas-orb.thinking{animation-duration:1.4s}
+@keyframes atlas-pulse{0%,100%{transform:scale(1);filter:brightness(1)}50%{transform:scale(1.05);filter:brightness(1.15)}}
+@keyframes atlas-spin{to{transform:rotate(360deg)}}
+.atlas-fade{animation:atlas-fade .35s ease-out both}
+@keyframes atlas-fade{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+@media (prefers-reduced-motion: reduce){.atlas-orb,.atlas-orb::after,.atlas-fade{animation:none}}
+`;
+
+function greeting() {
+  const h = new Date().getHours();
+  return h < 12 ? "Good morning" : h < 17 ? "Good afternoon" : "Good evening";
+}
+
 function AtlasPage() {
   const qc = useQueryClient();
   const getControl = useServerFn(atlasGetControl);
   const setControl = useServerFn(atlasSetControl);
-  const build = useServerFn(atlasBuildCohort);
-  const list = useServerFn(atlasListCohorts);
-  const getCohort = useServerFn(atlasGetCohort);
+  const chat = useServerFn(atlasChat);
   const approve = useServerFn(atlasApproveCohort);
   const cancel = useServerFn(atlasCancelCohort);
 
   const control = useQuery({ queryKey: ["atlas", "control"], queryFn: () => getControl() });
-  const cohorts = useQuery({ queryKey: ["atlas", "cohorts"], queryFn: () => list() });
   const killed = control.data?.killed ?? false;
 
+  const [messages, setMessages] = useState<Msg[]>([]);
+  const [input, setInput] = useState("");
+  const [showAdv, setShowAdv] = useState(false);
   const [program, setProgram] = useState<"kkb" | "dkb">("kkb");
   const [region, setRegion] = useState("");
-  const [regions, setRegions] = useState<string[]>([]);
   const [budget, setBudget] = useState(1000);
   const [confidenceMin, setConfidenceMin] = useState(6);
   const [cooldownDays, setCooldownDays] = useState(30);
@@ -54,13 +77,16 @@ function AtlasPage() {
   const [explorePct, setExplorePct] = useState(15);
   const [urgencyWeight, setUrgencyWeight] = useState(30);
   const [urgencyMin, setUrgencyMin] = useState("");
-  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const endRef = useRef<HTMLDivElement>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
 
-  const detail = useQuery({
-    queryKey: ["atlas", "cohort", selectedId],
-    queryFn: () => getCohort({ data: { id: selectedId! } }),
-    enabled: !!selectedId,
-  });
+  useEffect(() => {
+    try { const s = sessionStorage.getItem(STORE); if (s) setMessages(JSON.parse(s)); } catch { /* ignore */ }
+  }, []);
+  useEffect(() => {
+    try { sessionStorage.setItem(STORE, JSON.stringify(messages)); } catch { /* ignore */ }
+    endRef.current?.scrollIntoView({ behavior: "smooth", block: "end" });
+  }, [messages]);
 
   const killMut = useMutation({
     mutationFn: (k: boolean) => setControl({ data: { killed: k } }),
@@ -68,285 +94,361 @@ function AtlasPage() {
     onError: (e: Error) => toast.error(e.message),
   });
 
-  const buildMut = useMutation({
-    mutationFn: () => build({ data: { program, region: region || null, budget: Math.min(budget, 1000), confidenceMin, cooldownDays, maxCampaigns, explorePct, urgencyWeight, urgencyMin: urgencyMin === "" ? null : Number(urgencyMin) } }),
-    onSuccess: (r) => {
-      if (r.regions.length) setRegions(r.regions);
-      setSelectedId(r.cohortId);
-      qc.invalidateQueries({ queryKey: ["atlas", "cohorts"] });
+  const sendMut = useMutation({
+    mutationFn: async (history: Msg[]) => {
+      const lastC = [...history].reverse().find((m) => m.cohort)?.cohort;
+      const lastCohort = lastC ? JSON.stringify({
+        total: lastC.totalCount, exploration: lastC.exploreCount, urgent: lastC.urgentCount,
+        fairness: lastC.fairness, narration: lastC.narration,
+        topReasons: lastC.members.slice(0, 15).map((m) => `${m.region}: ${m.reason}`),
+      }) : null;
+      return chat({ data: {
+        messages: history.map((m) => ({ role: m.role, content: m.content })),
+        lastCohort,
+        advanced: {
+          program, region: region || null, budget: Math.min(budget, 1000), confidenceMin, cooldownDays,
+          maxCampaigns, explorePct, urgencyWeight, urgencyMin: urgencyMin === "" ? null : Number(urgencyMin),
+        },
+      } }) as Promise<any>;
     },
-    onError: (e: Error) => toast.error(e.message),
+    onSuccess: (r) => setMessages((m) => [...m, { id: crypto.randomUUID(), role: "assistant", content: r.reply, cohort: r.cohort, usedParams: r.usedParams }]),
+    onError: (e: Error) => setMessages((m) => [...m, { id: crypto.randomUUID(), role: "assistant", content: `Something went wrong on my side: ${e.message}` }]),
+    onSettled: () => inputRef.current?.focus(),
   });
 
-  const refreshAfter = () => {
-    qc.invalidateQueries({ queryKey: ["atlas", "cohorts"] });
-    qc.invalidateQueries({ queryKey: ["atlas", "cohort", selectedId] });
+  const send = (text: string) => {
+    const t = text.trim();
+    if (!t || killed || sendMut.isPending) return;
+    const next = [...messages, { id: crypto.randomUUID(), role: "user" as const, content: t }];
+    setMessages(next);
+    setInput("");
+    sendMut.mutate(next);
   };
+
+  const setStatus = (id: string, status: string) =>
+    setMessages((ms) => ms.map((m) => (m.cohort?.cohortId === id ? { ...m, cohort: { ...m.cohort, status } } : m)));
   const approveMut = useMutation({
     mutationFn: (id: string) => approve({ data: { id } }),
-    onSuccess: (r) => { toast.success(r.message); refreshAfter(); },
+    onSuccess: (r, id) => { toast.success(r.message); setStatus(id, "approved"); },
     onError: (e: Error) => toast.error(e.message),
   });
   const cancelMut = useMutation({
     mutationFn: (id: string) => cancel({ data: { id } }),
-    onSuccess: () => { toast("Cohort cancelled."); refreshAfter(); },
+    onSuccess: (_r, id) => { toast("Cohort cancelled."); setStatus(id, "cancelled"); },
     onError: (e: Error) => toast.error(e.message),
   });
 
-  const c = detail.data?.cohort;
-  const members = detail.data?.members ?? [];
-  const exploreCount = members.filter((m) => m.is_exploration).length;
-  const fairness = (c?.fairness ?? null) as null | { byRegion: Record<string, number>; byCategory: Record<string, number>; categoryAvailable: boolean; note: string | null };
+  const empty = messages.length === 0;
 
   return (
-    <div className="space-y-6 max-w-6xl">
-      <div className="flex flex-wrap items-start justify-between gap-4">
-        <div className="flex items-center gap-3">
-          <Radar className="h-8 w-8 text-primary" />
-          <div>
-            <h1 className="text-3xl font-bold tracking-[0.2em] text-foreground">ATLAS</h1>
-            <p className="text-sm text-muted-foreground">Automated Targeting, Learning &amp; Allocation System · Mark I</p>
-          </div>
-        </div>
-        <div className="flex flex-col items-end gap-2">
-          <div className="rounded-lg border-2 border-dashed border-primary/60 bg-primary/5 px-4 py-2 text-right">
-            <div className="text-xs font-bold uppercase tracking-widest text-primary">Shadow mode</div>
-            <div className="text-xs text-muted-foreground">Proposes cohorts — places no calls</div>
-          </div>
-          <Badge variant={killed ? "destructive" : "secondary"}>{killed ? "Halted" : "Running"}</Badge>
-        </div>
-      </div>
-
-      <Panel title="Kill switch" description="Halting stops ATLAS from building or approving anything.">
-        <div className={cn("flex items-center justify-between rounded-lg border p-4", killed && "border-destructive bg-destructive/10")}>
+    <TooltipProvider>
+      <style>{NEURAL_CSS}</style>
+      <div className="atlas-neural -m-4 flex min-h-[calc(100vh-4rem)] flex-col rounded-none sm:-m-6 md:rounded-2xl">
+        {/* Header */}
+        <header className="flex flex-wrap items-center justify-between gap-3 border-b px-4 py-3 sm:px-6" style={{ borderColor: "var(--n-border)" }}>
           <div className="flex items-center gap-3">
-            <OctagonX className={cn("h-5 w-5", killed ? "text-destructive" : "text-muted-foreground")} />
+            <div aria-hidden className="atlas-orb h-7 w-7" />
             <div>
-              <div className="text-sm font-semibold">Halt ATLAS</div>
-              <div className="text-xs text-muted-foreground">{killed ? "ATLAS is halted. Nothing will be built until you resume." : "ATLAS is available to propose cohorts."}</div>
+              <h1 className="text-base font-semibold tracking-wide">ATLAS</h1>
+              <p className="text-xs" style={{ color: "var(--n-muted)" }}>Automated Targeting, Learning &amp; Allocation System</p>
             </div>
           </div>
-          <Switch checked={killed} disabled={control.isLoading || killMut.isPending} onCheckedChange={(v) => killMut.mutate(v)} className="data-[state=checked]:bg-destructive" aria-label="Halt ATLAS" />
-        </div>
-      </Panel>
+          <div className="flex items-center gap-2">
+            <span className="rounded-full border px-3 py-1 text-xs font-medium" style={{ borderColor: "rgba(125,211,252,.45)", color: "var(--n-accent)" }}
+              title="Proposes cohorts — places no calls">Shadow mode · no calls</span>
+            <button type="button" onClick={() => killMut.mutate(!killed)} disabled={control.isLoading || killMut.isPending} aria-pressed={killed}
+              className={cn("flex items-center gap-1.5 rounded-full border px-3 py-1 text-xs font-medium outline-none transition-colors focus-visible:ring-2 focus-visible:ring-sky-300",
+                killed ? "border-red-400/60 bg-red-500/20 text-red-200" : "hover:bg-white/5")}
+              style={killed ? undefined : { borderColor: "var(--n-border)", color: "var(--n-muted)" }}>
+              <OctagonX className="h-3.5 w-3.5" />{killed ? "Halted — resume" : "Halt ATLAS"}
+            </button>
+          </div>
+        </header>
 
-      <Panel title="Cohort planner" description="Set today's constraints. I'll propose who to call and explain why.">
-        <div className="divide-y divide-border">
-          <Group title="Who to call" className="pb-5">
-            <FieldShell label="Program" caption="Which program's records to draw from.">
-              <div className="flex h-9 w-full items-center rounded-md border p-1">
-                {(["kkb", "dkb"] as const).map((p) => (
-                  <button key={p} type="button" onClick={() => setProgram(p)} className={cn("h-full flex-1 rounded py-1 text-xs font-medium uppercase", program === p ? "bg-primary text-primary-foreground" : "text-muted-foreground")}>{p}</button>
+        {/* Thread */}
+        <main className="flex-1 overflow-y-auto px-4 sm:px-6">
+          <div className="mx-auto w-full max-w-3xl py-6">
+            {empty ? (
+              <div className="flex flex-col items-center pt-10 text-center sm:pt-16">
+                <div aria-hidden className={cn("atlas-orb h-32 w-32 sm:h-44 sm:w-44", sendMut.isPending && "thinking")} />
+                <h2 className="mt-10 text-2xl font-medium sm:text-3xl">{greeting()}. I'm ATLAS.</h2>
+                <p className="mt-2 text-sm" style={{ color: "var(--n-muted)" }}>Ask me for today's cohort. I propose — you decide.</p>
+                <Chips onPick={send} disabled={killed} className="mt-8 justify-center" />
+              </div>
+            ) : (
+              <ol className="space-y-6">
+                {messages.map((m) => (
+                  <li key={m.id} className="atlas-fade">
+                    {m.role === "user" ? (
+                      <div className="flex justify-end">
+                        <div className="max-w-[85%] rounded-2xl rounded-br-md px-4 py-2.5 text-sm" style={{ background: "var(--n-user)", color: "var(--n-user-text)" }}>{m.content}</div>
+                      </div>
+                    ) : (
+                      <div className="flex gap-3">
+                        <div aria-hidden className="atlas-orb mt-0.5 h-6 w-6 shrink-0" />
+                        <div className="min-w-0 flex-1 space-y-4">
+                          <p className="whitespace-pre-wrap text-sm leading-relaxed">{m.content}</p>
+                          {m.cohort && (
+                            <CohortCard c={m.cohort} killed={killed}
+                              onApprove={() => approveMut.mutate(m.cohort!.cohortId)}
+                              onCancel={() => cancelMut.mutate(m.cohort!.cohortId)}
+                              busy={approveMut.isPending || cancelMut.isPending} />
+                          )}
+                        </div>
+                      </div>
+                    )}
+                  </li>
                 ))}
-              </div>
-            </FieldShell>
-            <FieldShell label="Region" caption="Leave blank to include every region.">
-              <Input list="atlas-regions" className="h-9" value={region} onChange={(e) => setRegion(e.target.value)} placeholder="All regions" />
-              <datalist id="atlas-regions">{regions.map((r) => <option key={r} value={r} />)}</datalist>
-            </FieldShell>
-            <NumField label="Confidence ≥ (0–10)" value={confidenceMin} min={0} max={10} step={0.5} onChange={setConfidenceMin} caption="Lowest match confidence to include." />
-            <NumField label="Cooldown days" value={cooldownDays} min={0} onChange={setCooldownDays} caption="Skip anyone called more recently." />
-            <NumField label="Max campaigns run" value={maxCampaigns} min={0} onChange={setMaxCampaigns} caption="Skip anyone already called too often." />
-            <NumField label="Min urgency" value={urgencyMin} min={-2} max={5} step={0.5} onChange={setUrgencyMin} placeholder="No filter"
-              caption="Only seekers matched to a job at or above this urgency."
-              hint="Only include seekers matched to a job at or above this urgency (scale −2 to 5). Leave blank to include everyone. Changes who's included." />
-          </Group>
+                {sendMut.isPending && (
+                  <li className="atlas-fade flex items-center gap-3" aria-live="polite">
+                    <div aria-hidden className="atlas-orb thinking h-6 w-6" />
+                    <span className="text-sm" style={{ color: "var(--n-muted)" }}>Thinking it through…</span>
+                  </li>
+                )}
+              </ol>
+            )}
+            <div ref={endRef} />
+          </div>
+        </main>
 
-          <Group title="How to prioritise" className="py-5">
-            <NumField label="Urgency weight" value={urgencyWeight} min={0} max={60} onChange={setUrgencyWeight}
-              caption="Lifts urgent seekers up the order."
-              hint="How much job urgency lifts a seeker's ranking (0 = ignore). Changes the order, not who's included." />
-            <NumField label="Exploration %" value={explorePct} min={0} max={50} onChange={setExplorePct}
-              caption="Share held back for the least-contacted." />
-          </Group>
+        {/* Composer */}
+        <footer className="sticky bottom-0 border-t px-4 pb-4 pt-3 sm:px-6" style={{ borderColor: "var(--n-border)", background: "rgba(7,8,15,.92)", backdropFilter: "blur(8px)" }}>
+          <div className="mx-auto w-full max-w-3xl space-y-3">
+            {!empty && messages.length < 4 && <Chips onPick={send} disabled={killed} />}
+            {killed && <p className="text-xs text-red-200">ATLAS is halted. Resume it from the header to keep going.</p>}
+            <form onSubmit={(e) => { e.preventDefault(); send(input); }}
+              className="flex items-center gap-2 rounded-2xl border px-2 py-1.5 focus-within:ring-2 focus-within:ring-sky-300/60"
+              style={{ borderColor: "var(--n-border)", background: "var(--n-surface)" }}>
+              <label htmlFor="atlas-input" className="sr-only">Ask ATLAS</label>
+              <input id="atlas-input" ref={inputRef} autoFocus value={input} onChange={(e) => setInput(e.target.value)} disabled={killed}
+                placeholder={killed ? "ATLAS is halted" : "Ask ATLAS…"}
+                className="h-10 flex-1 bg-transparent px-2 text-sm outline-none placeholder:text-[color:var(--n-muted)] disabled:opacity-60" />
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <span><button type="button" disabled aria-label="Voice input (coming soon)" className="flex h-9 w-9 items-center justify-center rounded-full opacity-50" style={{ color: "var(--n-muted)" }}><Mic className="h-4 w-4" /></button></span>
+                </TooltipTrigger>
+                <TooltipContent>Voice coming soon</TooltipContent>
+              </Tooltip>
+              <button type="submit" aria-label="Send" disabled={killed || sendMut.isPending || !input.trim()}
+                className="flex h-9 w-9 items-center justify-center rounded-full outline-none transition-opacity focus-visible:ring-2 focus-visible:ring-sky-300 disabled:opacity-40"
+                style={{ background: "var(--n-user)", color: "var(--n-user-text)" }}>
+                <ArrowUp className="h-4 w-4" />
+              </button>
+            </form>
 
-          <Group title="Size" className="pt-5">
-            <NumField label="Budget (max 1000)" value={budget} min={1} max={1000} onChange={(v) => setBudget(Math.min(v, 1000))}
-              caption="Most people ATLAS may propose today." />
-          </Group>
-        </div>
-
-        <Button className="mt-6 w-full" disabled={killed || buildMut.isPending} onClick={() => buildMut.mutate()}>
-          {buildMut.isPending ? "Thinking…" : "Build today's cohort"}
-        </Button>
-        {killed && <p className="mt-3 text-xs text-destructive">ATLAS is halted — resume it above to build a cohort.</p>}
-      </Panel>
-
-      {selectedId && (
-        <Panel title="Proposal" description={c ? `${c.program?.toUpperCase()} · ${c.region || "All regions"} · ${new Date(c.created_at).toLocaleString()} · ${c.status}` : undefined}>
-          {detail.isLoading || !c ? (
-            <p className="text-sm text-muted-foreground">Loading…</p>
-          ) : (
-            <div className="space-y-5">
-              <blockquote className="rounded-lg border-l-4 border-primary bg-muted/40 p-4 text-sm leading-relaxed italic text-foreground">
-                {c.narration}
-                <div className="mt-2 text-xs not-italic text-muted-foreground">— ATLAS</div>
-              </blockquote>
-
-              <div className="text-lg text-foreground">
-                ATLAS would call <span className="font-bold">{c.total_count}</span> people
-                <span className="text-sm text-muted-foreground"> · {exploreCount} of {members.length} previewed are exploration picks</span>
-              </div>
-
-              {fairness && (
-                <div className="grid gap-4 md:grid-cols-2">
-                  <Dist title="By region (preview)" data={fairness.byRegion} />
-                  {fairness.categoryAvailable ? (
-                    <Dist title="By category (preview)" data={fairness.byCategory} />
-                  ) : (
-                    <div className="rounded-lg border border-dashed p-3 text-sm">
-                      <div className="mb-1 flex items-center gap-2 font-semibold"><ShieldAlert className="h-4 w-4" />By category</div>
-                      <p className="text-muted-foreground">{fairness.note}</p>
-                    </div>
-                  )}
+            <div>
+              <button type="button" onClick={() => setShowAdv((v) => !v)} aria-expanded={showAdv}
+                className="flex items-center gap-1.5 rounded text-xs outline-none hover:text-[color:var(--n-text)] focus-visible:ring-2 focus-visible:ring-sky-300" style={{ color: "var(--n-muted)" }}>
+                <SlidersHorizontal className="h-3.5 w-3.5" />Advanced controls
+                <ChevronDown className={cn("h-3.5 w-3.5 transition-transform", showAdv && "rotate-180")} />
+              </button>
+              {showAdv && (
+                <div className="atlas-fade mt-3 max-h-[45vh] space-y-4 overflow-y-auto rounded-xl border p-4" style={{ borderColor: "var(--n-border)", background: "var(--n-surface)" }}>
+                  <AdvGroup title="Who to call">
+                    <Field label="Program">
+                      <div className="flex h-9 rounded-md border p-1" style={{ borderColor: "var(--n-border)" }}>
+                        {(["kkb", "dkb"] as const).map((p) => (
+                          <button key={p} type="button" onClick={() => setProgram(p)} aria-pressed={program === p}
+                            className="flex-1 rounded text-xs font-medium uppercase"
+                            style={program === p ? { background: "var(--n-user)", color: "var(--n-user-text)" } : { color: "var(--n-muted)" }}>{p}</button>
+                        ))}
+                      </div>
+                    </Field>
+                    <Field label="Region"><TextIn value={region} onChange={setRegion} placeholder="All regions" /></Field>
+                    <NumIn label="Confidence ≥ (0–10)" value={confidenceMin} onChange={setConfidenceMin} min={0} max={10} step={0.5} />
+                    <NumIn label="Cooldown days" value={cooldownDays} onChange={setCooldownDays} min={0} />
+                    <NumIn label="Max campaigns run" value={maxCampaigns} onChange={setMaxCampaigns} min={0} />
+                    <Field label="Min urgency" hint="Only include seekers matched to a job at or above this urgency (scale −2 to 5). Leave blank to include everyone. Changes who's included.">
+                      <TextIn type="number" value={urgencyMin} onChange={setUrgencyMin} placeholder="No filter" />
+                    </Field>
+                  </AdvGroup>
+                  <AdvGroup title="How to prioritise">
+                    <NumIn label="Urgency weight" value={urgencyWeight} onChange={setUrgencyWeight} min={0} max={60}
+                      hint="How much job urgency lifts a seeker's ranking (0 = ignore). Changes the order, not who's included." />
+                    <NumIn label="Exploration %" value={explorePct} onChange={setExplorePct} min={0} max={50} />
+                  </AdvGroup>
+                  <AdvGroup title="Size">
+                    <NumIn label="Budget (max 1000)" value={budget} onChange={(v) => setBudget(Math.min(v, 1000))} min={1} max={1000} />
+                  </AdvGroup>
+                  <p className="text-xs" style={{ color: "var(--n-muted)" }}>These apply to every cohort I build in chat; anything you say in a message takes precedence.</p>
                 </div>
               )}
-
-              {members.length > 0 && members.every((m) => m.urgency == null) && (
-                <p className="rounded-lg border border-dashed px-3 py-2 text-xs text-muted-foreground">
-                  Urgency data not yet populated — ranking is using confidence, intent and history. It will factor in automatically once available.
-                </p>
-              )}
-              <div className="overflow-x-auto rounded-lg border">
-                <table className="w-full text-sm">
-                  <caption className="caption-bottom p-2 text-xs text-muted-foreground">
-                    Representative preview of {c.total_count} — full list is resolved only at dispatch (disabled in this version).
-                  </caption>
-                  <thead className="bg-muted/50 text-xs text-muted-foreground">
-                    <tr>{["Phone", "Region", "Category", "Conf.", "Campaigns", "Last call", "Urgency", "Priority", "Why"].map((h) => <th key={h} className="px-3 py-2 text-left font-medium">{h}</th>)}</tr>
-                  </thead>
-                  <tbody>
-                    {members.map((m) => (
-                      <tr key={m.id} className="border-t">
-                        <td className="px-3 py-2 font-mono text-xs">{m.phone_masked}</td>
-                        <td className="px-3 py-2">{m.region || "—"}</td>
-                        <td className="px-3 py-2">{m.category || "—"}</td>
-                        <td className="px-3 py-2">{m.confidence ?? "—"}</td>
-                        <td className="px-3 py-2">{m.total_campaigns}</td>
-                        <td className="px-3 py-2">{m.last_call_date || "—"}</td>
-                        <td className="px-3 py-2 align-top">
-                          {m.urgency == null ? <span className="text-muted-foreground">—</span> : (
-                            <div className="flex flex-col gap-1">
-                              <span className="flex items-center gap-1.5">
-                                <span className="font-semibold">{m.urgency}</span>
-                                {m.is_urgent && <Badge className="border-amber-500/40 bg-amber-500/15 text-amber-700 dark:text-amber-400">Urgent</Badge>}
-                              </span>
-                              {m.urgency_reason && <span className="text-xs text-muted-foreground">{m.urgency_reason}</span>}
-                            </div>
-                          )}
-                        </td>
-                        <td className="px-3 py-2 font-semibold">{m.priority_score}</td>
-                        <td className="px-3 py-2">
-                          {m.is_exploration && <Badge variant="outline" className="mr-2">exploration</Badge>}
-                          <span className="text-muted-foreground">{m.reason}</span>
-                        </td>
-                      </tr>
-                    ))}
-                    {members.length === 0 && <tr><td colSpan={9} className="px-3 py-6 text-center text-muted-foreground">No preview rows.</td></tr>}
-                  </tbody>
-                </table>
-              </div>
-
-              <div className="flex flex-wrap gap-2">
-                <Button disabled={killed || c.status !== "proposed" || approveMut.isPending} onClick={() => approveMut.mutate(c.id)}>Approve (shadow — no calls)</Button>
-                <Button variant="outline" disabled={c.status === "cancelled" || cancelMut.isPending} onClick={() => cancelMut.mutate(c.id)}>Cancel</Button>
-                <TooltipProvider>
-                  <Tooltip>
-                    <TooltipTrigger asChild><span><Button variant="secondary" disabled>Dispatch</Button></span></TooltipTrigger>
-                    <TooltipContent>Enabled in a later version once ATLAS is verified.</TooltipContent>
-                  </Tooltip>
-                </TooltipProvider>
-              </div>
             </div>
-          )}
-        </Panel>
-      )}
+          </div>
+        </footer>
+      </div>
+    </TooltipProvider>
+  );
+}
 
-      <Panel title="Recent cohorts">
-        <div className="divide-y rounded-lg border">
-          {(cohorts.data ?? []).map((r) => (
-            <button key={r.id} type="button" onClick={() => setSelectedId(r.id)} className={cn("flex w-full items-center justify-between px-3 py-2 text-left text-sm hover:bg-muted/50", selectedId === r.id && "bg-muted/60")}>
-              <span>{new Date(r.created_at).toLocaleString()} · {String(r.program).toUpperCase()} · {r.region || "All regions"}</span>
-              <span className="flex items-center gap-2 text-muted-foreground">{r.total_count} people <Badge variant="outline">{r.status}</Badge></span>
-            </button>
-          ))}
-          {!cohorts.isLoading && (cohorts.data ?? []).length === 0 && <p className="p-3 text-sm text-muted-foreground">No cohorts yet.</p>}
-        </div>
-      </Panel>
+function Chips({ onPick, disabled, className }: { onPick: (s: string) => void; disabled?: boolean; className?: string }) {
+  return (
+    <div className={cn("flex flex-wrap gap-2", className)}>
+      {CHIPS.map((c) => (
+        <button key={c} type="button" disabled={disabled} onClick={() => onPick(c)}
+          className="rounded-full border px-3 py-1.5 text-xs outline-none transition-colors hover:bg-white/5 focus-visible:ring-2 focus-visible:ring-sky-300 disabled:opacity-40"
+          style={{ borderColor: "var(--n-border)", color: "var(--n-text)" }}>{c}</button>
+      ))}
     </div>
   );
 }
 
-// Labeled sub-group inside the planner card: subtle heading + aligned control grid.
-function Group({ title, className, children }: { title: string; className?: string; children: ReactNode }) {
+function CohortCard({ c, killed, onApprove, onCancel, busy }: { c: Cohort; killed: boolean; onApprove: () => void; onCancel: () => void; busy: boolean }) {
+  const [open, setOpen] = useState(false);
+  const status = c.status ?? "proposed";
+  const muted = { color: "var(--n-muted)" };
   return (
-    <section className={cn("space-y-3", className)}>
-      <h2 className="text-sm font-medium text-muted-foreground">{title}</h2>
-      <div className="grid grid-cols-1 items-start gap-x-4 gap-y-5 sm:grid-cols-2 md:grid-cols-3">{children}</div>
-    </section>
-  );
-}
+    <div className="space-y-4 rounded-xl border p-4" style={{ borderColor: "var(--n-border)", background: "var(--n-surface)" }}>
+      <div className="flex flex-wrap items-baseline justify-between gap-2">
+        <div className="text-base">
+          <span className="font-semibold">{c.totalCount}</span> people · {c.exploreCount} exploration · {c.urgentCount} urgent
+        </div>
+        <span className="rounded-full border px-2 py-0.5 text-xs" style={{ borderColor: "var(--n-border)", ...muted }}>{status}</span>
+      </div>
 
-// Shared shell so every control has the same label row, control height and caption slot.
-function FieldShell({ label, caption, hint, children }: { label: string; caption?: string; hint?: string; children: ReactNode }) {
-  return (
-    <div className="space-y-1.5">
-      <div className="flex min-h-5 items-center gap-1.5">
-        <Label className="text-sm font-medium">{label}</Label>
-        {hint && (
-          <TooltipProvider>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <button type="button" aria-label={`About ${label}`} className="shrink-0 rounded text-muted-foreground outline-none transition-colors hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring">
-                  <Info className="h-3.5 w-3.5" />
-                </button>
-              </TooltipTrigger>
-              <TooltipContent className="max-w-64 text-xs leading-relaxed">{hint}</TooltipContent>
-            </Tooltip>
-          </TooltipProvider>
+      <div className="grid gap-3 sm:grid-cols-2">
+        <Dist title="By region (preview)" data={c.fairness.byRegion} />
+        {c.fairness.categoryAvailable ? <Dist title="By category (preview)" data={c.fairness.byCategory} /> : (
+          <div className="rounded-lg border border-dashed p-3 text-sm" style={{ borderColor: "var(--n-border)" }}>
+            <div className="mb-1 flex items-center gap-2 font-medium"><ShieldAlert className="h-4 w-4" />By category</div>
+            <p style={muted}>{c.fairness.note}</p>
+          </div>
         )}
       </div>
-      {children}
-      <p className="min-h-[2.4rem] text-xs leading-snug text-muted-foreground">{caption}</p>
-    </div>
-  );
-}
 
-// Number or text field. Blank stays blank for the string form (min urgency = "no filter").
-function NumField<T extends number | string>({ label, value, onChange, min, max, step, placeholder, caption, hint }: {
-  label: string; value: T; onChange: (v: T) => void;
-  min?: number; max?: number; step?: number; placeholder?: string;
-  caption?: string; hint?: string;
-}) {
-  const isText = typeof value === "string";
-  return (
-    <FieldShell label={label} caption={caption} hint={hint}>
-      <Input className="h-9" type="number" value={value} min={min} max={max} step={step} placeholder={placeholder}
-        onChange={(e) => {
-          const raw = e.target.value;
-          if (isText) (onChange as (v: string) => void)(raw);
-          else (onChange as (v: number) => void)(raw === "" ? 0 : Number(raw));
-        }} />
-    </FieldShell>
+      {c.members.length > 0 && !c.urgencyAvailable && (
+        <p className="text-xs" style={muted}>Urgency data not yet populated — ranking uses confidence, intent and history.</p>
+      )}
+
+      <div>
+        <button type="button" onClick={() => setOpen((v) => !v)} aria-expanded={open}
+          className="flex items-center gap-1.5 rounded text-sm outline-none focus-visible:ring-2 focus-visible:ring-sky-300" style={{ color: "var(--n-accent)" }}>
+          <ChevronDown className={cn("h-4 w-4 transition-transform", open && "rotate-180")} />
+          {open ? "Hide" : "Show"} who's in it ({c.members.length} previewed)
+        </button>
+        {open && (
+          <div className="mt-3 overflow-x-auto rounded-lg border" style={{ borderColor: "var(--n-border)" }}>
+            <table className="w-full text-sm">
+              <caption className="caption-bottom p-2 text-xs" style={muted}>
+                Representative preview of {c.totalCount} — full list is resolved only at dispatch (disabled in this version).
+              </caption>
+              <thead className="text-xs" style={{ ...muted, background: "rgba(255,255,255,.03)" }}>
+                <tr>{["Phone", "Region", "Category", "Conf.", "Campaigns", "Last call", "Urgency", "Priority", "Why"].map((h) => <th key={h} className="px-3 py-2 text-left font-medium">{h}</th>)}</tr>
+              </thead>
+              <tbody>
+                {c.members.map((m, i) => (
+                  <tr key={i} className="border-t align-top" style={{ borderColor: "var(--n-border)" }}>
+                    <td className="px-3 py-2 font-mono text-xs">{m.phone_masked}</td>
+                    <td className="px-3 py-2">{m.region || "—"}</td>
+                    <td className="px-3 py-2">{m.category || "—"}</td>
+                    <td className="px-3 py-2">{m.confidence ?? "—"}</td>
+                    <td className="px-3 py-2">{m.total_campaigns}</td>
+                    <td className="px-3 py-2">{m.last_call_date || "—"}</td>
+                    <td className="px-3 py-2">
+                      {m.urgency == null ? <span style={muted}>—</span> : (
+                        <div className="flex flex-col gap-1">
+                          <span className="flex items-center gap-1.5">
+                            <span className="font-semibold">{m.urgency}</span>
+                            {m.is_urgent && <span className="rounded-full border border-amber-400/40 bg-amber-400/15 px-2 py-0.5 text-xs text-amber-200">Urgent</span>}
+                          </span>
+                          {m.urgency_reason && <span className="text-xs" style={muted}>{m.urgency_reason}</span>}
+                        </div>
+                      )}
+                    </td>
+                    <td className="px-3 py-2 font-semibold">{m.priority_score}</td>
+                    <td className="px-3 py-2">
+                      {m.is_exploration && <span className="mr-2 rounded-full border px-2 py-0.5 text-xs" style={{ borderColor: "var(--n-border)" }}>exploration</span>}
+                      <span style={muted}>{m.reason}</span>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
+
+      <div className="flex flex-wrap gap-2">
+        <button type="button" onClick={onApprove} disabled={killed || status !== "proposed" || busy}
+          className="rounded-full px-4 py-2 text-sm font-medium outline-none focus-visible:ring-2 focus-visible:ring-sky-300 disabled:opacity-40"
+          style={{ background: "var(--n-user)", color: "var(--n-user-text)" }}>Approve (shadow — no calls)</button>
+        <button type="button" onClick={onCancel} disabled={status === "cancelled" || busy}
+          className="rounded-full border px-4 py-2 text-sm outline-none hover:bg-white/5 focus-visible:ring-2 focus-visible:ring-sky-300 disabled:opacity-40"
+          style={{ borderColor: "var(--n-border)" }}>Cancel</button>
+        <Tooltip>
+          <TooltipTrigger asChild><span><button type="button" disabled className="rounded-full border px-4 py-2 text-sm opacity-40" style={{ borderColor: "var(--n-border)" }}>Dispatch</button></span></TooltipTrigger>
+          <TooltipContent>Enabled in a later version once ATLAS is verified.</TooltipContent>
+        </Tooltip>
+      </div>
+    </div>
   );
 }
 
 function Dist({ title, data }: { title: string; data: Record<string, number> }) {
-  const entries = Object.entries(data).sort((a, b) => b[1] - a[1]);
+  const entries = Object.entries(data).sort((a, b) => b[1] - a[1]).slice(0, 8);
   const total = entries.reduce((s, [, v]) => s + v, 0) || 1;
   return (
-    <div className="rounded-lg border p-3 text-sm">
-      <div className="mb-2 font-semibold">{title}</div>
+    <div className="rounded-lg border p-3 text-sm" style={{ borderColor: "var(--n-border)" }}>
+      <div className="mb-2 font-medium">{title}</div>
       <div className="space-y-1.5">
         {entries.map(([k, v]) => (
           <div key={k} className="flex items-center gap-2">
-            <span className="w-28 truncate text-muted-foreground">{k}</span>
-            <div className="h-2 flex-1 rounded bg-muted"><div className="h-2 rounded bg-primary" style={{ width: `${(v / total) * 100}%` }} /></div>
+            <span className="w-24 truncate" style={{ color: "var(--n-muted)" }}>{k}</span>
+            <div className="h-1.5 flex-1 rounded" style={{ background: "rgba(255,255,255,.06)" }}>
+              <div className="h-1.5 rounded" style={{ width: `${(v / total) * 100}%`, background: "var(--n-accent)" }} />
+            </div>
             <span className="w-8 text-right">{v}</span>
           </div>
         ))}
-        {entries.length === 0 && <p className="text-muted-foreground">No data.</p>}
+        {entries.length === 0 && <p style={{ color: "var(--n-muted)" }}>No data.</p>}
       </div>
     </div>
+  );
+}
+
+function AdvGroup({ title, children }: { title: string; children: ReactNode }) {
+  return (
+    <section className="space-y-2">
+      <h3 className="text-sm font-medium" style={{ color: "var(--n-muted)" }}>{title}</h3>
+      <div className="grid grid-cols-1 items-start gap-3 sm:grid-cols-2 md:grid-cols-3">{children}</div>
+    </section>
+  );
+}
+
+function Field({ label, hint, children }: { label: string; hint?: string; children: ReactNode }) {
+  return (
+    <div className="space-y-1.5">
+      <div className="flex min-h-5 items-center gap-1.5 text-xs font-medium">
+        <span>{label}</span>
+        {hint && (
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <button type="button" aria-label={`About ${label}`} className="rounded outline-none focus-visible:ring-2 focus-visible:ring-sky-300" style={{ color: "var(--n-muted)" }}><Info className="h-3.5 w-3.5" /></button>
+            </TooltipTrigger>
+            <TooltipContent className="max-w-64 text-xs leading-relaxed">{hint}</TooltipContent>
+          </Tooltip>
+        )}
+      </div>
+      {children}
+    </div>
+  );
+}
+
+function TextIn({ value, onChange, placeholder, type = "text" }: { value: string; onChange: (v: string) => void; placeholder?: string; type?: string }) {
+  return (
+    <input type={type} value={value} placeholder={placeholder} onChange={(e) => onChange(e.target.value)} aria-label={placeholder}
+      className="h-9 w-full rounded-md border bg-transparent px-2 text-sm outline-none focus-visible:ring-2 focus-visible:ring-sky-300 placeholder:text-[color:var(--n-muted)]"
+      style={{ borderColor: "var(--n-border)" }} />
+  );
+}
+
+function NumIn({ label, value, onChange, min, max, step, hint }: { label: string; value: number; onChange: (v: number) => void; min?: number; max?: number; step?: number; hint?: string }) {
+  return (
+    <Field label={label} hint={hint}>
+      <input type="number" value={value} min={min} max={max} step={step} aria-label={label}
+        onChange={(e) => onChange(e.target.value === "" ? 0 : Number(e.target.value))}
+        className="h-9 w-full rounded-md border bg-transparent px-2 text-sm outline-none focus-visible:ring-2 focus-visible:ring-sky-300"
+        style={{ borderColor: "var(--n-border)" }} />
+    </Field>
   );
 }
