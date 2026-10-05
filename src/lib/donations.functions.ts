@@ -237,7 +237,7 @@ export const processZeffyWebhook = createServerFn({ method: "POST" })
         contactId = createdId != null ? String(createdId) : null;
         zeffy["contact_create"] = { ok: created.ok, status: created.status, id: contactId };
       }
-      const tagResults: Record<string, unknown> = {};
+      const tagResults: Record<string, AnyJson> = {};
       if (contactId) {
         for (const tag of tagNames) {
           const res = await zeffyTagContact(contactId, tag);
@@ -306,7 +306,7 @@ export const processZeffyWebhook = createServerFn({ method: "POST" })
       payment_id: paymentId,
       email_to: "agatha@stockholmskonomi.se",
       sender: senderAddress(),
-      email: emailResult,
+      email: emailResult as unknown as Record<string, AnyJson>,
       zeffy,
     });
 
