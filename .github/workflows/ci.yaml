@@ -13,6 +13,10 @@ name: CI
 #                            `no-explicit-any`. Advisory jobs report through
 #                            annotations and the run summary rather than turning
 #                            green silently.
+#   * smoke-image BLOCKING - builds the Dockerfile WITHOUT pushing, boots it and
+#                            probes it. Exercises the image on every PR so a broken
+#                            Dockerfile is caught in review, not when a release tag
+#                            is cut. Publishing is build-images.yaml, tags only.
 #   * sonar      ADVISORY  - skips until SONAR_TOKEN is set on the repository.
 #
 # There are NO tests in this repo (no test files, no runner, no test script), so
@@ -80,6 +84,56 @@ jobs:
       # (Nitro's default preset), which is exactly what `vite build` produces for
       # Lovable's own publishing, so this checks the artefact that actually ships.
       - run: bun run build
+
+  smoke-image:
+    name: smoke-image
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      # docker-container driver: required for the gha layer cache below.
+      - uses: docker/setup-buildx-action@37fe631027851001ddb9b187196cc803df7f5f0e # v4.3.0
+
+      # No registry login and no secrets: the base images come from the public AWS
+      # ECR mirror, so fork and Dependabot pull requests get the same coverage.
+      - name: Build the image (no push)
+        uses: docker/build-push-action@53b7df96c91f9c12dcc8a07bcb9ccacbed38856a # v7.3.0
+        with:
+          context: .
+          load: true # into the local image store, so it can be run below
+          push: false
+          tags: agg-campaign-manager:ci
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      # The app answers 200 on `/` and `/login` with no secrets or environment,
+      # so a real boot-and-probe is possible; a build alone would miss a bad CMD,
+      # a missing file in .output, or a crash at startup.
+      - name: Boot the image and probe it
+        run: |
+          set -euo pipefail
+          docker run -d --name cm -p 3000:3000 agg-campaign-manager:ci
+          trap 'docker logs cm || true; docker rm -f cm >/dev/null 2>&1 || true' EXIT
+
+          for i in $(seq 1 30); do
+            if curl -fsS -o /dev/null http://127.0.0.1:3000/; then break; fi
+            if [ "$i" = 30 ]; then echo "::error::the container did not answer on :3000 within 30s"; exit 1; fi
+            sleep 1
+          done
+
+          for path in / /login; do
+            code=$(curl -s -o /dev/null -w '%{http_code}' "http://127.0.0.1:3000${path}")
+            echo "GET ${path} -> ${code}"
+            [ "${code}" = "200" ] || { echo "::error::GET ${path} returned ${code}, expected 200"; exit 1; }
+          done
+
+          # The image is meant to run unprivileged.
+          uid=$(docker exec cm id -u)
+          echo "container uid: ${uid}"
+          [ "${uid}" != "0" ] || { echo "::error::the container runs as root"; exit 1; }
 
   lint:
     name: lint (advisory)
