@@ -208,7 +208,7 @@ export const atlasBuildCohort = createServerFn({ method: "POST" }).middleware([a
       confidence_min: data.confidenceMin ?? null, cooldown_days: data.cooldownDays ?? null,
       max_campaigns: data.maxCampaigns ?? null, explore_pct: explorePct,
       status: "proposed", model_mark: "Mark I", total_count: totalCount,
-      narration, fairness, params: { ...data, budget, explorePct, matched }, created_by: actor,
+      narration, fairness, params: { ...data, budget, explorePct, matched, urgencyWeight, urgencyMin }, created_by: actor,
     }).select("id").single();
     if (insErr) throw new Error(insErr.message);
     const cohortId = (row as any).id as string;
@@ -216,7 +216,7 @@ export const atlasBuildCohort = createServerFn({ method: "POST" }).middleware([a
       const { error: mErr } = await db.from("atlas_cohort_members").insert(members.map((m) => ({ ...m, cohort_id: cohortId })));
       if (mErr) throw new Error(mErr.message);
     }
-    return { cohortId, totalCount, sampleCount: members.length, exploreCount: kExplore, fairness, narration, confidenceAvailable: !!p.confidenceAvailable, regions: Array.isArray(p.regions) ? p.regions : [] };
+    return { cohortId, totalCount, sampleCount: members.length, exploreCount: kExplore, fairness, narration, confidenceAvailable: !!p.confidenceAvailable, urgencyAvailable: urgencyPresent, urgentCount, regions: Array.isArray(p.regions) ? p.regions : [] };
   });
 
 export const atlasListCohorts = createServerFn({ method: "POST" }).middleware([atlasSession]).handler(async () => {

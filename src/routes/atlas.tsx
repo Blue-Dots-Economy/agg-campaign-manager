@@ -52,6 +52,8 @@ function AtlasPage() {
   const [cooldownDays, setCooldownDays] = useState(30);
   const [maxCampaigns, setMaxCampaigns] = useState(3);
   const [explorePct, setExplorePct] = useState(15);
+  const [urgencyWeight, setUrgencyWeight] = useState(30);
+  const [urgencyMin, setUrgencyMin] = useState("");
   const [selectedId, setSelectedId] = useState<string | null>(null);
 
   const detail = useQuery({
@@ -67,7 +69,7 @@ function AtlasPage() {
   });
 
   const buildMut = useMutation({
-    mutationFn: () => build({ data: { program, region: region || null, budget: Math.min(budget, 1000), confidenceMin, cooldownDays, maxCampaigns, explorePct } }),
+    mutationFn: () => build({ data: { program, region: region || null, budget: Math.min(budget, 1000), confidenceMin, cooldownDays, maxCampaigns, explorePct, urgencyWeight, urgencyMin: urgencyMin === "" ? null : Number(urgencyMin) } }),
     onSuccess: (r) => {
       if (r.regions.length) setRegions(r.regions);
       setSelectedId(r.cohortId);
