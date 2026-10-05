@@ -3,12 +3,13 @@ import { useEffect, useRef, useState, type ReactNode } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { toast } from "sonner";
-import { ArrowUp, ChevronDown, Info, Mic, OctagonX, ShieldAlert, SlidersHorizontal } from "lucide-react";
+import { ArrowUp, ChevronDown, Info, Mic, OctagonX, SlidersHorizontal } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import {
   atlasApproveCohort, atlasCancelCohort, atlasChat, atlasGetControl, atlasSetControl,
 } from "@/lib/atlas.functions";
 import { cn } from "@/lib/utils";
+import { CohortConsole } from "@/components/atlas/CohortConsole";
 
 export const Route = createFileRoute("/atlas")({
   head: () => ({
@@ -28,7 +29,7 @@ export const Route = createFileRoute("/atlas")({
 type Member = any;
 type Cohort = {
   cohortId: string; totalCount: number; sampleCount: number; exploreCount: number; urgentCount: number;
-  narration: string; members: Member[]; urgencyAvailable: boolean; status?: string;
+  narration: string; members: Member[]; urgencyAvailable: boolean; confidenceAvailable?: boolean; status?: string;
   fairness: { byRegion: Record<string, number>; byCategory: Record<string, number>; categoryAvailable: boolean; note: string | null };
 };
 type Msg = { id: string; role: "user" | "assistant"; content: string; cohort?: Cohort; usedParams?: any };
@@ -189,7 +190,9 @@ function AtlasPage() {
                         <div className="min-w-0 flex-1 space-y-4">
                           <p className="whitespace-pre-wrap text-sm leading-relaxed">{m.content}</p>
                           {m.cohort && (
-                            <CohortCard c={m.cohort} killed={killed}
+                            <CohortConsole c={m.cohort} killed={killed}
+                              budget={Number(m.usedParams?.budget ?? 1000)}
+                              regionLabel={m.usedParams?.region || "all regions"}
                               onApprove={() => approveMut.mutate(m.cohort!.cohortId)}
                               onCancel={() => cancelMut.mutate(m.cohort!.cohortId)}
                               busy={approveMut.isPending || cancelMut.isPending} />
@@ -289,119 +292,6 @@ function Chips({ onPick, disabled, className }: { onPick: (s: string) => void; d
           className="rounded-full border px-3 py-1.5 text-xs outline-none transition-colors hover:bg-white/5 focus-visible:ring-2 focus-visible:ring-sky-300 disabled:opacity-40"
           style={{ borderColor: "var(--n-border)", color: "var(--n-text)" }}>{c}</button>
       ))}
-    </div>
-  );
-}
-
-function CohortCard({ c, killed, onApprove, onCancel, busy }: { c: Cohort; killed: boolean; onApprove: () => void; onCancel: () => void; busy: boolean }) {
-  const [open, setOpen] = useState(false);
-  const status = c.status ?? "proposed";
-  const muted = { color: "var(--n-muted)" };
-  return (
-    <div className="space-y-4 rounded-xl border p-4" style={{ borderColor: "var(--n-border)", background: "var(--n-surface)" }}>
-      <div className="flex flex-wrap items-baseline justify-between gap-2">
-        <div className="text-base">
-          <span className="font-semibold">{c.totalCount}</span> people · {c.exploreCount} exploration · {c.urgentCount} urgent
-        </div>
-        <span className="rounded-full border px-2 py-0.5 text-xs" style={{ borderColor: "var(--n-border)", ...muted }}>{status}</span>
-      </div>
-
-      <div className="grid gap-3 sm:grid-cols-2">
-        <Dist title="By region (preview)" data={c.fairness.byRegion} />
-        {c.fairness.categoryAvailable ? <Dist title="By category (preview)" data={c.fairness.byCategory} /> : (
-          <div className="rounded-lg border border-dashed p-3 text-sm" style={{ borderColor: "var(--n-border)" }}>
-            <div className="mb-1 flex items-center gap-2 font-medium"><ShieldAlert className="h-4 w-4" />By category</div>
-            <p style={muted}>{c.fairness.note}</p>
-          </div>
-        )}
-      </div>
-
-      {c.members.length > 0 && !c.urgencyAvailable && (
-        <p className="text-xs" style={muted}>Urgency data not yet populated — ranking uses confidence, intent and history.</p>
-      )}
-
-      <div>
-        <button type="button" onClick={() => setOpen((v) => !v)} aria-expanded={open}
-          className="flex items-center gap-1.5 rounded text-sm outline-none focus-visible:ring-2 focus-visible:ring-sky-300" style={{ color: "var(--n-accent)" }}>
-          <ChevronDown className={cn("h-4 w-4 transition-transform", open && "rotate-180")} />
-          {open ? "Hide" : "Show"} who's in it ({c.members.length} previewed)
-        </button>
-        {open && (
-          <div className="mt-3 overflow-x-auto rounded-lg border" style={{ borderColor: "var(--n-border)" }}>
-            <table className="w-full text-sm">
-              <caption className="caption-bottom p-2 text-xs" style={muted}>
-                Representative preview of {c.totalCount} — full list is resolved only at dispatch (disabled in this version).
-              </caption>
-              <thead className="text-xs" style={{ ...muted, background: "rgba(255,255,255,.03)" }}>
-                <tr>{["Phone", "Region", "Category", "Conf.", "Campaigns", "Last call", "Urgency", "Priority", "Why"].map((h) => <th key={h} className="px-3 py-2 text-left font-medium">{h}</th>)}</tr>
-              </thead>
-              <tbody>
-                {c.members.map((m, i) => (
-                  <tr key={i} className="border-t align-top" style={{ borderColor: "var(--n-border)" }}>
-                    <td className="px-3 py-2 font-mono text-xs">{m.phone_masked}</td>
-                    <td className="px-3 py-2">{m.region || "—"}</td>
-                    <td className="px-3 py-2">{m.category || "—"}</td>
-                    <td className="px-3 py-2">{m.confidence ?? "—"}</td>
-                    <td className="px-3 py-2">{m.total_campaigns}</td>
-                    <td className="px-3 py-2">{m.last_call_date || "—"}</td>
-                    <td className="px-3 py-2">
-                      {m.urgency == null ? <span style={muted}>—</span> : (
-                        <div className="flex flex-col gap-1">
-                          <span className="flex items-center gap-1.5">
-                            <span className="font-semibold">{m.urgency}</span>
-                            {m.is_urgent && <span className="rounded-full border border-amber-400/40 bg-amber-400/15 px-2 py-0.5 text-xs text-amber-200">Urgent</span>}
-                          </span>
-                          {m.urgency_reason && <span className="text-xs" style={muted}>{m.urgency_reason}</span>}
-                        </div>
-                      )}
-                    </td>
-                    <td className="px-3 py-2 font-semibold">{m.priority_score}</td>
-                    <td className="px-3 py-2">
-                      {m.is_exploration && <span className="mr-2 rounded-full border px-2 py-0.5 text-xs" style={{ borderColor: "var(--n-border)" }}>exploration</span>}
-                      <span style={muted}>{m.reason}</span>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
-      </div>
-
-      <div className="flex flex-wrap gap-2">
-        <button type="button" onClick={onApprove} disabled={killed || status !== "proposed" || busy}
-          className="rounded-full px-4 py-2 text-sm font-medium outline-none focus-visible:ring-2 focus-visible:ring-sky-300 disabled:opacity-40"
-          style={{ background: "var(--n-user)", color: "var(--n-user-text)" }}>Approve (shadow — no calls)</button>
-        <button type="button" onClick={onCancel} disabled={status === "cancelled" || busy}
-          className="rounded-full border px-4 py-2 text-sm outline-none hover:bg-white/5 focus-visible:ring-2 focus-visible:ring-sky-300 disabled:opacity-40"
-          style={{ borderColor: "var(--n-border)" }}>Cancel</button>
-        <Tooltip>
-          <TooltipTrigger asChild><span><button type="button" disabled className="rounded-full border px-4 py-2 text-sm opacity-40" style={{ borderColor: "var(--n-border)" }}>Dispatch</button></span></TooltipTrigger>
-          <TooltipContent>Enabled in a later version once ATLAS is verified.</TooltipContent>
-        </Tooltip>
-      </div>
-    </div>
-  );
-}
-
-function Dist({ title, data }: { title: string; data: Record<string, number> }) {
-  const entries = Object.entries(data).sort((a, b) => b[1] - a[1]).slice(0, 8);
-  const total = entries.reduce((s, [, v]) => s + v, 0) || 1;
-  return (
-    <div className="rounded-lg border p-3 text-sm" style={{ borderColor: "var(--n-border)" }}>
-      <div className="mb-2 font-medium">{title}</div>
-      <div className="space-y-1.5">
-        {entries.map(([k, v]) => (
-          <div key={k} className="flex items-center gap-2">
-            <span className="w-24 truncate" style={{ color: "var(--n-muted)" }}>{k}</span>
-            <div className="h-1.5 flex-1 rounded" style={{ background: "rgba(255,255,255,.06)" }}>
-              <div className="h-1.5 rounded" style={{ width: `${(v / total) * 100}%`, background: "var(--n-accent)" }} />
-            </div>
-            <span className="w-8 text-right">{v}</span>
-          </div>
-        ))}
-        {entries.length === 0 && <p style={{ color: "var(--n-muted)" }}>No data.</p>}
-      </div>
     </div>
   );
 }
