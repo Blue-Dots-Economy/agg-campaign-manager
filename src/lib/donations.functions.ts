@@ -13,6 +13,8 @@ import {
 } from "@/lib/zeffy.server";
 import { sendEmail, escapeHtml, senderAddress } from "@/lib/email.server";
 
+type AnyJson = string | number | boolean | null | AnyJson[] | { [k: string]: AnyJson };
+
 const FULL_FEE = 2500;
 const MONTHLY = 250;
 
@@ -143,7 +145,7 @@ async function logEvent(
   supabaseAdmin: { from: (t: string) => any },
   submissionId: string | null,
   type: string,
-  detail: Record<string, unknown>,
+  detail: Record<string, AnyJson>,
 ) {
   await supabaseAdmin.from("donation_events").insert({ submission_id: submissionId, type, detail });
 }
@@ -201,7 +203,7 @@ export const processZeffyWebhook = createServerFn({ method: "POST" })
     const tagNames = tagNamesFor(plan);
 
     // Zeffy API enrichment — every step degrades gracefully and is logged.
-    const zeffy: Record<string, unknown> = {};
+    const zeffy: Record<string, AnyJson> = {};
     if (zeffyConfigured()) {
       if (paymentId) {
         const detail = await zeffyGetPayment(paymentId);
