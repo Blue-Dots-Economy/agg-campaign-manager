@@ -97,8 +97,13 @@ function urgencyMinOf(v: unknown): number | null {
 
 export const atlasBuildCohort = createServerFn({ method: "POST" }).middleware([atlasSession])
   .inputValidator((d: AtlasBuildInput) => d)
-  .handler(async ({ data }) => {
+  .handler(async ({ data }): Promise<any> => {
     const actor = await requireAtlasActor();
+    return buildCohortCore(actor, data);
+  });
+
+async function buildCohortCore(actor: string, data: AtlasBuildInput) {
+  {
     const budget = Math.max(1, Math.min(Number(data.budget ?? BUDGET_CAP) || BUDGET_CAP, BUDGET_CAP));
     const explorePct = Math.max(0, Math.min(Number(data.explorePct ?? 15), 50));
     const urgencyWeight = urgencyWeightOf(data.urgencyWeight);
@@ -216,7 +221,110 @@ export const atlasBuildCohort = createServerFn({ method: "POST" }).middleware([a
       const { error: mErr } = await db.from("atlas_cohort_members").insert(members.map((m) => ({ ...m, cohort_id: cohortId })));
       if (mErr) throw new Error(mErr.message);
     }
-    return { cohortId, totalCount, sampleCount: members.length, exploreCount: kExplore, fairness, narration, confidenceAvailable: !!p.confidenceAvailable, urgencyAvailable: urgencyPresent, urgentCount, regions: Array.isArray(p.regions) ? p.regions : [] };
+    return { cohortId, totalCount, sampleCount: members.length, exploreCount: kExplore, fairness, narration, members, confidenceAvailable: !!p.confidenceAvailable, urgencyAvailable: urgencyPresent, urgentCount, regions: Array.isArray(p.regions) ? p.regions : [], status: "proposed" };
+  }
+}
+
+// ---------------- Conversational layer (shadow mode; never dispatches) ----------------
+const CHAT_DEFAULTS: AtlasBuildInput = {
+  program: "kkb", region: null, confidenceMin: 6, cooldownDays: 30, maxCampaigns: 3,
+  explorePct: 15, urgencyWeight: 30, urgencyMin: null, budget: 1000,
+};
+type ChatMsg = { role: "user" | "assistant"; content: string };
+
+const ATLAS_SYSTEM = `You are ATLAS (Automated Targeting, Learning & Allocation System), Mark I, running in SHADOW MODE: you propose daily calling cohorts for a job-seeker program and never place calls. Persona: a calm, fair-minded chief of staff. Speak in first person, briefly show your reasoning, speak up for overlooked people, be honest about missing data, no hype, no exclamation marks. Numbers propose, humans decide.
+
+Read the LATEST user message in the context of the conversation and reply with STRICT JSON only (no markdown):
+{"action":"build"|"clarify"|"answer","params":{"program":"kkb"|"dkb","region":string|null,"confidenceMin":number,"cooldownDays":number,"maxCampaigns":number,"explorePct":number,"urgencyWeight":number,"urgencyMin":number|null,"budget":number},"message":string}
+- "build": the user wants a cohort. Include only params the user implied (e.g. "Ghaziabad" -> region "Ghaziabad"; "high-confidence" -> confidenceMin 8; "most urgent" -> urgencyWeight 60 and urgencyMin 3; "haven't called recently" -> cooldownDays 60 and explorePct 30). confidenceMin is 0-10, urgency scale -2..5, budget max 1000. "message" is one short lead-in sentence.
+- "clarify": the request is ambiguous; "message" is one short question.
+- "answer": a question about the last cohort or ATLAS itself; answer from the provided cohort summary, honestly.`;
+
+async function callGateway(messages: ChatMsg[], lastCohort: string | null): Promise<string> {
+  const key = process.env.LOVABLE_API_KEY;
+  if (!key) throw new Error("no key");
+  const input = [
+    ...(lastCohort ? [{ role: "user", content: `Context — most recent cohort summary: ${lastCohort}` }] : []),
+    ...messages.slice(-12).map((m) => ({ role: m.role, content: m.content.slice(0, 4000) })),
+  ];
+  const res = await fetch("https://ai.gateway.lovable.dev/v1/responses", {
+    method: "POST",
+    headers: { Authorization: `Bearer ${key}`, "Content-Type": "application/json", "X-Lovable-AIG-SDK": "fetch" },
+    body: JSON.stringify({ model: "openai/gpt-6-astra", instructions: ATLAS_SYSTEM, input, reasoning: { effort: "low" }, store: false, stream: true }),
+  });
+  if (!res.ok || !res.body) throw new Error(`gateway ${res.status}`);
+  const reader = res.body.getReader();
+  const dec = new TextDecoder();
+  let buf = "", out = "";
+  for (;;) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    buf += dec.decode(value, { stream: true });
+    let i;
+    while ((i = buf.indexOf("\n")) >= 0) {
+      const line = buf.slice(0, i).trim(); buf = buf.slice(i + 1);
+      if (!line.startsWith("data:")) continue;
+      const d = line.slice(5).trim();
+      if (!d || d === "[DONE]") continue;
+      try {
+        const ev = JSON.parse(d);
+        if (ev.type === "response.output_text.delta" && typeof ev.delta === "string") out += ev.delta;
+        if (ev.type === "response.failed" || ev.type === "error") throw new Error("gateway stream error");
+      } catch (e) { if ((e as Error).message === "gateway stream error") throw e; }
+    }
+  }
+  return out;
+}
+
+function parseJson(s: string): any | null {
+  const m = s.match(/\{[\s\S]*\}/);
+  if (!m) return null;
+  try { return JSON.parse(m[0]); } catch { return null; }
+}
+
+function cleanParams(p: any): Partial<AtlasBuildInput> {
+  const o: Partial<AtlasBuildInput> = {};
+  if (!p || typeof p !== "object") return o;
+  if (p.program === "kkb" || p.program === "dkb") o.program = p.program;
+  if (typeof p.region === "string" && p.region.trim()) o.region = p.region.trim();
+  for (const k of ["confidenceMin", "cooldownDays", "maxCampaigns", "explorePct", "urgencyWeight", "budget"] as const) {
+    if (p[k] != null && !isNaN(Number(p[k]))) (o as any)[k] = Number(p[k]);
+  }
+  if (p.urgencyMin != null && !isNaN(Number(p.urgencyMin))) o.urgencyMin = Number(p.urgencyMin);
+  return o;
+}
+
+function stripNulls(a?: Partial<AtlasBuildInput>): Partial<AtlasBuildInput> {
+  const o: any = {};
+  for (const [k, v] of Object.entries(a ?? {})) if (v !== undefined && v !== "") o[k] = v;
+  return o;
+}
+
+export const atlasChat = createServerFn({ method: "POST" }).middleware([atlasSession])
+  .inputValidator((d: { messages: ChatMsg[]; advanced?: Partial<AtlasBuildInput>; lastCohort?: string | null }) => d)
+  .handler(async ({ data }): Promise<any> => {
+    const actor = await requireAtlasActor();
+    const msgs = (data.messages ?? []).filter((m) => m && (m.role === "user" || m.role === "assistant") && typeof m.content === "string");
+    const last = [...msgs].reverse().find((m) => m.role === "user")?.content ?? "";
+    const doBuild = async (params: Partial<AtlasBuildInput>, lead: string) => {
+      const ctl = await getControl();
+      if (ctl.killed) return { action: "answer", reply: "I'm halted right now — the kill switch is on. Resume me and I'll put a cohort together." };
+      const usedParams = { ...CHAT_DEFAULTS, ...stripNulls(data.advanced), ...params } as AtlasBuildInput;
+      const cohort = await buildCohortCore(actor, usedParams);
+      return { action: "build", reply: `${lead}\n\n${cohort.narration}`.trim(), cohort, usedParams };
+    };
+
+    let parsed: any = null;
+    try { parsed = parseJson(await callGateway(msgs, data.lastCohort ?? null)); }
+    catch (e) { console.error("atlasChat gateway:", (e as Error).message); }
+
+    if (!parsed || !["build", "clarify", "answer"].includes(parsed.action)) {
+      if (/cohort|today|call/i.test(last)) return doBuild({}, "My language model isn't reachable right now, so I've used the standard settings.");
+      return { action: "answer", reply: "I couldn't quite follow that just now. Could you rephrase — for example, \"Give me today's cohort\"?" };
+    }
+    const message = String(parsed.message ?? "").trim();
+    if (parsed.action === "build") return doBuild(cleanParams(parsed.params), message);
+    return { action: parsed.action, reply: message || "Could you say a bit more about what you need?" };
   });
 
 export const atlasListCohorts = createServerFn({ method: "POST" }).middleware([atlasSession]).handler(async () => {
