@@ -2,9 +2,9 @@
 
 ## What we're building
 
-A public donation page in this app at **`/donera`** (assumes Swedish copy — see questions) that
-collects donor details, then hands off to Zeffy's checkout with everything prefilled. A webhook
-closes the loop after payment.
+A public donation page in this app at **`/donera`** (Swedish copy) that collects donor details,
+then hands off to Zeffy's checkout with everything prefilled. A webhook closes the loop after
+payment.
 
 ### Donation page (public route `/donera`)
 
@@ -28,30 +28,31 @@ matching Zeffy donation form URL with query params: `Amount`, `firstname`, `last
 
 New public route `POST /api/public/hooks/zeffy-webhook?token=…`:
 1. Verify the token (constant-time compare) against the `ZEFFY_WEBHOOK_TOKEN` secret.
-2. Parse `payment.completed` payload (buyer name, email, address, amount, payment id, campaign,
+2. Parse the `payment.completed` payload (buyer name, email, address, amount, payment id, campaign,
    one-time vs monthly) and match it to the stored submission by email (fallback: latest pending
    submission for that email). Mark the submission paid.
-3. Via the Zeffy API (read endpoints are confirmed; writes are attempted and degrade gracefully):
+3. Via the Zeffy API (read endpoints are confirmed; writes are attempted and degrade gracefully
+   with logged outcomes):
    - fetch the payment record (`GET /payments`) to double-check amount/id when the API key exists,
    - create/update the contact (`POST /contacts`, source = the Zeffy donation),
-   - add taxonomy tags where the API allows: `Donor 2026`, `Donation 2026`, plus `Student fee 2500`
-     / `Student fee 3750`-style tags for full-fee payments or `Monthly donor` (`donor-monthly`)
-     for monthly — untagged actions are logged so they can be fixed manually.
-4. Tax receipts: Zeffy issues these automatically per form — the full-fee/one-time form will have
-   receipts enabled (set in the Zeffy dashboard; noted in setup steps).
+   - add taxonomy tags where the API allows: `Donor 2026`, `Donation 2026`, plus the full-fee
+     student-fee tag or `Monthly donor` (`donor-monthly`) for monthly.
+4. Tax receipts: Zeffy issues these automatically per form — the full-fee/one-time form must have
+   receipts enabled (set in the Zeffy dashboard; listed in the setup notes we hand back).
 5. Build the CSV import file (date, donor name, email, address, amount, currency, payment id,
    one-time/monthly, what they paid towards, payment method, Zeffy ids) and email it to
-   **agatha@stockholmskonomi.se** via Resend (`RESEND_API_KEY` secret).
+   **agatha@stockholmskonomi.se** via Resend (`RESEND_API_KEY` secret). If no Resend key is set,
+   the CSV is stored on the donation row so nothing is lost and it can be sent once the key lands.
 6. Onboarding email to the donor: Zeffy's per-form thank-you email templates handle this ("Onboarding:
    Full year 2026" on the one-time form, "Onboarding: Monthly" on the monthly form — configured in
-   the Zeffy dashboard). We record which template applied per donation in the log.
+   the Zeffy dashboard). We record which template applies per donation in the log.
 
 ### Database (this project)
 
 `donation_submissions`: id, created_at, session token, first/last name, email, phone, street,
 postal, city, country, plan (full_fee | monthly | other), pays_towards, comment, payment_method,
 amount_sek, status (pending | paid | failed | unknown), zeffy_payment_id, zeffy_contact_id,
-zeffy_tags jsonb, webhook payload jsonb, error. No public RLS access — service-role/server only.
+zeffy_tags jsonb, error. No public access — service-role/server only.
 A `donation_events` log table records each webhook/step outcome for debugging.
 
 ## Files
@@ -63,7 +64,7 @@ A `donation_events` log table records each webhook/step outcome for debugging.
 - NEW `src/lib/email.server.ts` — Resend client (CSV with attachment + onboarding fallback email)
 - NEW `src/routes/api.public/hooks.zeffy-webhook.ts` — webhook route (real path `/api/public/hooks/zeffy-webhook`)
 - EDIT `src/routes/__root.tsx` — add `/donera` to the public paths
-- NEW migration SQL + applied via the database tool (table + grants)
+- NEW migration SQL + applied via the database tool (tables + grants)
 
 ## Secrets & configuration (Project Settings → Secrets)
 
@@ -72,18 +73,9 @@ A `donation_events` log table records each webhook/step outcome for debugging.
   webhook configuration
 - `RESEND_API_KEY` — needed for the CSV email to Agnes and as onboarding fallback; sending to an
   external address requires a verified sender domain in Resend
-- Zeffy form URLs for one-time and monthly forms — configured as secrets (`ZEFFY_FORM_ONETIME_URL`,
-  `ZEFFY_FORM_MONTHLY_URL`, `ZEFFY_FORM_OTHER_URL` optional)
-
-## Questions before I build
-
-1. **Language** — Swedish, English, or both (toggle) on the donation page?
-2. **Zeffy form URL(s)** — paste the donation form link(s). If you only have one form today, I'll
-   wire both payment types to it and you duplicate it in Zeffy later for the monthly onboarding
-   email.
-3. **Sender for the emails to Agnes + donors** — which address (e.g. `hej@sapijodzi.org`)? It must
-   be on a domain verified in Resend.
-4. Confirm `/donera` is the right slug (or tell me the one you want).
+- `ZEFFY_FORM_ONETIME_URL` / `ZEFFY_FORM_MONTHLY_URL` — the Zeffy donation form URL(s); until you
+  paste them, submit shows the form with a friendly "configure me" error and nothing breaks
+- `DONATION_SENDER_EMAIL` — defaults to `hej@sapijodzi.org` until you confirm the real address
 
 ## Explicitly out of scope
 
