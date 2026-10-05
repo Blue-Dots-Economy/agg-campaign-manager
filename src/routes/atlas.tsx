@@ -312,13 +312,11 @@ function FieldShell({ label, caption, hint, children }: { label: string; caption
   );
 }
 
-type NumFieldProps = {
-  label: string; min?: number; max?: number; step?: number; placeholder?: string;
+function NumField<T extends number | string>({ label, value, onChange, min, max, step, placeholder, caption, hint }: {
+  label: string; value: T; onChange: (v: T) => void;
+  min?: number; max?: number; step?: number; placeholder?: string;
   caption?: string; hint?: string;
-} & ({ value: number; onChange: (v: number) => void } | { value: string; onChange: (v: string) => void });
-
-// Blank stays blank for the string form (min urgency = "no filter").
-function NumField({ label, value, onChange, min, max, step, placeholder, caption, hint }: NumFieldProps) {
+}) {
   const isText = typeof value === "string";
   return (
     <FieldShell label={label} caption={caption} hint={hint}>
