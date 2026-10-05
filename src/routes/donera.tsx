@@ -49,7 +49,7 @@ function DonationPage() {
     setError(null);
     setBusy(true);
     try {
-      const res = await submit({ data: { ...form } });
+      const res = await submit({ data: { ...form, plan } });
       if (!res.ok) {
         setError(res.error);
         setBusy(false);
